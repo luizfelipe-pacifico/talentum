@@ -5,6 +5,15 @@ import { platform } from 'node:os';
 import { resolve } from 'node:path';
 
 const port = 3000;
+const databaseUrl = process.env.DATABASE_URL ?? 'file:../temp/talentum-local.db';
+
+function applyMigrations() {
+  const prismaCli = resolve('node_modules', 'prisma', 'build', 'index.js');
+  execFileSync(process.execPath, [prismaCli, 'migrate', 'deploy'], {
+    stdio: 'inherit',
+    env: { ...process.env, DATABASE_URL: databaseUrl },
+  });
+}
 
 function killProcessOnPort() {
   if (platform() === 'win32') {
@@ -75,6 +84,7 @@ async function waitForPortRelease() {
 
 killProcessOnPort();
 await waitForPortRelease();
+applyMigrations();
 
 if (existsSync('.next')) {
   rmSync('.next', { recursive: true, force: true });
@@ -86,7 +96,7 @@ const nextProcess = spawn(
   [nextBinary, 'dev', '-H', '127.0.0.1', '-p', String(port)],
   {
     stdio: 'inherit',
-    env: { ...process.env, PORT: String(port) },
+    env: { ...process.env, PORT: String(port), DATABASE_URL: databaseUrl },
   },
 );
 

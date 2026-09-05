@@ -1800,6 +1800,10 @@ kbd {
   }
 }
 
+.empty > .btn {
+  align-self: center;
+}
+
 .standalone-action {
   align-self: flex-start;
 }

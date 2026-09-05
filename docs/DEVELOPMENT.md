@@ -41,6 +41,8 @@ Não copie valores reais para `.env.example`. O arquivo `.env` local não deve s
 | `pnpm prisma:validate` | chama `prisma validate` |
 | `pnpm prisma:migrate` | cria/aplica migrações locais de desenvolvimento |
 
+`pnpm dev` e `pnpm dev:all` executam `prisma migrate deploy` antes de abrir o servidor. A URL local padrão aponta para `temp/talentum-local.db`, que é ignorado pelo Git. Crie migrations com `pnpm prisma:migrate --name <nome>`; não use `prisma db push` como fluxo do projeto.
+
 O Electron roda no host e pode apontar tanto para `pnpm dev` quanto para o servidor iniciado pelo Compose. Ao iniciar, o container executa `prisma migrate deploy`, cria ou atualiza `/data/talentum-local.db` e só então sobe o servidor. O volume nomeado `talentum-data` preserva o SQLite entre recriações do container.
 
 Neste estágio, o schema persistido contém apenas `LocalProfile` e `UserPreference`. Contas, extratos, transações, ativos e demais dados financeiros ainda precisam das tabelas previstas no modelo de dados antes de uma importação real.
