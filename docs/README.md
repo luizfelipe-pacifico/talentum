@@ -7,7 +7,7 @@ Este diretório separa as fontes de verdade técnicas dos materiais de produto e
 | Documento | Responsabilidade |
 | --- | --- |
 | [`ROADMAP.md`](./ROADMAP.md) | MVP, ordem das macrofeatures, dependências e critérios de conclusão |
-| [`ROUTING_MVP.md`](./ROUTING_MVP.md) | Passo a passo executável do MVP, rotas, APIs, migrations e Definition of Done |
+| [`ROUTING_MVP.md`](./ROUTING_MVP.md) | Plano executável de conclusão do MVP: trilhas cloud e local, rotas, APIs, migrations e Definition of Done |
 | [`ONBOARDING.md`](./ONBOARDING.md) | Perguntas, privacidade, fotografia inicial, importação e conciliação de primeiro acesso |
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Componentes, limites de confiança, responsabilidades e decisões estruturais |
 | [`ARCHITECTURE-WEB.md`](./ARCHITECTURE-WEB.md) | LP, autenticação, downloads e feedback público |
