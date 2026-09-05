@@ -13,6 +13,8 @@ Há duas arquiteturas deliberadamente separadas:
 - [`ARCHITECTURE-WEB.md`](./ARCHITECTURE-WEB.md): LP, cadastro, autenticação, downloads e comunidade de feedback;
 - [`ARCHITECTURE-ELECTRON.md`](./ARCHITECTURE-ELECTRON.md): aplicativo local-first, API local e integrações remotas.
 
+A Vercel hospeda exclusivamente a LP em `talentum.vercel.app` e um BFF mínimo necessário para cookies first-party. O sistema financeiro e o Electron não são implantados nem incluídos no contexto de build da Vercel. Instaladores Windows/Linux são publicados em GitHub Releases; o D1 guarda apenas metadados e concessões por ID.
+
 ```mermaid
 flowchart LR
     B[Browser] -->|HTTPS| WB[Backend web]

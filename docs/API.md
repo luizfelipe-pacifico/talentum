@@ -12,11 +12,11 @@ Route Handlers do Next.js atendem apenas a interface executada no mesmo disposit
 
 ### API de borda
 
-Cloudflare Workers atendem autenticação, metadados de conta, notícias e backup cifrado. A API de borda não recebe extratos, transações, saldos ou carteira em claro.
+Cloudflare Workers atendem autenticação, metadados de conta, releases, feedback e notícias. A API de borda não recebe extratos, transações, saldos ou carteira em claro.
 
 ### Regra frontend-backend
 
-Toda ação e consulta originada no browser ou renderer chama um contrato de backend. Frontends não importam cliente Prisma/D1, não usam bindings Cloudflare e não chamam object storage diretamente. Até feedback público passa pela API para manter moderação, paginação e cache controlados.
+Toda ação e consulta originada no browser ou renderer chama um contrato de backend. Frontends não importam cliente Prisma/D1 nem usam bindings Cloudflare. Até feedback público passa pela API para manter moderação, paginação e cache controlados.
 
 ### Código efêmero de ação
 
@@ -60,8 +60,6 @@ As rotas finais devem nascer junto dos casos de uso e testes; esta tabela não a
 | `POST` | `/auth/exchange` | código OAuth e prova do cliente |
 | `GET` | `/news` | filtros públicos e ativos minimizados, quando necessário |
 | `POST` | `/summaries` | conteúdo público da notícia |
-| `POST` | `/backups` | blob já cifrado e metadados de integridade |
-| `GET` | `/backups/:version` | blob cifrado autorizado |
 
 ## Web, autenticação, download e feedback
 

@@ -67,6 +67,15 @@ Este documento é normativo para autenticação, APIs, arquivos, banco de dados,
 | Isolamento | headers, CORS e cache | sandbox, context isolation, IPC mínimo e fuses |
 | Auditoria | login, sessão, moderação e download | eventos técnicos locais sem finanças |
 
+## Isolamento do deploy Vercel
+
+- `talentum.vercel.app` contém apenas LP, página de downloads e BFF mínimo de sessão;
+- nenhum fonte Electron, backend local, Prisma/SQLite, parser ou módulo financeiro entra no upload/contexto de build;
+- o CI gera e valida um manifesto allowlist do pacote destinado à Vercel;
+- o BFF não possui banco nem regra financeira e só encaminha contratos permitidos ao Worker;
+- instaladores são artefatos assinados em GitHub Releases, nunca parte do bundle executável da LP; o D1 guarda apenas metadados e concessões;
+- previews seguem o mesmo isolamento e não recebem segredos de produção.
+
 ## Comunidade de feedback
 
 - leitura anônima inclui somente conteúdo `PUBLISHED` e perfil público mínimo;

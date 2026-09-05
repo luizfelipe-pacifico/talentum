@@ -20,7 +20,7 @@ Existe hoje:
 - dependências-base e documentação técnica/produto;
 - identidade visual em SVG.
 
-Ainda não existe aplicação Next.js, frontend funcional, backend, schema Prisma, banco, testes de produto, Worker, D1, R2 nem instaladores. A presença de uma dependência no `package.json` não significa que a capacidade esteja implementada.
+Ainda não existe aplicação Next.js, frontend funcional, backend, schema Prisma, banco, testes de produto, Worker, D1 nem instaladores. A presença de uma dependência no `package.json` não significa que a capacidade esteja implementada.
 
 ## Regras transversais de todas as etapas
 
@@ -60,11 +60,12 @@ O MVP termina quando uma pessoa consegue cadastrar-se, instalar o Talentum, impo
 **Objetivo:** entregar o caminho público até o instalador.
 
 - LP responsiva com proposta de valor, privacidade, plataformas e licença;
+- publicar somente LP/BFF em `talentum.vercel.app`, com contexto de deploy isolado do sistema desktop;
 - OAuth/OIDC Authorization Code + PKCE;
 - access token curto, refresh token rotativo, revogação e detecção de reúso;
 - tabelas cloud de usuário, perfil, identidade, sessão, tokens, consentimento, release, artefato e concessão;
 - página protegida com botões Windows e Linux;
-- artefatos em R2 com URL curta, checksum, assinatura e auditoria;
+- instaladores Windows/Linux produzidos fora da Vercel e publicados em GitHub Releases com checksum, assinatura e metadados no D1;
 - WAF, rate limit, Turnstile adaptativo, CSP, HSTS, CSRF e cache privado;
 - termos, privacidade, exclusão de conta e retenção mínima.
 
@@ -185,7 +186,7 @@ XP por hábitos úteis, níveis, missões e badges. Pontuação evita incentivo 
 
 ## Etapa 18 — Backup E2EE e restauração
 
-Snapshot local cifrado com AEAD, objeto em storage apropriado, metadados no D1, versionamento, recuperação de chave, retenção, restauração validada e testes de desastre. Não anunciar “zero knowledge” antes de auditoria.
+**Em aberto.** Snapshot local cifrado com AEAD, versionamento, recuperação de chave, retenção, restauração validada e testes de desastre. O D1 pode guardar somente metadados; nenhum snapshot será armazenado nele. Um provedor apropriado precisa de ADR futuro. Não anunciar “zero knowledge” antes de auditoria.
 
 ## Etapa 19 — Exportação, portabilidade e exclusão
 
