@@ -27,6 +27,8 @@ Foram percorridas no Chrome, do início ao fim, as rotas:
 - Missões e conquistas do perfil foram alinhadas como listas verticais.
 - A rota de detalhe do cartão passou a exibir resumo e movimentações próprios.
 - O título contextual de `/onboarding` foi corrigido para "Primeiro acesso".
+- A rota raiz foi nomeada "Dashboard" e passou a iniciar com valores zerados e chamadas claras para onboarding ou importação.
+- O seletor de tema recebeu largura, seta e área de clique próprias para evitar sobreposição do controle nativo.
 
 ### Resultado observado
 
