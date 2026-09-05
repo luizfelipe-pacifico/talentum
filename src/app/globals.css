@@ -1604,3 +1604,16 @@ kbd {
   margin: 0;
   padding: 0;
 }
+
+@media (max-width: 1180px) {
+  .topbar { padding-inline: 22px; }
+  .content { padding: 24px 22px 48px; }
+  .topbar .chip:not(.chip-info), .avatar-button > span:not(.avatar) { display: none; }
+  .segmented button { font-size: 0; gap: 0; }
+  .segmented button i { font-size: 14px; }
+}
+
+@media (max-width: 1040px) {
+  .grid-340, .grid-320, .grid-300, .grid-260, .grid-240, .grid-230 { grid-template-columns: 1fr; }
+  .topbar { align-items: flex-start; }
+}
