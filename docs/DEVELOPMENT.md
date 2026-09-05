@@ -4,6 +4,8 @@
 
 O projeto está em pré-alpha. Já existe uma base Next.js full-stack, API REST local inicial, shell Electron, Prisma/SQLite e execução do servidor local por Docker. Os módulos financeiros e serviços Cloudflare ainda não foram implementados.
 
+A interface desktop atual recria o layout de referência como protótipo navegável. As rotas sob `src/app/` usam dados sintéticos de `src/lib/demo-data.ts`; botões e estados demonstrativos não implicam persistência ou integração pronta.
+
 ## Requisitos
 
 - Node.js 22.13 ou superior;
