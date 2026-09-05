@@ -28,6 +28,7 @@ export const PAGE_META: { prefix: string; title: string; context: string }[] = [
   { prefix: '/perfil/privacidade', title: 'Dados e backup', context: 'Banco local, exportação e backup cifrado' },
   { prefix: '/perfil', title: 'Perfil e progresso', context: 'Missões, XP, níveis e conquistas' },
   { prefix: '/configuracoes', title: 'Configurações', context: 'Preferências do aplicativo' },
+  { prefix: '/onboarding', title: 'Primeiro acesso', context: 'Fotografia financeira inicial e privacidade local' },
   { prefix: '/', title: 'Início', context: 'Sua posição financeira em 5 de setembro de 2026' },
 ];
 
