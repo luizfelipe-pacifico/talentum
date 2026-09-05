@@ -1,5 +1,7 @@
 # Modelo de dados do Talentum
 
+As regras operacionais obrigatórias para criar, consultar, migrar e escalar estas estruturas estão em [`ESTRUTURA_DE_DADOS.md`](./ESTRUTURA_DE_DADOS.md).
+
 ## Status
 
 Modelo conceitual planejado. O `schema.prisma` atual implementa `LocalProfile`, `UserPreference` e o núcleo financeiro inicial formado por `Institution`, `Account`, `BalanceSnapshot`, `Category`, `ImportBatch` e `Transaction`. Os demais agregados deste documento ainda não foram implementados.
