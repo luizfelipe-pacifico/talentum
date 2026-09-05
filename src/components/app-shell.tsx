@@ -182,12 +182,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                 Modo de sobrevivência ativo
               </p>
               <p style={{ margin: '2px 0 0', fontSize: 13, lineHeight: '19px' }}>
-                Sugestões de aporte estão pausadas. A prioridade agora é a dívida de maior custo: fatura Vega,
-                juros de 14,9% ao mês.
+                Sugestões de aporte ficam pausadas enquanto este modo estiver ativo. Nenhuma dívida foi carregada.
               </p>
             </div>
             <Link href="/extratos/recorrencias" className="btn btn-sm btn-neutral">
-              Ver dívidas prioritárias
+              Ver obrigações
             </Link>
           </div>
         )}

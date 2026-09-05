@@ -10,6 +10,9 @@ Este documento mistura contratos atuais e planejados. As rotas marcadas como atu
 | --- | --- | --- | --- |
 | `POST` | `/api/action-codes` | bootstrap e validação Zod | emitir código de ação por 60 segundos |
 | `GET` | `/api/system/status` | `X-Action-Code` de uso único | verificar comunicação frontend/API |
+| `GET` | `/api/dashboard` | `X-Action-Code` de uso único | consultar indicadores calculados no SQLite local |
+
+`GET /api/dashboard` retorna saldo consolidado, gastos e média diária do mês e quantidades de contas, transações, importações e pendências. A chamada solicita primeiro um código para o mesmo método e caminho em `POST /api/action-codes`. Valores monetários são calculados com `BigInt` em centavos e formatados no backend; o endpoint não devolve transações individuais nem conteúdo de arquivos.
 | `GET` | `/api/health/live` | somente infraestrutura | healthcheck sem dados de aplicação |
 
 O armazenamento atual dos códigos é em memória e serve somente ao backend local de processo único. Antes de execução distribuída, deverá ser substituído por mecanismo atômico apropriado ao provedor.
