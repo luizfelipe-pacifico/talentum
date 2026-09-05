@@ -1,6 +1,8 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, rmSync } from 'node:fs';
+import net from 'node:net';
 import { platform } from 'node:os';
+import { resolve } from 'node:path';
 
 const port = 3000;
 
@@ -47,16 +49,50 @@ function killProcessOnPort() {
   }
 }
 
+function isPortAvailable() {
+  return new Promise((resolveAvailability) => {
+    const server = net.createServer();
+
+    server.once('error', () => resolveAvailability(false));
+    server.once('listening', () => {
+      server.close(() => resolveAvailability(true));
+    });
+    server.listen(port, '127.0.0.1');
+  });
+}
+
+async function waitForPortRelease() {
+  const timeoutAt = Date.now() + 5000;
+
+  while (!(await isPortAvailable())) {
+    if (Date.now() >= timeoutAt) {
+      throw new Error(`Não foi possível liberar a porta ${port}.`);
+    }
+
+    await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+  }
+}
+
 killProcessOnPort();
+await waitForPortRelease();
 
 if (existsSync('.next')) {
   rmSync('.next', { recursive: true, force: true });
 }
 
-const nextCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
-const nextProcess = spawn(nextCommand, ['exec', 'next', 'dev', '-p', String(port)], {
-  stdio: 'inherit',
-  env: { ...process.env, PORT: String(port) },
+const nextBinary = resolve('node_modules', 'next', 'dist', 'bin', 'next');
+const nextProcess = spawn(
+  process.execPath,
+  [nextBinary, 'dev', '-H', '127.0.0.1', '-p', String(port)],
+  {
+    stdio: 'inherit',
+    env: { ...process.env, PORT: String(port) },
+  },
+);
+
+nextProcess.on('error', (error) => {
+  console.error(`Não foi possível iniciar o Next.js: ${error.message}`);
+  process.exitCode = 1;
 });
 
 nextProcess.on('exit', (exitCode, signal) => {
