@@ -717,7 +717,8 @@ p {
   align-items: center;
   gap: 6px;
   min-height: 38px;
-  padding: 0 8px;
+  position: relative;
+  padding: 0 10px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-md);
   color: var(--ink2);
@@ -734,6 +735,10 @@ p {
 }
 
 .theme-select select {
+  appearance: none;
+  min-width: 82px;
+  min-height: 36px;
+  padding: 0 24px 0 2px;
   border: 0;
   outline: 0;
   background: transparent;
@@ -741,6 +746,19 @@ p {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.theme-select .theme-select-chevron {
+  position: absolute;
+  right: 10px;
+  font-size: 10px;
+  pointer-events: none;
+  color: var(--ink2);
+}
+
+.theme-select select option {
+  color: var(--ink);
+  background: var(--surface);
 }
 
 .sr-only {

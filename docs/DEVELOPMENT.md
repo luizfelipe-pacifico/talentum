@@ -41,7 +41,9 @@ Não copie valores reais para `.env.example`. O arquivo `.env` local não deve s
 | `pnpm prisma:validate` | chama `prisma validate` |
 | `pnpm prisma:migrate` | cria/aplica migrações locais de desenvolvimento |
 
-O Electron roda no host e pode apontar tanto para `pnpm dev` quanto para o servidor iniciado pelo Compose. O volume nomeado `talentum-data` preserva o SQLite entre recriações do container.
+O Electron roda no host e pode apontar tanto para `pnpm dev` quanto para o servidor iniciado pelo Compose. Ao iniciar, o container executa `prisma migrate deploy`, cria ou atualiza `/data/talentum-local.db` e só então sobe o servidor. O volume nomeado `talentum-data` preserva o SQLite entre recriações do container.
+
+Neste estágio, o schema persistido contém apenas `LocalProfile` e `UserPreference`. Contas, extratos, transações, ativos e demais dados financeiros ainda precisam das tabelas previstas no modelo de dados antes de uma importação real.
 
 A imagem usa Ubuntu 24.04, Node.js 22 copiado da imagem oficial, execução por usuário não-root e somente os pacotes de sistema necessários para TLS/Prisma. Electron não roda dentro da imagem.
 
