@@ -20,7 +20,15 @@
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "cloudflare:dev": "wrangler dev --config cloudflare/wrangler.jsonc",
+    "cloudflare:build": "wrangler deploy --dry-run --config cloudflare/wrangler.jsonc",
+    "cloudflare:types": "wrangler types --config cloudflare/wrangler.jsonc",
+    "cloudflare:migrations:list:local": "wrangler d1 migrations list talentum-cloud-production --local --config cloudflare/wrangler.jsonc",
+    "cloudflare:migrations:apply:local": "wrangler d1 migrations apply talentum-cloud-production --local --config cloudflare/wrangler.jsonc",
+    "cloudflare:migrations:list:remote": "wrangler d1 migrations list talentum-cloud-production --remote --config cloudflare/wrangler.jsonc",
+    "cloudflare:migrations:apply:remote": "wrangler d1 migrations apply talentum-cloud-production --remote --config cloudflare/wrangler.jsonc",
+    "cloudflare:deploy": "wrangler deploy --config cloudflare/wrangler.jsonc"
   },
   "dependencies": {
     "@fontsource/montserrat": "^5.3.0",
