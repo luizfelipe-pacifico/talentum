@@ -20,7 +20,7 @@ Existe hoje:
 - dependências-base e documentação técnica/produto;
 - identidade visual em SVG.
 
-Ainda não existe aplicação Next.js, frontend funcional, backend, schema Prisma, banco, testes de produto, Worker, D1 nem instaladores. A presença de uma dependência no `package.json` não significa que a capacidade esteja implementada.
+Já existem aplicação Next.js, shell Electron, API REST local inicial, schema Prisma/SQLite, Worker publicado e D1 com o schema cloud inicial. Autenticação cloud, LP/BFF isolada, fluxo de downloads, módulos financeiros completos, testes de produto e instaladores ainda não estão concluídos. A presença de uma dependência ou scaffold não significa que a capacidade correspondente esteja implementada.
 
 ## Regras transversais de todas as etapas
 
@@ -74,6 +74,8 @@ Estado parcial atual: scaffold Next.js, API REST inicial, Prisma/SQLite e arquiv
 - termos, privacidade, exclusão de conta e retenção mínima.
 
 **Saída:** apenas usuário validado obtém um instalador autêntico e temporariamente autorizado.
+
+Estado parcial atual: Worker, binding D1, migration cloud inicial e endpoint de saúde estão publicados. OAuth/OIDC, sessões, códigos efêmeros, BFF da Vercel, LP, rate limit, Turnstile, releases e concessões de download permanecem pendentes na ordem definida em `ROUTING_MVP.md`.
 
 ## MVP 2 — Electron seguro e primeiro acesso
 
