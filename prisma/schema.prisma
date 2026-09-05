@@ -13,6 +13,11 @@ model LocalProfile {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   preferences UserPreference[]
+  institutions Institution[]
+  accounts      Account[]
+  categories    Category[]
+  importBatches ImportBatch[]
+  transactions  Transaction[]
 }
 
 model UserPreference {
@@ -26,4 +31,100 @@ model UserPreference {
 
   @@unique([profileId, key])
   @@index([profileId])
+}
+
+model Institution {
+  id        String       @id @default(uuid())
+  profileId String
+  name      String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  profile   LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  accounts  Account[]
+
+  @@index([profileId])
+}
+
+model Account {
+  id               String            @id @default(uuid())
+  profileId        String
+  institutionId    String?
+  name             String
+  type             String
+  currency         String            @default("BRL")
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  profile          LocalProfile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  institution      Institution?      @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  balanceSnapshots BalanceSnapshot[]
+  transactions     Transaction[]
+
+  @@index([profileId])
+  @@index([institutionId])
+}
+
+model BalanceSnapshot {
+  id           String   @id @default(uuid())
+  accountId    String
+  balanceCents BigInt
+  capturedAt   DateTime
+  createdAt    DateTime @default(now())
+  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, capturedAt])
+}
+
+model Category {
+  id           String        @id @default(uuid())
+  profileId    String
+  name         String
+  kind         String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  profile      LocalProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([profileId, name, kind])
+  @@index([profileId])
+}
+
+model ImportBatch {
+  id          String        @id @default(uuid())
+  profileId   String
+  format      String
+  fingerprint String
+  status      String
+  fileName    String?
+  importedAt  DateTime      @default(now())
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  profile     LocalProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([profileId, fingerprint])
+  @@index([profileId, importedAt])
+}
+
+model Transaction {
+  id            String        @id @default(uuid())
+  profileId     String
+  accountId     String
+  importBatchId String?
+  categoryId    String?
+  occurredOn    DateTime
+  description   String
+  amountCents   BigInt
+  status        String        @default("pending")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  profile       LocalProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  account       Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  importBatch   ImportBatch?  @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  category      Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([profileId, occurredOn])
+  @@index([accountId, occurredOn])
+  @@index([importBatchId])
+  @@index([categoryId])
 }

@@ -38,6 +38,8 @@ Cada etapa só termina quando inclui implementação, testes, migrações/contra
 
 # MVP — primeiro release utilizável
 
+O roteiro operacional, com ordem, rotas, APIs, migrations e critérios verificáveis, está em [`ROUTING_MVP.md`](./ROUTING_MVP.md).
+
 O MVP termina quando uma pessoa consegue cadastrar-se, instalar o Talentum, importar um OFX, revisar seus lançamentos e visualizar o saldo livre localmente. Ele não inclui PDF, IA, ARCA, backup cloud, gamificação ou comunidade.
 
 ## MVP 0 — Fundação técnica e segurança

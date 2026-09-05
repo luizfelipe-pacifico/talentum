@@ -2,7 +2,9 @@
 
 ## Status
 
-Modelo conceitual planejado. O `schema.prisma` atual implementa somente `LocalProfile` e `UserPreference`; os demais agregados deste documento ainda não foram implementados.
+Modelo conceitual planejado. O `schema.prisma` atual implementa `LocalProfile`, `UserPreference` e o núcleo financeiro inicial formado por `Institution`, `Account`, `BalanceSnapshot`, `Category`, `ImportBatch` e `Transaction`. Os demais agregados deste documento ainda não foram implementados.
+
+O schema evolui somente por migrations versionadas. A migration `mvp_financial_core` cria o núcleo financeiro; ambientes executam `prisma migrate deploy` e nunca dependem de alteração manual ou `db push` em produção.
 
 ## Princípios
 
