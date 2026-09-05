@@ -34,10 +34,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="shell" style={{ ['--sidebar-w' as string]: app.collapsed ? '76px' : '248px' }}>
       <aside className="sidebar" aria-label="Navegação principal">
         <div className="sidebar-brand">
-          <span className="sidebar-mark" aria-hidden="true">
-            <span />
-            <span />
-          </span>
+          <i className="bi bi-bank2" style={{ color: 'var(--amber)', fontSize: 24 }} aria-hidden="true" />
           {expanded && <span className="sidebar-wordmark">Talentum</span>}
         </div>
 
