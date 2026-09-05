@@ -1,0 +1,5 @@
+# Copie para cloudflare/.dev.vars somente no ambiente local.
+# Nunca registre o arquivo .dev.vars real no Git.
+SESSION_SIGNING_SECRET=gere-um-segredo-local-diferente
+TOKEN_HASH_PEPPER=gere-outro-segredo-local-diferente
+BFF_SHARED_SECRET=gere-um-terceiro-segredo-local-diferente

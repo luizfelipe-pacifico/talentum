@@ -2,7 +2,7 @@
 
 ## Estado do repositório
 
-O projeto está em pré-alpha. Já existe uma base Next.js full-stack, API REST local inicial, shell Electron, Prisma/SQLite e execução do servidor local por Docker. Os módulos financeiros e serviços Cloudflare ainda não foram implementados.
+O projeto está em pré-alpha. Já existe uma base Next.js full-stack, API REST local inicial, shell Electron, Prisma/SQLite, execução do servidor local por Docker e scaffold do Worker/D1. Os módulos financeiros e as rotas cloud de negócio ainda não foram implementados.
 
 A interface desktop atual recria o layout de referência como protótipo navegável. As rotas sob `src/app/` usam dados sintéticos de `src/lib/demo-data.ts`; botões e estados demonstrativos não implicam persistência ou integração pronta.
 
@@ -40,12 +40,19 @@ Não copie valores reais para `.env.example`. O arquivo `.env` local não deve s
 | `pnpm prisma:generate` | chama `prisma generate` |
 | `pnpm prisma:validate` | chama `prisma validate` |
 | `pnpm prisma:migrate` | cria/aplica migrações locais de desenvolvimento |
+| `pnpm cloudflare:dev` | inicia o Worker com o D1 local |
+| `pnpm cloudflare:build` | valida e empacota o Worker sem publicar |
+| `pnpm cloudflare:migrations:list:local` | lista migrations pendentes no D1 local |
+| `pnpm cloudflare:migrations:apply:local` | aplica migrations no D1 local |
+| `pnpm cloudflare:migrations:list:remote` | lista migrations pendentes no D1 remoto |
+| `pnpm cloudflare:migrations:apply:remote` | aplica migrations revisadas no D1 remoto |
+| `pnpm cloudflare:deploy` | publica o Worker autenticado |
 
 `pnpm dev` e `pnpm dev:all` executam `prisma migrate deploy` antes de abrir o servidor. A URL local padrão aponta para `temp/talentum-local.db`, que é ignorado pelo Git. Crie migrations com `pnpm prisma:migrate --name <nome>`; não use `prisma db push` como fluxo do projeto.
 
 O Electron roda no host e pode apontar tanto para `pnpm dev` quanto para o servidor iniciado pelo Compose. Ao iniciar, o container executa `prisma migrate deploy`, cria ou atualiza `/data/talentum-local.db` e só então sobe o servidor. O volume nomeado `talentum-data` preserva o SQLite entre recriações do container.
 
-Neste estágio, o schema persistido contém apenas `LocalProfile` e `UserPreference`. Contas, extratos, transações, ativos e demais dados financeiros ainda precisam das tabelas previstas no modelo de dados antes de uma importação real.
+O SQLite local já possui `LocalProfile`, `UserPreference` e o núcleo financeiro inicial. O D1 possui migration própria para identidade mínima, sessão, releases e feedback. Consulte [`CLOUDFLARE_SETUP.md`](./CLOUDFLARE_SETUP.md) antes de criar ou aplicar migrations cloud.
 
 A imagem usa Ubuntu 24.04, Node.js 22 copiado da imagem oficial, execução por usuário não-root e somente os pacotes de sistema necessários para TLS/Prisma. Electron não roda dentro da imagem.
 

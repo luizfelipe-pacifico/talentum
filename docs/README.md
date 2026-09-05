@@ -19,6 +19,7 @@ Este diretório separa as fontes de verdade técnicas dos materiais de produto e
 | [`API.md`](./API.md) | Convenções e contratos planejados para APIs locais e de borda |
 | [`SECURITY.md`](./SECURITY.md) | Modelo de ameaças, tratamento de dados e requisitos obrigatórios |
 | [`DEVELOPMENT.md`](./DEVELOPMENT.md) | Ambiente local, comandos, estrutura e critérios de validação |
+| [`CLOUDFLARE_SETUP.md`](./CLOUDFLARE_SETUP.md) | Configuração ordenada do Worker, D1, migrations, segredos e integração com a Vercel |
 | [`BEST_PRACTICES.md`](./BEST_PRACTICES.md) | Práticas gerais de engenharia e contribuição |
 | [`BRANDING.md`](./BRANDING.md) | Identidade visual e regras de interface |
 

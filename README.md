@@ -199,6 +199,7 @@ As fontes técnicas estão indexadas em [`docs/README.md`](./docs/README.md). A 
 - [`API.md`](./docs/API.md): convenções e contratos planejados das APIs local e de borda.
 - [`SECURITY.md`](./docs/SECURITY.md): requisitos obrigatórios de segurança e privacidade.
 - [`DEVELOPMENT.md`](./docs/DEVELOPMENT.md): ambiente local, comandos e critérios de qualidade.
+- [`CLOUDFLARE_SETUP.md`](./docs/CLOUDFLARE_SETUP.md): parametrização do Worker, D1, migrations e segredos.
 - [`DOCUMENTACAO_PDF_REESCRITA.md`](./docs/DOCUMENTACAO_PDF_REESCRITA.md): especificação consolidada do produto e da arquitetura.
 - [`PROJECT_THINKING.md`](./docs/PROJECT_THINKING.md): decisões iniciais de experiência e tecnologia.
 - [`BRANDING.md`](./docs/BRANDING.md): marca, paleta, tipografia e princípios de interface.
