@@ -2,7 +2,19 @@
 
 ## Escopo
 
-Este documento define convenções planejadas. Nenhuma rota de negócio existe no repositório atual.
+Este documento mistura contratos atuais e planejados. As rotas marcadas como atuais existem no scaffold; rotas de negócio permanecem candidatas até sua implementação.
+
+## Rotas locais atuais
+
+| Método | Rota | Proteção | Finalidade |
+| --- | --- | --- | --- |
+| `POST` | `/api/action-codes` | bootstrap e validação Zod | emitir código de ação por 60 segundos |
+| `GET` | `/api/system/status` | `X-Action-Code` de uso único | verificar comunicação frontend/API |
+| `GET` | `/api/health/live` | somente infraestrutura | healthcheck sem dados de aplicação |
+
+O armazenamento atual dos códigos é em memória e serve somente ao backend local de processo único. Antes de execução distribuída, deverá ser substituído por mecanismo atômico apropriado ao provedor.
+
+A chamada manual validada segue: emitir código para `GET /api/system/status`, enviar em `X-Action-Code` e receber `403` ao tentar reutilizar o mesmo valor.
 
 ## Separação
 

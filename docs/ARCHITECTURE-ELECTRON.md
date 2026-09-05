@@ -4,6 +4,10 @@
 
 O desktop é local-first: processa e guarda dados financeiros no dispositivo. O renderer é um frontend não confiável e só conversa com o backend local. Serviços cloud recebem apenas o mínimo documentado.
 
+## Estado atual
+
+O Next.js App Router fornece a interface e três Route Handlers iniciais. Prisma está configurado para SQLite com `LocalProfile` e `UserPreference`. Docker executa somente o servidor local; o Electron gráfico continua no host e abre `http://localhost:3000`.
+
 ```mermaid
 flowchart LR
     UI[Renderer sem Node] -->|loopback autenticado| API[Backend local]

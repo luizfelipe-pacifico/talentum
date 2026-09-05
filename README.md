@@ -144,7 +144,7 @@ Os ícones usados neste README pertencem ao [Bootstrap Icons](https://icons.getb
 
 ## Estado do projeto
 
-O repositório está em **pré-alpha**. Hoje ele contém a visão consolidada do produto, diretrizes de marca, documentação de engenharia, dependências-base, scripts locais e o shell inicial do Electron. A aplicação Next.js, o modelo Prisma e os módulos de negócio ainda serão implementados.
+O repositório está em **pré-alpha**. Hoje ele contém a visão consolidada, documentação, identidade visual, base Next.js full-stack, API REST inicial, Prisma/SQLite, Docker e shell Electron. Os módulos financeiros e serviços Cloudflare ainda serão implementados.
 
 ### Roadmap inicial
 
@@ -154,7 +154,7 @@ O plano completo, com MVP, macrofeatures posteriores, dependências e critérios
 
 ### Pré-requisitos
 
-- Node.js 20 ou superior;
+- Node.js 22.13 ou superior;
 - pnpm `11.1.2`;
 - Git.
 
@@ -164,6 +164,9 @@ O plano completo, com MVP, macrofeatures posteriores, dependências e critérios
 git clone https://github.com/luizfelipe-pacifico/talentum.git
 cd talentum
 pnpm install
+cp .env.example .env
+pnpm prisma:generate
+pnpm prisma:migrate
 ```
 
 ### Comandos disponíveis
@@ -172,14 +175,16 @@ pnpm install
 | --- | --- |
 | `pnpm dev` | Limpa o cache do Next.js, libera a porta 3000 e inicia o servidor local |
 | `pnpm dev:all` | Inicia o Next.js e abre a aplicação no Electron |
+| `pnpm docker:up` | Constrói e inicia o servidor local em Docker |
+| `pnpm docker:down` | Encerra o servidor sem remover o volume SQLite |
 | `pnpm build` | Gera a build de produção do Next.js |
-| `pnpm start` | Executa a build na porta 3000 |
+| `pnpm start` | Executa a build de produção na porta 3000 |
 | `pnpm typecheck` | Verifica os tipos TypeScript |
 | `pnpm prisma:generate` | Gera o Prisma Client |
 | `pnpm prisma:validate` | Valida o schema Prisma |
+| `pnpm prisma:migrate` | Cria e aplica migrações SQLite locais |
 
-> [!WARNING]
-> Como a aplicação ainda está sendo estruturada, alguns comandos só passarão a funcionar depois que os diretórios de aplicação e banco descritos no roadmap forem adicionados.
+O container Ubuntu 24.04 executa o servidor Next.js como usuário não-root; a janela Electron é iniciada no host. Dados SQLite usam um volume nomeado e não entram na imagem.
 
 ## Documentação
 

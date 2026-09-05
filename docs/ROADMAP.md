@@ -55,6 +55,8 @@ O MVP termina quando uma pessoa consegue cadastrar-se, instalar o Talentum, impo
 
 **Saída:** web e Electron iniciam em desenvolvimento, CI passa e nenhuma camada frontend acessa persistência diretamente.
 
+Estado parcial atual: scaffold Next.js, API REST inicial, Prisma/SQLite e arquivos Docker existem; CI, testes automatizados, licença e ADR do empacotador continuam pendentes.
+
 ## MVP 1 — Landing page, cadastro e downloads
 
 **Objetivo:** entregar o caminho público até o instalador.
