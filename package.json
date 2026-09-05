@@ -5,29 +5,37 @@
   "description": "Talentum - Piloto Automatico Financeiro",
   "main": "electron/main.cjs",
   "packageManager": "pnpm@11.1.2",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:all": "node scripts/dev-all.mjs",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
     "build": "next build",
     "start": "next start -p 3000",
-    "lint": "next lint",
+    "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
-    "prisma:validate": "prisma validate"
+    "prisma:validate": "prisma validate",
+    "prisma:migrate": "prisma migrate dev"
   },
   "dependencies": {
     "@prisma/client": "^6.15.0",
     "@tailwindcss/postcss": "^4.1.12",
-    "google-auth-library": "^9.15.1",
-    "lucide-react": "^0.542.0",
+    "bootstrap-icons": "^1.13.1",
+    "google-auth-library": "^11.0.2",
     "next": "^15.5.2",
-    "pdfjs-dist": "^5.4.54",
+    "ofx-data-extractor": "^1.5.0",
+    "pdfjs-dist": "^6.3.289",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "zod": "^4.1.5"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250906.0",
+    "@cloudflare/workers-types": "^5.20260904.1",
     "@types/node": "^24.3.0",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",

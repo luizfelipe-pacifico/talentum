@@ -144,26 +144,17 @@ Os ícones usados neste README pertencem ao [Bootstrap Icons](https://icons.getb
 
 ## Estado do projeto
 
-O repositório está em **pré-alpha**. Hoje ele contém a visão consolidada do produto, diretrizes de marca, documentação de engenharia, dependências-base, scripts locais e o shell inicial do Electron. A aplicação Next.js, o modelo Prisma e os módulos de negócio ainda serão implementados.
+O repositório está em **pré-alpha**. Hoje ele contém a visão consolidada, documentação, identidade visual, base Next.js full-stack, API REST inicial, Prisma/SQLite, Docker e shell Electron. Os módulos financeiros e serviços Cloudflare ainda serão implementados.
 
 ### Roadmap inicial
 
-- [x] Consolidar visão, módulos e regras do produto.
-- [x] Definir identidade visual e arquitetura local-first.
-- [x] Preparar scripts-base para Next.js e Electron.
-- [ ] Criar a aplicação Next.js e o design system.
-- [ ] Modelar o banco local com Prisma e SQLite.
-- [ ] Implementar importação OFX e os primeiros parsers de PDF.
-- [ ] Entregar categorização, conciliação e saldo livre.
-- [ ] Implementar metas, patrimônio e motor de aportes.
-- [ ] Integrar autenticação, notícias e backups cifrados.
-- [ ] Empacotar versões instaláveis para Windows e Linux.
+O plano completo, com MVP, macrofeatures posteriores, dependências e critérios de conclusão, está em [`docs/ROADMAP.md`](./docs/ROADMAP.md). O primeiro release concentra-se em cadastro/download, Electron seguro, persistência local, importação OFX, conciliação e Saldo Livre de Risco.
 
 ## Desenvolvimento local
 
 ### Pré-requisitos
 
-- Node.js 20 ou superior;
+- Node.js 22.13 ou superior;
 - pnpm `11.1.2`;
 - Git.
 
@@ -173,6 +164,9 @@ O repositório está em **pré-alpha**. Hoje ele contém a visão consolidada do
 git clone https://github.com/luizfelipe-pacifico/talentum.git
 cd talentum
 pnpm install
+cp .env.example .env
+pnpm prisma:generate
+pnpm prisma:migrate
 ```
 
 ### Comandos disponíveis
@@ -181,17 +175,30 @@ pnpm install
 | --- | --- |
 | `pnpm dev` | Limpa o cache do Next.js, libera a porta 3000 e inicia o servidor local |
 | `pnpm dev:all` | Inicia o Next.js e abre a aplicação no Electron |
+| `pnpm docker:up` | Constrói e inicia o servidor local em Docker |
+| `pnpm docker:down` | Encerra o servidor sem remover o volume SQLite |
 | `pnpm build` | Gera a build de produção do Next.js |
-| `pnpm start` | Executa a build na porta 3000 |
+| `pnpm start` | Executa a build de produção na porta 3000 |
 | `pnpm typecheck` | Verifica os tipos TypeScript |
 | `pnpm prisma:generate` | Gera o Prisma Client |
 | `pnpm prisma:validate` | Valida o schema Prisma |
+| `pnpm prisma:migrate` | Cria e aplica migrações SQLite locais |
 
-> [!WARNING]
-> Como a aplicação ainda está sendo estruturada, alguns comandos só passarão a funcionar depois que os diretórios de aplicação e banco descritos no roadmap forem adicionados.
+O container Ubuntu 24.04 executa o servidor Next.js como usuário não-root; a janela Electron é iniciada no host. Dados SQLite usam um volume nomeado e não entram na imagem.
 
 ## Documentação
 
+As fontes técnicas estão indexadas em [`docs/README.md`](./docs/README.md). A arquitetura é separada entre [`Web`](./docs/ARCHITECTURE-WEB.md) e [`Electron`](./docs/ARCHITECTURE-ELECTRON.md); autenticação, refresh tokens e controles obrigatórios estão em [`AUTHENTICATION.md`](./docs/AUTHENTICATION.md) e [`SECURITY.md`](./docs/SECURITY.md).
+
+- [`docs/README.md`](./docs/README.md): índice e hierarquia das fontes de verdade do projeto.
+- [`ROADMAP.md`](./docs/ROADMAP.md): MVP e sequência planejada de todas as macrofeatures.
+- [`ONBOARDING.md`](./docs/ONBOARDING.md): perguntas e fotografia financeira do primeiro acesso.
+- [`ARCHITECTURE.md`](./docs/ARCHITECTURE.md): componentes, limites de confiança e decisões estruturais.
+- [`HOW-IT-WORKS.md`](./docs/HOW-IT-WORKS.md): fluxos de execução, importação, conciliação e backup.
+- [`DATA_MODEL.md`](./docs/DATA_MODEL.md): modelo conceitual, relações e invariantes de persistência.
+- [`API.md`](./docs/API.md): convenções e contratos planejados das APIs local e de borda.
+- [`SECURITY.md`](./docs/SECURITY.md): requisitos obrigatórios de segurança e privacidade.
+- [`DEVELOPMENT.md`](./docs/DEVELOPMENT.md): ambiente local, comandos e critérios de qualidade.
 - [`DOCUMENTACAO_PDF_REESCRITA.md`](./docs/DOCUMENTACAO_PDF_REESCRITA.md): especificação consolidada do produto e da arquitetura.
 - [`PROJECT_THINKING.md`](./docs/PROJECT_THINKING.md): decisões iniciais de experiência e tecnologia.
 - [`BRANDING.md`](./docs/BRANDING.md): marca, paleta, tipografia e princípios de interface.

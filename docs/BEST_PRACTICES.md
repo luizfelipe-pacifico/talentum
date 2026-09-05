@@ -1,13 +1,13 @@
 # Development Best Practices
 
-This guide establishes the development baseline for Tabularium. It must evolve with the product requirements, architecture, and technology stack.
+This guide establishes the development baseline for Talentum. It must evolve with the product requirements, architecture, and technology stack.
 
 ## Project organization
 
 Use the established root Next.js application with reusable capabilities in `packages/` and product documentation in `docs/`:
 
 ```text
-tabularium/
+talentum/
 ├── src/                     # Full-stack Next.js application
 │   ├── app/                 # App Router pages, layouts, and route boundaries
 │   ├── components/          # Components owned only by the web application
@@ -32,7 +32,7 @@ tabularium/
 Organization rules:
 
 - Group web business code by domain or capability under `src/modules/` as the application grows.
-- Do not recreate `apps/web`; the only deployable application is rooted at `/tabularium`.
+- Do not recreate `apps/web`; the only deployable application is rooted at `/talentum`.
 - Add a new directory under `packages/` only for code or configuration reused across workspace applications.
 - Keep entry points thin and move business rules into independently testable modules.
 - Put code in `shared/` only when it is genuinely reused; do not turn it into a catch-all.
@@ -52,7 +52,7 @@ There are two common ways to group source code, and the right choice depends on 
 - **Layer-based** (a.k.a. package-by-type): files are grouped by technical role (`controllers/`, `models/`, `services/`). Simple and fine for small projects, but related code for a single feature ends up scattered across many folders as the app grows.
 - **Feature-based** (a.k.a. package-by-feature or domain-driven): files are grouped by business capability (e.g. `modules/billing/`, `modules/auth/`), with each feature folder holding its own logic, tests, and types. This keeps related code together, reduces merge conflicts between contributors, and scales better with team size.
 
-Tabularium's target application layout (`src/modules/`) is feature-based. Start each module with a flat, simple internal structure and only add sub-layers (for example, `modules/demands/data/` or `modules/demands/components/`) once a module is large enough to need them. Do not pre-create layered scaffolding for empty modules.
+Talentum's target application layout (`src/modules/`) is feature-based. Start each module with a flat, simple internal structure and only add sub-layers (for example, `modules/transactions/data/` or `modules/transactions/components/`) once a module is large enough to need them. Do not pre-create layered scaffolding for empty modules.
 
 General naming and depth conventions:
 
@@ -78,9 +78,9 @@ General naming and depth conventions:
 
 ## Icons and assets
 
-- Use [`lucide-react`](https://lucide.dev/) for all UI icons instead of mixing icon sets, hand-drawn SVGs, or icons copied from random sites. It's already the project's icon library end to end: `components.json`'s `"iconLibrary": "lucide"`, every component in `packages/ui`, and every app route import from it.
-- `lucide-react` is ISC-licensed (MIT-equivalent terms): free for personal and commercial use, no attribution required. Use any icon in the set without hesitation.
-- Only reach for a different icon source when lucide genuinely lacks the icon needed, and document the exception (source and license) where the icon is used. Never mix a second icon family in — `docs/BRANDING.md` requires "a single icon family with consistent stroke weight."
+- Use [Bootstrap Icons](https://icons.getbootstrap.com/) for interface icons instead of mixing icon sets, hand-drawn SVGs, or assets copied from unrelated sites.
+- Bootstrap Icons is distributed under the MIT License. Keep its source and license traceable when assets are copied into the repository.
+- Only reach for a different icon source when Bootstrap Icons genuinely lacks the required symbol, and document the exception where it is used. The existing `lucide-react` dependency is legacy scaffolding and must not define new interface work.
 
 ## Branches and review
 
@@ -165,7 +165,7 @@ Never modify an already published version. Record meaningful changes in a change
 - [Folder Structure Best Practices: The Complete Guide](https://www.suitefiles.com/guide/the-guide-to-folder-structures-best-practices-for-professional-service-firms-and-more/)
 - [Organizing Project Folder Structure: Function-Based vs Feature-Based](https://medium.com/@ikonija.bogojevic/organizing-project-folder-structure-function-based-vs-feature-based-168596b6d169)
 - [Standard Go Project Layout](https://github.com/golang-standards/project-layout)
-- [Lucide icons](https://lucide.dev/)
+- [Bootstrap Icons](https://icons.getbootstrap.com/)
 - [OWASP Secure Coding Practices Checklist](https://owasp.org/www-project-secure-coding-practices-quick-reference-guide/stable-en/02-checklist/05-checklist)
 - [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/)
 - [Semantic Versioning 2.0.0](https://semver.org/)

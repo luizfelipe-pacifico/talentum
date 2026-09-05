@@ -1,10 +1,10 @@
-# Tabularium Brand and Interface Guidelines
+# Talentum Brand and Interface Guidelines
 
 ## Purpose
 
-This document defines the visual foundation for Tabularium, a demand tracking and scoring system. It is the source of truth for product layout, interface styling, visual hierarchy, and future design decisions.
+This document defines the visual foundation for Talentum, a local-first personal finance system. It is the source of truth for product layout, interface styling, visual hierarchy, and future design decisions.
 
-Tabularium must communicate order, logical stability, and depth. Its visual language combines the technical rigor of software engineering with a restrained classical aesthetic. Every design choice should improve comprehension, reinforce hierarchy, and reduce cognitive fatigue.
+Talentum must communicate trust, clarity, stability, and depth. Its visual language combines the rigor required by financial information with a restrained classical aesthetic. Every design choice should improve comprehension, reinforce hierarchy, and reduce cognitive fatigue.
 
 ## Brand principles
 
@@ -22,7 +22,7 @@ Accent color, shadows, borders, and motion must be used sparingly. If everything
 
 ### Information remains primary
 
-The interface exists to help users understand, prioritize, and act on demands. Visual styling must never compete with data, status, or available actions.
+The interface exists to help users understand their financial position and act with confidence. Visual styling must never compete with amounts, status, alerts, or available actions.
 
 ## Color system
 
@@ -87,7 +87,7 @@ Dark mode is a **minimal, deliberate swap**, not a second palette: only the off-
 | `--color-action-primary` (Amber) | `#B8773D` | `#B8773D` | **Unchanged.** Amber's contrast against white text was already tuned for a mid-tone background; darkening the page doesn't require darkening the accent. |
 | Sidebar / navigation (Ebony background) | Ebony | Ebony | **Unchanged.** The primary navigation is deliberately a fixed dark structural anchor regardless of theme (see "The 60–30–10 rule" above) — it does not participate in the light/dark toggle. |
 
-Status and priority tag colors (Critical/High/Medium red-amber-olive tones, success green) are lightened by the same margin as Graphite/Walnut in dark mode, purely to stay legible against the new dark background — their hue and meaning are unchanged. See the `.dark` block in `packages/ui/src/styles/globals.css` for the exact implementation.
+Semantic status colors are lightened in dark mode only enough to remain legible against the new background; their meaning must remain unchanged. Exact values become normative only when the corresponding tokens are implemented and documented in the shared stylesheet.
 
 Theme is user-selectable (Light / Dark / System) via the header's theme toggle, backed by `next-themes` with `attribute="class"` — selecting a theme adds/removes a `dark` class on `<html>`, which the tokens above key off.
 
@@ -169,7 +169,7 @@ A standard authenticated page should contain:
 1. A stable primary navigation region.
 2. A page header with title, concise context, and at most one primary action.
 3. Optional filters or summary metrics.
-4. The principal demand view, such as a table, board, or prioritized list.
+4. The principal financial view, such as a transaction list, dashboard, reconciliation queue, or portfolio summary.
 5. Contextual details or a secondary panel only when they support the active task.
 
 Preserve symmetry at the page level, but allow controlled asymmetry when it clarifies priority or reading order.
@@ -228,7 +228,7 @@ Do not use glossy gradients, glassmorphism, neon glows, or heavy drop shadows.
 - Use internal spacing rather than decorative separators whenever possible.
 - Avoid nesting several card layers.
 
-### Tables and demand lists
+### Tables and financial lists
 
 - Optimize for scanning: align labels consistently and align numbers by place value.
 - Keep headers visible for long datasets when helpful.
@@ -245,7 +245,7 @@ Do not use glossy gradients, glassmorphism, neon glows, or heavy drop shadows.
 
 ### Status indicators
 
-Every demand status must have:
+Every financial or operational status must have:
 
 - A concise text label.
 - A stable semantic meaning.
@@ -291,12 +291,12 @@ Motion should confirm cause and effect, not decorate the interface.
 
 ## Voice and terminology
 
-Tabularium copy should be precise, calm, and direct.
+Talentum copy should be precise, calm, and direct.
 
 - Use concise sentences and concrete verbs.
 - Prefer familiar product language over academic or technical jargon.
 - Describe what happened and what the user can do next in error messages.
-- Use consistent names for demands, statuses, priorities, owners, and dates.
+- Use consistent names for transactions, accounts, categories, statuses, amounts, and dates.
 - Avoid playful language in critical, destructive, or operational workflows.
 
 ## Design review checklist
@@ -311,7 +311,7 @@ Tabularium copy should be precise, calm, and direct.
 - [ ] Shadows and decoration are restrained and matte.
 - [ ] Loading, empty, error, disabled, and success states are defined.
 - [ ] Keyboard, contrast, zoom, and reduced-motion behavior were verified.
-- [ ] The interface prioritizes demand information over decoration.
+- [ ] The interface prioritizes financial information over decoration.
 
 ## Governance
 
