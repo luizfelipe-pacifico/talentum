@@ -117,9 +117,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="row-tight">
-            <span className="chip" title="Toda a informação exibida é sintética.">
-              <i className="bi bi-flask" />
-              Dados de demonstração
+            <span className="chip" title="Nenhuma informação financeira foi importada.">
+              <i className="bi bi-database" />
+              Sem dados importados
             </span>
 
             {app.offline && (
@@ -141,22 +141,22 @@ export function AppShell({ children }: { children: ReactNode }) {
               aria-label="Notificações"
             >
               <i className="bi bi-bell" style={{ fontSize: 16 }} />
-              <span className="notif-count">{app.survival ? '6' : '5'}</span>
             </button>
 
             <label className="theme-select" title="Tema da interface">
+              <span className="sr-only">Tema da interface</span>
               <i className={`bi ${THEME_OPTIONS.find((option) => option.value === app.theme)?.icon ?? 'bi-circle-half'}`} />
-              <span className="sr-only">Tema</span>
-              <select value={app.theme} onChange={(event) => app.setTheme(event.target.value as typeof app.theme)}>
-                {THEME_OPTIONS.map((option) => <option key={option.value}>{option.value}</option>)}
+              <select aria-label="Tema da interface" value={app.theme} onChange={(event) => app.setTheme(event.target.value as typeof app.theme)}>
+                {THEME_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.value}</option>)}
               </select>
+              <i className="bi bi-chevron-down theme-select-chevron" aria-hidden="true" />
             </label>
 
-            <Link href="/perfil" className="avatar-button" aria-label="Perfil de Marina Alencar">
+            <Link href="/perfil" className="avatar-button" aria-label="Configurar perfil local">
               <span className="avatar" aria-hidden="true">
-                MA
+                --
               </span>
-              <span>Nível 3</span>
+              <span>Configurar perfil</span>
               <i className="bi bi-chevron-down" style={{ fontSize: 11, color: 'var(--ink2)' }} />
             </Link>
 
