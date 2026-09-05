@@ -2,40 +2,44 @@
 
 ## Start here
 
-Read, in order, the root `README.md`, `docs/HOW-IT-WORKS.md`, `docs/ARCHITECTURE.md`, and `docs/BEST_PRACTICES.md` before changing the project. Read `docs/BRANDING.md` for interface work, `docs/DATA_MODEL.md` before touching the schema, and `docs/SECURITY.md` before writing any authentication, API, or data-handling code — its rules are mandatory, not suggestions.
+Before changing the project, read `README.md`, `docs/README.md`, `docs/HOW-IT-WORKS.md`, `docs/ARCHITECTURE.md`, and `docs/BEST_PRACTICES.md`. Read the specific Web or Electron architecture for affected work, `docs/BRANDING.md` for interface work, `docs/DATA_MODEL.md` before schema work, and `docs/API.md`, `docs/AUTHENTICATION.md`, and `docs/SECURITY.md` before authentication, API, or data-handling work. Their rules are mandatory.
 
 ## Project context
 
-Tabularium is an early-stage TypeScript monorepo using pnpm, Turborepo, Next.js, PostgreSQL, and Prisma. Do not invent undocumented requirements, commands, dependencies, APIs, credentials, or infrastructure.
+Talentum is an early-stage, open-source, local-first financial application planned around TypeScript, pnpm, Next.js, Electron, Prisma/SQLite and a Cloudflare backend. Do not invent undocumented requirements, commands, dependencies, APIs, credentials or infrastructure.
 
-## Canonical organization
+## Architecture rules
 
-- The deployable Next.js application lives at the repository root, with code in `src/`.
-- `packages/` is only for reusable workspace capabilities: `config`, `db`, `env`, and `ui`.
-- `docs/` contains every Markdown document except the root `README.md`.
-- The root `.env` is the single local source of environment variables; `.env.example` contains names and safe placeholders only.
-- Never create parallel folders such as another `src`, `components`, `docs`, `app`, or copied project tree when an existing canonical location can be extended.
-- Search before creating. Reuse or update an equivalent file or directory instead of adding a duplicate.
+- Every browser or Electron renderer operation calls a documented backend contract. Frontends never access a database or privileged provider directly.
+- Except for the bootstrap endpoint that issues it, every frontend-to-backend request uses a backend-issued, opaque, single-use action code with a short TTL.
+- The action code contains no user data, is not used for analytics or tracking, and does not replace authentication, authorization, CSRF protection, idempotency or rate limiting.
+- Every persisted table, including join tables, has an opaque `id`; relations use foreign-key IDs.
+- Financial data remains local unless an explicit, documented and reviewed requirement says otherwise.
 
-## Working rules
+## Documentation is part of the change
 
-- Preserve user changes and remain within the requested scope.
-- Keep business capabilities feature-based under `src/modules` as they are introduced.
-- Keep app-only components in `src/components` and shared UI primitives in `packages/ui/src/components`.
-- Keep database schema/client concerns in `packages/db` and environment validation in `packages/env`.
-- Never expose, version, log, quote, screenshot, or emit through tools any password, token, cookie, API key, connection string, private key, database value, OAuth/OIDC value, or environment-variable value.
-- Treat personal names, usernames, emails, absolute local paths, provider/account/team/project identifiers, deployment IDs, private URLs, infrastructure details, internal file names, architecture notes, roadmaps, diagnostics, and operational metadata as confidential internal information.
-- Keep `.env.example` to required variable names with empty values or clearly fake placeholders. Never derive its values from `.env`, provider dashboards, CLI output, logs, or production.
-- Never put internal documentation, source paths, component/file names, design/debug guides, environment data, deployment metadata, or staff identities in public UI copy.
-- Never add a public debug, style-guide, playground, diagnostics, admin, preview, or internal-reference route without an explicit request and appropriate access control. Documentation stays in `docs/`.
-- Redact sensitive command output and logs before reporting them. Avoid reading or printing secret values when names/presence checks are sufficient.
-- Update `README.md` and `docs/HOW-IT-WORKS.md` whenever setup, architecture, commands, or behavior changes.
-- Use `lucide-react` for all UI icons — the project's single icon family, already wired into shadcn (`components.json`: `"iconLibrary": "lucide"`) and every existing component; document any exception.
+- Document every material change in the same change set.
+- Update the affected architecture, runtime flow, API contract, data model, security rule, development guide, branding guide or ADR.
+- Update `docs/README.md` when adding, removing, renaming or changing the responsibility of a document.
+- Update the root `README.md` when setup, commands, product scope or onboarding changes.
+- Mark statements as **current**, **planned**, or **open**. Never present planned work as implemented.
+- Record meaningful alternatives and consequences in an ADR.
+- Documentation must let contributors understand, reproduce, test and review the change without disclosing secrets or personal data.
 
-## Quality and verification
+## Repository and safety
+
+- Search before creating; extend canonical paths and avoid parallel trees.
+- Preserve user changes and remain within scope.
+- Never expose, version, log, quote, screenshot or emit passwords, tokens, cookies, API keys, connection strings, private keys, database values, OAuth values or environment-variable values.
+- `.env.example` contains names and unmistakably synthetic placeholders only.
+- Never render internal documentation, local paths, diagnostics, infrastructure metadata or staff identities in public UI.
+- Redact sensitive output and logs.
+- Use Bootstrap Icons for interface icons; document any necessary exception.
+- Commit, push, migration, deployment and release require explicit user authorization.
+
+## Quality
 
 - Add or update tests in proportion to the change.
-- Run available type checks and builds, plus relevant linting/tests when introduced.
-- Clearly report validations and remaining limitations.
-- Before every build or deploy, scan public source and documentation for secrets, personal data, absolute paths, internal IDs, internal-only routes, and implementation details exposed as UI copy. Remove findings or stop the deployment.
-- Use Conventional Commits only when the user requests a commit.
+- Run relevant checks and report validations and limitations.
+- Before build, commit, push or deploy, scan source, configuration, documentation and history as appropriate for secrets and personal data.
+- A feature is not done until implementation, tests and relevant documentation agree.
