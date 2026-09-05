@@ -8,6 +8,8 @@ O desktop é local-first: processa e guarda dados financeiros no dispositivo. O 
 
 O Next.js App Router fornece a interface e três Route Handlers iniciais. Prisma está configurado para SQLite com `LocalProfile` e `UserPreference`. Docker executa somente o servidor local; o Electron gráfico continua no host e abre `http://localhost:3000`.
 
+O onboarding planejado está definido em [`ONBOARDING.md`](./ONBOARDING.md). Salário, instituições, saldos, chaves PIX, extratos, transações, dívidas e investimentos permanecem exclusivamente no dispositivo e passam somente pela API local.
+
 ```mermaid
 flowchart LR
     UI[Renderer sem Node] -->|loopback autenticado| API[Backend local]

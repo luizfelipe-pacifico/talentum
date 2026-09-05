@@ -192,6 +192,7 @@ As fontes técnicas estão indexadas em [`docs/README.md`](./docs/README.md). A 
 
 - [`docs/README.md`](./docs/README.md): índice e hierarquia das fontes de verdade do projeto.
 - [`ROADMAP.md`](./docs/ROADMAP.md): MVP e sequência planejada de todas as macrofeatures.
+- [`ONBOARDING.md`](./docs/ONBOARDING.md): perguntas e fotografia financeira do primeiro acesso.
 - [`ARCHITECTURE.md`](./docs/ARCHITECTURE.md): componentes, limites de confiança e decisões estruturais.
 - [`HOW-IT-WORKS.md`](./docs/HOW-IT-WORKS.md): fluxos de execução, importação, conciliação e backup.
 - [`DATA_MODEL.md`](./docs/DATA_MODEL.md): modelo conceitual, relações e invariantes de persistência.

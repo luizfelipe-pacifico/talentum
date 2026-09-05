@@ -83,6 +83,7 @@ Estado parcial atual: scaffold Next.js, API REST inicial, Prisma/SQLite e arquiv
 - login via navegador do sistema e refresh token no cofre do SO;
 - criação e migração inicial do SQLite;
 - onboarding curto apresentando importação, organização e privacidade;
+- fotografia financeira progressiva conforme [`ONBOARDING.md`](./ONBOARDING.md), com rascunho local e revisão final;
 - preferências básicas e seleção de moeda/fuso.
 
 **Saída:** aplicativo instalado abre com segurança e prepara banco local sem enviar finanças à nuvem.
@@ -92,6 +93,7 @@ Estado parcial atual: scaffold Next.js, API REST inicial, Prisma/SQLite e arquiv
 **Objetivo:** criar a estrutura financeira mínima.
 
 - perfil local, instituições e contas;
+- múltiplas contas, rendas, chaves PIX locais cifradas e identificação de transferências próprias;
 - categorias e regras simples de estabelecimento;
 - saldos informados e snapshots;
 - contas recorrentes, vencimentos e débitos previstos;

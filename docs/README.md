@@ -7,6 +7,7 @@ Este diretório separa as fontes de verdade técnicas dos materiais de produto e
 | Documento | Responsabilidade |
 | --- | --- |
 | [`ROADMAP.md`](./ROADMAP.md) | MVP, ordem das macrofeatures, dependências e critérios de conclusão |
+| [`ONBOARDING.md`](./ONBOARDING.md) | Perguntas, privacidade, fotografia inicial, importação e conciliação de primeiro acesso |
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Componentes, limites de confiança, responsabilidades e decisões estruturais |
 | [`ARCHITECTURE-WEB.md`](./ARCHITECTURE-WEB.md) | LP, autenticação, downloads e feedback público |
 | [`ARCHITECTURE-ELECTRON.md`](./ARCHITECTURE-ELECTRON.md) | Backend local, renderer, IPC, SQLite e integração cloud |
