@@ -89,7 +89,9 @@ Dark mode is a **minimal, deliberate swap**, not a second palette: only the off-
 
 Semantic status colors are lightened in dark mode only enough to remain legible against the new background; their meaning must remain unchanged. Exact values become normative only when the corresponding tokens are implemented and documented in the shared stylesheet.
 
-Theme is user-selectable (Light / Dark / System) via the header's theme toggle, backed by `next-themes` with `attribute="class"` — selecting a theme adds/removes a `dark` class on `<html>`, which the tokens above key off.
+Theme is user-selectable (Light / Dark / System) through a dropdown in the header and settings. The local UI state persists the preference and adds or removes the `dark` class on `<html>`, which the tokens above key off.
+
+The application shell uses `icon-talentum-light.svg` in the light theme and `icon-talentum-dark.svg` in the dark theme. The frameless Electron window uses the multiresolution `icon-badge.ico`, derived from `icon-badge.svg`, as its native Windows window/taskbar icon. Window controls are intentionally compact, live in the upper-right corner, and communicate with the Electron main process only through the isolated preload bridge.
 
 ## Typography
 
