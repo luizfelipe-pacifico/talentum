@@ -1,0 +1,15 @@
+.git
+.next
+node_modules
+dist
+out
+temp
+.env
+.env.*
+*.db
+*.db-shm
+*.db-wal
+docs
+*.pdf
+*.png
+*.jpg

@@ -1,0 +1,29 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model LocalProfile {
+  id          String          @id @default(uuid())
+  displayName String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  preferences UserPreference[]
+}
+
+model UserPreference {
+  id        String       @id @default(uuid())
+  profileId String
+  key       String
+  value     String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  profile   LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, key])
+  @@index([profileId])
+}
