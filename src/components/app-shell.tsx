@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import logoDark from '../../icon-talentum-dark.svg';
-import logoLight from '../../icon-talentum-light.svg';
 import { useApp } from '@/components/app-state';
 import { Overlays } from '@/components/overlays';
 import { CONTAS, NAV, PAGE_META, TAB_GROUPS, THEME_OPTIONS } from '@/lib/demo-data';
@@ -35,24 +34,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="shell" style={{ ['--sidebar-w' as string]: app.collapsed ? '76px' : '248px' }}>
-      <div className="window-drag-region">
-        <div className="window-controls" aria-label="Controles da janela">
-          <button type="button" onClick={() => window.talentumWindow?.minimize()} aria-label="Minimizar">
-            <i className="bi bi-dash" />
-          </button>
-          <button type="button" onClick={() => window.talentumWindow?.toggleMaximize()} aria-label="Maximizar ou restaurar">
-            <i className="bi bi-square" />
-          </button>
-          <button type="button" onClick={() => window.talentumWindow?.close()} aria-label="Fechar">
-            <i className="bi bi-x-lg" />
-          </button>
-        </div>
-      </div>
-
       <aside className="sidebar" aria-label="Navegação principal">
         <div className="sidebar-brand">
-          <Image className="brand-logo brand-logo-light" src={logoLight} alt="Talentum" priority unoptimized />
-          <Image className="brand-logo brand-logo-dark" src={logoDark} alt="Talentum" priority unoptimized />
+          <span className="brand-symbol" aria-hidden="true">
+            <Image className="brand-logo" src={logoDark} alt="" priority unoptimized />
+          </span>
+          {expanded && <span className="sidebar-wordmark">Talentum</span>}
         </div>
 
         <button
@@ -172,6 +159,18 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span>Nível 3</span>
               <i className="bi bi-chevron-down" style={{ fontSize: 11, color: 'var(--ink2)' }} />
             </Link>
+
+            <div className="window-controls" aria-label="Controles da janela">
+              <button type="button" onClick={() => window.talentumWindow?.minimize()} aria-label="Minimizar" title="Minimizar">
+                <i className="bi bi-dash-lg" />
+              </button>
+              <button type="button" onClick={() => window.talentumWindow?.toggleMaximize()} aria-label="Maximizar ou restaurar" title="Maximizar ou restaurar">
+                <i className="bi bi-square" />
+              </button>
+              <button type="button" onClick={() => window.talentumWindow?.close()} aria-label="Fechar" title="Fechar">
+                <i className="bi bi-x-lg" />
+              </button>
+            </div>
           </div>
         </header>
 

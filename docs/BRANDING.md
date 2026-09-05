@@ -91,7 +91,7 @@ Semantic status colors are lightened in dark mode only enough to remain legible 
 
 Theme is user-selectable (Light / Dark / System) through a dropdown in the header and settings. The local UI state persists the preference and adds or removes the `dark` class on `<html>`, which the tokens above key off.
 
-The application shell uses `icon-talentum-light.svg` in the light theme and `icon-talentum-dark.svg` in the dark theme. The frameless Electron window uses the multiresolution `icon-badge.ico`, derived from `icon-badge.svg`, as its native Windows window/taskbar icon. Window controls are intentionally compact, live in the upper-right corner, and communicate with the Electron main process only through the isolated preload bridge.
+The application keeps the high-contrast `icon-talentum-dark.svg` lockup in the sidebar because that structural surface remains Ebony in both themes. `icon-talentum-light.svg` is reserved for light surfaces. The frameless Electron window uses the multiresolution `icon-badge.ico`, derived from `icon-badge.svg`, as its native Windows window/taskbar icon. Window controls are intentionally compact, live beside the profile in the shared header, and communicate with the Electron main process only through the isolated preload bridge. The same controls remain visible in browser development previews so their proportions can be reviewed, but only the Electron preload bridge makes them operational.
 
 ## Typography
 
