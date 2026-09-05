@@ -30,7 +30,7 @@ A rota que emite códigos é a única exceção. O código não substitui access
 
 ## Estado atual
 
-`pnpm dev` inicia o Next.js na porta 3000 após encerrar um processo anterior nessa porta e remover `.next`. `pnpm dev:all` aguarda o servidor e abre a URL no Electron. Como a aplicação Next.js ainda não foi criada, o fluxo completo permanece planejado.
+`pnpm dev` inicia o Next.js na porta 3000 após encerrar um processo anterior nessa porta e remover `.next`. `pnpm dev:all` aguarda o servidor e abre a URL no Electron. A interface atual é um protótipo navegável com dados exclusivamente sintéticos; importação, conciliação, cálculos financeiros e persistência exibidos nas telas ainda são demonstrações locais, não casos de uso implementados.
 
 ## Inicialização planejada
 

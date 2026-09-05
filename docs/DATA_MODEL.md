@@ -2,7 +2,7 @@
 
 ## Status
 
-Modelo conceitual planejado. Não existe `schema.prisma` no estado atual do repositório.
+Modelo conceitual planejado. O `schema.prisma` atual implementa somente `LocalProfile` e `UserPreference`; os demais agregados deste documento ainda não foram implementados.
 
 ## Princípios
 
