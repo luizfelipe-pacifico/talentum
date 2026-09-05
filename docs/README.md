@@ -15,6 +15,7 @@ Este diretório separa as fontes de verdade técnicas dos materiais de produto e
 | [`AUTHENTICATION.md`](./AUTHENTICATION.md) | OAuth/OIDC, sessões, access tokens e refresh tokens |
 | [`HOW-IT-WORKS.md`](./HOW-IT-WORKS.md) | Fluxos de execução do desktop, importação, conciliação, notícias e backup |
 | [`DATA_MODEL.md`](./DATA_MODEL.md) | Modelo conceitual local e remoto, invariantes e estratégia de evolução |
+| [`ESTRUTURA_DE_DADOS.md`](./ESTRUTURA_DE_DADOS.md) | Regras operacionais de modelagem, migrations, consultas e escala para um milhão de usuários |
 | [`API.md`](./API.md) | Convenções e contratos planejados para APIs locais e de borda |
 | [`SECURITY.md`](./SECURITY.md) | Modelo de ameaças, tratamento de dados e requisitos obrigatórios |
 | [`DEVELOPMENT.md`](./DEVELOPMENT.md) | Ambiente local, comandos, estrutura e critérios de validação |
