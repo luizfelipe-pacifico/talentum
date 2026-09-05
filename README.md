@@ -1,8 +1,8 @@
 <div align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./icon-talentum-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="./icon-talentum-light.png">
-    <img src="./icon-talentum-light.png" width="190" alt="Símbolo do Talentum: uma balança atravessada por um traço âmbar">
+    <source media="(prefers-color-scheme: dark)" srcset="./icon-talentum-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="./icon-talentum-light.svg">
+    <img src="./icon-talentum-light.svg" width="190" alt="Símbolo do Talentum: uma balança atravessada por um traço âmbar">
   </picture>
 
   # Talentum
@@ -131,12 +131,12 @@ O aplicativo desktop será uma experiência full-stack local. O Electron abre e 
 
 ## Identidade visual
 
-A marca combina a sobriedade de uma balança com um corte ascendente em âmbar. O repositório mantém duas imagens PNG com transparência real:
+A marca combina a sobriedade de uma balança com um corte ascendente em âmbar. O repositório mantém duas imagens SVG com transparência real e margens externas mínimas:
 
 | Uso | Arquivo | Cores principais |
 | --- | --- | --- |
-| Fundos claros | [`icon-talentum-light.png`](./icon-talentum-light.png) | Ébano `#1A110A` e âmbar |
-| Fundos escuros | [`icon-talentum-dark.png`](./icon-talentum-dark.png) | Alabastro e âmbar |
+| Fundos claros | [`icon-talentum-light.svg`](./icon-talentum-light.svg) | Ébano `#1A110A` e âmbar |
+| Fundos escuros | [`icon-talentum-dark.svg`](./icon-talentum-dark.svg) | Alabastro e âmbar |
 
 Paleta-base: **Alabastro** `#F4F1EA`, **Ébano** `#1A110A`, **Âmbar clássico** `#B8773D`, **Grafite** `#4A4A4A` e **Nogueira** `#5C4033`.
 
