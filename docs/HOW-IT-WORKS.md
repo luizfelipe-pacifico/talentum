@@ -17,7 +17,7 @@ A rota que emite códigos é a única exceção. O código não substitui access
 3. Após validar callback, identidade e consentimentos, o backend cria a sessão.
 4. A página protegida solicita releases ao backend.
 5. O backend autoriza o usuário e retorna opções para Windows e Linux.
-6. O download usa concessão curta por ID e artefato assinado; o frontend nunca acessa R2 com credencial permanente.
+6. O backend registra uma concessão curta por ID e retorna o instalador assinado publicado em GitHub Releases; o D1 armazena somente metadados.
 
 ## Comunidade de feedback
 
