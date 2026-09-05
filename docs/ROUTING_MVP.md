@@ -1,4 +1,4 @@
-# Routing funcional do MVP
+# Plano executável de conclusão do MVP
 
 ## Objetivo
 
@@ -12,7 +12,25 @@ Este documento é o mapa de implementação das funcionalidades do MVP do Talent
 - as migrations necessárias;
 - o critério verificável de conclusão.
 
-O MVP estará completo quando uma pessoa conseguir criar sua base financeira, importar CSV ou OFX, revisar os lançamentos e consultar um Dashboard confiável, com todos os dados financeiros mantidos no SQLite local.
+O MVP estará completo quando uma pessoa puder se cadastrar na LP, obter com segurança o instalador correto, criar sua base financeira local, importar CSV ou OFX, revisar os lançamentos e consultar um Dashboard confiável. Todos os dados financeiros permanecem no SQLite local.
+
+## Como executar este plano sem contexto anterior
+
+1. Leia `docs/README.md` para conhecer a hierarquia das fontes de verdade.
+2. Leia `ARCHITECTURE-WEB.md` para trabalho na LP/Cloudflare e `ARCHITECTURE-ELECTRON.md` para trabalho no aplicativo local.
+3. Antes de alterar persistência, leia `DATA_MODEL.md` e `ESTRUTURA_DE_DADOS.md`; antes de alterar contratos ou login, leia `API.md`, `AUTHENTICATION.md` e `SECURITY.md`.
+4. Compare o estado declarado nesta página com código, migrations e testes. Código verificável prevalece; corrija documentação desatualizada no mesmo change set.
+5. Execute uma única etapa vertical por vez, incluindo backend, migration, contrato, interface, estados de UX, testes e documentação aplicáveis.
+6. Não avance quando o critério “Concluída quando” da etapa atual não puder ser demonstrado.
+7. Registre decisões com alternativas relevantes em `docs/decisions/`; não invente infraestrutura, credenciais ou requisitos ausentes.
+8. Antes de commit/push, siga integralmente o gate de segurança de `CLAUDE.md` ou `CODEX.md`.
+
+Estados usados neste documento:
+
+- **Atual:** existe e foi verificado no repositório ou ambiente indicado.
+- **Parcial:** existe apenas como scaffold ou parte do fluxo, sem atender ao critério de conclusão.
+- **Planejada:** ainda deve ser implementada na ordem apresentada.
+- **Em aberto:** exige decisão documentada antes da implementação.
 
 ## Regras obrigatórias
 
@@ -26,6 +44,65 @@ O MVP estará completo quando uma pessoa conseguir criar sua base financeira, im
 8. Nenhum dado financeiro fictício fica no frontend. Sem registros no banco, a interface exibe estado vazio.
 9. Valores monetários usam centavos inteiros/`BigInt`; nunca `Float`.
 10. CSV e OFX reais de teste ficam em `temp/`, fora do Git.
+11. A LP e o renderer nunca acessam D1 diretamente; toda ação cloud passa pelo BFF/Worker.
+12. O sistema desktop, seu backend local e o SQLite nunca integram o artefato publicado na Vercel.
+
+## Trilha cloud do MVP — cadastro, sessão e downloads
+
+### O que faz
+
+Entrega somente a API cloud, a LP pública e a página autenticada de downloads. O D1 persiste identidade mínima, sessões, consentimentos, releases e concessões; não recebe extratos, contas, saldos, transações, carteira ou chaves Pix.
+
+### Estado atual verificável
+
+- Worker `talentum` publicado em `talentum.luizflip9.workers.dev`;
+- binding `DB` ligado ao D1 `talentum-cloud-production`;
+- migration `cloudflare/migrations/0001_cloud_core.sql` aplicada;
+- `GET /health` consulta o binding e responde sem expor dados internos;
+- `workers.dev` habilitado explicitamente no `wrangler.jsonc`;
+- configuração, comandos e segregação das migrations documentados em `CLOUDFLARE_SETUP.md`.
+
+O endpoint de saúde e o schema não significam que autenticação, BFF, downloads ou feedback estejam implementados.
+
+### Ordem obrigatória do trabalho pendente
+
+1. Corrigir no Cloudflare Git deployment os comandos para `pnpm run cloudflare:build` e `pnpm run cloudflare:deploy`, mantendo `main` como branch de produção.
+2. Implementar configuração por ambiente e cadastrar segredos com Worker Secrets; valores reais nunca entram em `wrangler.jsonc`, `.env.example` ou Git.
+3. Implementar o bootstrap de códigos efêmeros com hash, TTL, escopo de método/rota, uso único e consumo atômico.
+4. Implementar OAuth/OIDC Authorization Code + PKCE, validação de `state`/`nonce`, callback e vínculo de identidade por ID.
+5. Implementar sessão, access token curto, refresh token rotativo, detecção de reúso, revogação e logout.
+6. Implementar o BFF da LP na Vercel com cookie first-party `Secure`, `HttpOnly` e sem token persistente acessível ao JavaScript.
+7. Implementar LP/cadastro e `/downloads`, publicando na Vercel apenas a allowlist de arquivos web/BFF.
+8. Implementar releases, artefatos, checksums, assinaturas e concessões de download curtas no backend.
+9. Aplicar CORS exato, CSP, HSTS, CSRF, respostas privadas `no-store`, validação de entrada e erros genéricos.
+10. Configurar rate limits separados para login, callback, refresh, código efêmero e download; ativar Turnstile de forma adaptativa contra abuso.
+11. Habilitar logs e métricas redigidos, alertas e eventos de segurança sem tokens, e-mails públicos, IP bruto ou dados financeiros.
+12. Implementar consentimento, privacidade, revogação de sessões, exclusão de conta e retenção mínima.
+13. Produzir instaladores assinados de Windows e Linux fora da Vercel e publicar checksum, assinatura e metadados verificáveis.
+14. Executar testes de autenticação, replay, rotação, autorização, rate limit, vazamento de deploy e download ponta a ponta.
+
+### Rotas cloud do MVP
+
+- `GET /health`
+- `POST /api/action-codes`
+- `POST /api/auth/start`
+- `GET /api/auth/callback`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
+- `GET /api/me`
+- `GET /api/releases`
+- `POST /api/releases/:releaseId/download-grants`
+
+Os contratos, códigos de erro e proteções são definidos em `API.md` e `AUTHENTICATION.md` antes da implementação.
+
+### Concluída quando
+
+- uma pessoa não autenticada acessa a LP, mas não obtém a página protegida de downloads;
+- cadastro/login, refresh, logout e revogação passam nos testes de segurança;
+- Windows e Linux são oferecidos somente após autorização do backend;
+- o artefato implantado na Vercel não contém Electron, Prisma, SQLite, parsers ou módulos financeiros;
+- nenhum segredo aparece no bundle, repositório, logs ou resposta HTTP;
+- o frontend não acessa D1, OAuth ou GitHub Releases diretamente.
 
 ## Fluxo principal do MVP
 
@@ -367,16 +444,17 @@ Registra importações e alterações relevantes sem guardar o código temporár
 
 ## Ordem de implementação das features
 
-1. Onboarding persistente.
-2. Instituições, contas e snapshots.
-3. Categorias, rendas e obrigações.
-4. Inspeção e mapeamento de CSV.
-5. Parser e importação transacional de CSV/OFX.
-6. Listagem real de extratos.
-7. Conciliação e reversão.
-8. Dashboard e Saldo Livre de Risco completos.
-9. Histórico, backup de migrations e testes ponta a ponta.
-10. Empacotamento assinado para Windows e Linux.
+1. Concluir a trilha cloud de cadastro, sessão e autorização de downloads.
+2. Implementar onboarding persistente.
+3. Concluir instituições, contas e snapshots.
+4. Implementar categorias, rendas e obrigações.
+5. Implementar inspeção e mapeamento de CSV.
+6. Implementar parser e importação transacional de CSV/OFX.
+7. Implementar listagem real de extratos.
+8. Implementar conciliação e reversão.
+9. Concluir Dashboard e Saldo Livre de Risco.
+10. Implementar histórico, backup de migrations e testes ponta a ponta.
+11. Empacotar, assinar, publicar e validar Windows e Linux.
 
 ## Definition of Done do MVP
 
@@ -388,3 +466,5 @@ Registra importações e alterações relevantes sem guardar o código temporár
 - CSV e OFX sintéticos passam nos testes; arquivos reais ficam fora do Git.
 - O SQLite é criado e atualizado com `prisma migrate deploy` no desenvolvimento, Docker e aplicativo empacotado.
 - Builds Windows e Linux são reproduzíveis, assinados e verificáveis.
+- LP, BFF, Worker, D1 e fluxo de download atendem a trilha cloud e seus testes de segurança.
+- O contexto publicado na Vercel contém somente LP/BFF, comprovado por inspeção do artefato.
