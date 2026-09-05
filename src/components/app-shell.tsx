@@ -1,8 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import logoDark from '../../icon-talentum-dark.svg';
+import logoLight from '../../icon-talentum-light.svg';
 import { useApp } from '@/components/app-state';
 import { Overlays } from '@/components/overlays';
 import { CONTAS, NAV, PAGE_META, TAB_GROUPS, THEME_OPTIONS } from '@/lib/demo-data';
@@ -32,10 +35,24 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="shell" style={{ ['--sidebar-w' as string]: app.collapsed ? '76px' : '248px' }}>
+      <div className="window-drag-region">
+        <div className="window-controls" aria-label="Controles da janela">
+          <button type="button" onClick={() => window.talentumWindow?.minimize()} aria-label="Minimizar">
+            <i className="bi bi-dash" />
+          </button>
+          <button type="button" onClick={() => window.talentumWindow?.toggleMaximize()} aria-label="Maximizar ou restaurar">
+            <i className="bi bi-square" />
+          </button>
+          <button type="button" onClick={() => window.talentumWindow?.close()} aria-label="Fechar">
+            <i className="bi bi-x-lg" />
+          </button>
+        </div>
+      </div>
+
       <aside className="sidebar" aria-label="Navegação principal">
         <div className="sidebar-brand">
-          <i className="bi bi-bank2" style={{ color: 'var(--amber)', fontSize: 24 }} aria-hidden="true" />
-          {expanded && <span className="sidebar-wordmark">Talentum</span>}
+          <Image className="brand-logo brand-logo-light" src={logoLight} alt="Talentum" priority unoptimized />
+          <Image className="brand-logo brand-logo-dark" src={logoDark} alt="Talentum" priority unoptimized />
         </div>
 
         <button
@@ -140,20 +157,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span className="notif-count">{app.survival ? '6' : '5'}</span>
             </button>
 
-            <div role="group" aria-label="Tema" className="segmented">
-              {THEME_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => app.setTheme(option.value)}
-                  aria-pressed={app.theme === option.value}
-                  title={option.value}
-                >
-                  <i className={`bi ${option.icon}`} />
-                  {option.value}
-                </button>
-              ))}
-            </div>
+            <label className="theme-select" title="Tema da interface">
+              <i className={`bi ${THEME_OPTIONS.find((option) => option.value === app.theme)?.icon ?? 'bi-circle-half'}`} />
+              <span className="sr-only">Tema</span>
+              <select value={app.theme} onChange={(event) => app.setTheme(event.target.value as typeof app.theme)}>
+                {THEME_OPTIONS.map((option) => <option key={option.value}>{option.value}</option>)}
+              </select>
+            </label>
 
             <Link href="/perfil" className="avatar-button" aria-label="Perfil de Marina Alencar">
               <span className="avatar" aria-hidden="true">
