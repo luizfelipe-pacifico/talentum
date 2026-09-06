@@ -1,0 +1,19 @@
+/* Reset mínimo do site público. A identidade visual inteira vive em lp.css,
+   escopada em .lp-root, para poder ser reaproveitada sem vazar estilo.
+
+   Claro é o tema padrão do projeto: o site não segue a preferência de tema do
+   sistema operacional. O escuro só aparece quando a classe .dark é aplicada. */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background: #f4f1ea;
+}

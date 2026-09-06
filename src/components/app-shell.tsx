@@ -24,6 +24,10 @@ function tabsFor(pathname: string) {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const app = useApp();
+
+  // A landing page é uma página pública inteira: ela não usa sidebar nem topbar
+  // do aplicativo. Ponte temporária de pré-visualização em /lp.
+  if (pathname === '/lp' || pathname.startsWith('/lp/')) return <>{children}</>;
   const meta = pageMeta(pathname);
   const tabs = tabsFor(pathname);
   const expanded = !app.collapsed;
