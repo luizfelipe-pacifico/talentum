@@ -1,4 +1,4 @@
-/* Talentum — sistema visual.
+/* Talentum: sistema visual.
    Tokens e classes derivados de docs/BRANDING.md. Cores semânticas ainda são
    propostas: validar contraste antes de tratá-las como normativas. */
 
@@ -37,6 +37,9 @@
 
   --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
   --font-body: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+  /* Exceção documentada: monoespaçada do sistema, usada só em trecho de código
+     da guia de layout. Nenhuma tela de produto usa esta família. */
+  --font-mono: ui-monospace, 'Cascadia Mono', 'Consolas', 'Liberation Mono', monospace;
 }
 
 html.dark {
@@ -1841,4 +1844,379 @@ kbd {
   .grid-340, .grid-320, .grid-300, .grid-260, .grid-240, .grid-230, .dashboard-kpis, .dashboard-actions, .settings-grid { grid-template-columns: 1fr; }
   .topbar { align-items: flex-start; }
   .dashboard-kpis > :first-child { grid-column: auto; }
+}
+
+/* ── Guia de layout ───────────────────────────────────────────── */
+/* Classes usadas somente pela rota /layout-guide. Nenhuma delas deve
+   aparecer em tela de produto: a guia documenta o sistema, não o estende. */
+
+.guide-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.guide-toc a {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink2);
+  text-decoration: none;
+}
+
+.guide-toc a:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+  text-decoration: none;
+}
+
+.guide-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scroll-margin-top: 72px;
+  padding-top: 8px;
+}
+
+.guide-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+}
+
+.guide-section-head .muted {
+  max-width: 84ch;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.spec {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.spec-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.spec-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.spec-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 19px;
+  color: var(--ink2);
+  max-width: 92ch;
+}
+
+.spec-demo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 22px 18px;
+  background: var(--bg);
+}
+
+.spec-demo-block {
+  display: block;
+}
+
+.spec-code {
+  position: relative;
+  border-top: 1px solid var(--line);
+  background: var(--sunken);
+}
+
+.spec-code pre {
+  margin: 0;
+  padding: 14px 18px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 19px;
+  color: var(--ink);
+}
+
+.spec-copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink2);
+}
+
+.spec-copy:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.swatch {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.swatch-chip {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+}
+
+.swatch-meta {
+  min-width: 0;
+}
+
+.swatch-name {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.swatch-token,
+.swatch-hex {
+  margin: 1px 0 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 17px;
+  color: var(--ink2);
+}
+
+.swatch-use {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--ink2);
+}
+
+.type-scale {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.type-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+}
+
+.type-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.scale-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: flex-end;
+}
+
+.scale-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.scale-bar {
+  display: block;
+  height: 14px;
+  background: var(--amber);
+  border-radius: 2px;
+}
+
+.radius-demo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 168px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  padding: 14px;
+}
+
+.icon-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 96px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px 8px;
+}
+
+.icon-cell i {
+  font-size: 20px;
+  color: var(--ink);
+}
+
+.shell-map {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+
+.shell-map span,
+.shell-map div {
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.shell-map-side {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--ebony);
+  color: #cfc9c0;
+  border-radius: var(--radius-md);
+  padding: 12px;
+  min-height: 220px;
+}
+
+.shell-map-side .shell-map-strong {
+  color: #fffdf8;
+  border-left: 3px solid var(--amber);
+  padding-left: 8px;
+  flex: 1;
+}
+
+.shell-map-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shell-map-top {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  color: var(--ink2);
+}
+
+.shell-map-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  background: var(--surface);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  color: var(--ink2);
+}
+
+.shell-map-content .shell-map-strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.grid-demo-cell {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 16px 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
+.guide-list {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 21px;
+  max-width: 92ch;
+}
+
+.guide-list.small {
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.num-list {
+  list-style: decimal;
+}
+
+.check-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.check-list li {
+  display: flex;
+  gap: 9px;
+}
+
+.check-list li::before {
+  content: '';
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+}
+
+@media (max-width: 900px) {
+  .shell-map {
+    grid-template-columns: 1fr;
+  }
+
+  .guide-toc {
+    position: static;
+  }
 }
