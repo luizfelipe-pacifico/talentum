@@ -28,6 +28,7 @@ export const PAGE_META: { prefix: string; title: string; context: string }[] = [
   { prefix: '/perfil', title: 'Perfil e progresso', context: 'Missões, XP, níveis e conquistas' },
   { prefix: '/configuracoes', title: 'Configurações', context: 'Preferências do aplicativo' },
   { prefix: '/onboarding', title: 'Primeiro acesso', context: 'Fotografia financeira inicial e privacidade local' },
+  { prefix: '/layout-guide', title: 'Guia de layout', context: 'Tokens, componentes e regras do sistema visual' },
   { prefix: '/', title: 'Dashboard', context: 'Sua posição financeira atual' },
 ];
 
