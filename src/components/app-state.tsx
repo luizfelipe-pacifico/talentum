@@ -42,18 +42,19 @@ type AppState = {
 const Context = createContext<AppState | null>(null);
 
 function readStoredTheme(): ThemeMode {
-  if (typeof window === 'undefined') return 'Sistema';
+  // Claro é o tema padrão do projeto: sem escolha salva, a interface abre clara.
+  if (typeof window === 'undefined') return 'Claro';
   try {
     const stored = window.localStorage.getItem(THEME_KEY);
     if (stored === 'Claro' || stored === 'Escuro' || stored === 'Sistema') return stored;
   } catch {
     // Armazenamento indisponível (janela privada, site data bloqueado): usa o padrão.
   }
-  return 'Sistema';
+  return 'Claro';
 }
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeMode>('Sistema');
+  const [theme, setThemeState] = useState<ThemeMode>('Claro');
   const [survival, setSurvival] = useState(false);
   const [offline, setOffline] = useState(false);
   const [contaIndex, setContaIndex] = useState(0);
