@@ -64,6 +64,14 @@ Entrega somente a API cloud, a LP pública e a página autenticada de downloads.
 
 O endpoint de saúde e o schema não significam que autenticação, BFF, downloads ou feedback estejam implementados.
 
+### Implementação local preparada em 10 de setembro de 2026
+
+- Worker implementa action codes persistidos no D1, OAuth Google com PKCE, validação criptográfica do ID token, sessão curta, refresh rotativo, logout, perfil, releases e concessões;
+- LP implementa BFF, cookies `HttpOnly`, callback, renovação, `/downloads` protegido e CSRF por validação de origem nas mutações;
+- migration `0002_cloud_auth_runtime.sql` adiciona estado efêmero e rate limiting;
+- CSP, HSTS, `no-store` e teste de isolamento do pacote web foram adicionados;
+- migration aplicada no D1 local e remoto; cadastro dos segredos, configuração do OAuth, artefatos assinados e testes ponta a ponta no ambiente publicado continuam sendo ações operacionais obrigatórias.
+
 ### Ordem obrigatória do trabalho pendente
 
 1. Corrigir no Cloudflare Git deployment os comandos para `pnpm run cloudflare:build` e `pnpm run cloudflare:deploy`, mantendo `main` como branch de produção.
