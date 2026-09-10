@@ -1,0 +1,2 @@
+import { NextResponse } from 'next/server'; import { cloud } from '../../../../server/cloudflare';
+export async function POST(request:Request){const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)return NextResponse.json({error:'forbidden'},{status:403});await cloud('/api/auth/logout',{method:'POST',body:'{}'},true);const out=NextResponse.redirect(new URL('/',request.url),303);out.cookies.delete('__Host-talentum-access');out.cookies.delete('__Host-talentum-refresh');return out}

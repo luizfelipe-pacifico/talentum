@@ -340,9 +340,9 @@ export function LandingPage() {
                 </Reveal>
                 <Reveal delay={260}>
                   <div className="lp-cta-row">
-                    <a className="lp-btn lp-btn-primary" href="#problema">
-                      Entender a proposta
-                      <i className="bi bi-arrow-down" aria-hidden="true" />
+                    <a className="lp-btn lp-btn-primary" href="/api/auth/start">
+                      Entrar e baixar
+                      <i className="bi bi-download" aria-hidden="true" />
                     </a>
                     <a className="lp-btn" href={REPO} target="_blank" rel="noreferrer noopener">
                       Ler o código
