@@ -8,13 +8,15 @@ Documento **normativo** para o desenho de qualquer painel, indicador, gráfico o
 2. o método de *Storytelling with Data*, de Cole Nussbaumer Knaflic, adotado como base teórica;
 3. a auditoria medida do dashboard atual do repositório.
 
+A partir delas, a Parte 4 fixa as regras normativas e a Parte 5 define o conjunto exato de indicadores e gráficos do dashboard, com a fórmula de cada um verificada contra o schema: o que já é calculável, o que depende de migration e o que está bloqueado.
+
 Estados usados, conforme [`README.md`](./README.md):
 
 - **Atual:** existe e foi verificado no repositório.
 - **Planejado:** decisão aceita, ainda sem implementação.
 - **Em aberto:** exige ratificação do mantenedor antes da implementação.
 
-Este documento não descreve funcionalidade pronta. O dashboard descrito na parte 4 é **planejado**; o dashboard auditado na parte 3 é **atual**.
+Este documento não descreve funcionalidade pronta. O dashboard auditado na Parte 3 é **atual**; o dashboard definido nas Partes 4 e 5 é **planejado**. A matriz de viabilidade da Parte 5 declara, elemento por elemento, o que o schema de hoje sustenta.
 
 Documentos relacionados: [`BRANDING.md`](./BRANDING.md) é a fonte de verdade da identidade visual e prevalece sobre este texto em qualquer conflito de cor, tipografia ou espaçamento não resolvido aqui. [`ROUTING_MVP.md`](./ROUTING_MVP.md) define o contrato da Feature 7 (Dashboard). [`API.md`](./API.md) define os contratos que alimentam a tela.
 
@@ -508,6 +510,302 @@ O `WARN` de contraste no tema claro (verde-água 2.77:1, amarelo 2.13:1, magenta
 
 ---
 
+# Parte 5 — Quais gráficos, e o que é realmente calculável
+
+**Estado: planejado.** Esta parte define o conjunto exato de elementos do dashboard do MVP e, para cada um, verifica contra o schema se a fórmula é executável. Nenhum elemento entra na tela sem fórmula fechada e origem de dado confirmada.
+
+## Escopo: o que entra e o que não entra
+
+O [`ROADMAP.md`](./ROADMAP.md) define que o MVP termina em MVP 6 (Dashboard e Saldo Livre de Risco) e que o MVP *"não inclui PDF, IA, ARCA, backup cloud, gamificação ou comunidade"*.
+
+| Fora do dashboard do MVP | Etapa que o habilita |
+| --- | --- |
+| Matriz ARCA, quatro pilares, status da carteira | Etapa 14 |
+| XP, nível, missões, conquistas | Etapa 17 |
+| Notícias e resumos | Etapas 15 e 16 |
+| ROI de cartão, termômetro de isenção, cashback e milhas | Etapa 8 |
+| Orçamento por categoria e comparação planejado/realizado | Etapa 9 |
+| Central de notificações acionáveis | Etapa 10 |
+
+O documento de produto ([`DOCUMENTACAO_PDF_REESCRITA.md`](./DOCUMENTACAO_PDF_REESCRITA.md), seção 5) descreve gamificação e status da carteira no Dashboard Executivo. Isso é a **visão de produto**, não o MVP. Pela hierarquia de decisão de [`README.md`](./README.md), o roadmap e o plano executável prevalecem. Esses componentes voltam ao painel nas suas etapas.
+
+## O conjunto definitivo
+
+Nove elementos, em quatro faixas. Cinco elementos de métrica acima da dobra — dentro do teto de R-3.
+
+| ID | Elemento | Faixa | Forma | Pergunta que responde |
+| --- | --- | --- | --- | --- |
+| **V** | Saldo Livre de Risco | Veredito | Figura-herói | *Quanto eu posso gastar sem quebrar compromisso?* |
+| **I-1** | Saldo consolidado | Contexto | Valor + data-base | *Quanto existe hoje, de fato, nas contas?* |
+| **I-2** | Gastos do mês | Contexto | Valor + delta | *Estou gastando mais que no mês passado?* |
+| **I-3** | Média diária | Contexto | Valor + delta + *sparkline* | *Meu ritmo de gasto acelerou?* |
+| **I-4** | Comprometido até o fim do período | Contexto | Valor + contagem | *Quanto do saldo já tem dono?* |
+| **A** | Fila de conciliação | Atenção | Fila de trabalho | *O que exige minha decisão agora?* |
+| **G-1** | Projeção de caixa do período | Tendência | Linha em degraus | *O dinheiro dura até o fim do período?* |
+| **G-2** | Gastos por categoria | Tendência | Barra horizontal | *Para onde o dinheiro foi?* |
+| **G-3** | Entradas e saídas por mês | Tendência | Barra divergente no zero | *Eu gasto mais do que ganho?* |
+
+Três gráficos, não mais. Contenção de gráficos é BP-4.
+
+## Convenções das fórmulas
+
+Valem para todas as expressões abaixo:
+
+- dinheiro em **centavos inteiros** (`BigInt`), conforme R-25; formatação só na renderização;
+- toda consulta é **escopada por `profileId`**, sem exceção — exigência de [`ESTRUTURA_DE_DADOS.md`](./ESTRUTURA_DE_DADOS.md) §4;
+- despesa é `amountCents < 0`; receita é `amountCents > 0`;
+- transferência entre contas próprias **não é despesa nem receita** e sai de todo agregado;
+- `período` padrão é o mês civil corrente; a decisão final está em aberto (item 4 da Parte 4);
+- divisão de `BigInt` trunca: arredondamento é decisão explícita, nunca acidental.
+
+## V — Saldo Livre de Risco
+
+A métrica central do produto. [`HOW-IT-WORKS.md`](./HOW-IT-WORKS.md) a define como os saldos confirmados menos as obrigações previstas dentro do período, e determina que *"entradas futuras incertas não devem aumentar o saldo livre"*.
+
+```
+SaldoLivreDeRisco = SaldoConsolidado
+                  − Σ ScheduledObligation.amountCents
+                      onde status = 'open'
+                        e dueDate ≤ fimDoPeríodo
+                        e profileId = perfil
+```
+
+Renda futura prevista (`IncomeSource`) **não entra**. Isso é deliberado e está na definição: previsão de entrada não é dinheiro disponível.
+
+| Insumo | Origem | Estado |
+| --- | --- | --- |
+| Saldo consolidado | ver I-1 | parcial |
+| Obrigações abertas no período | `ScheduledObligation` | **migration 4** (`mvp_financial_planning`) |
+| Faturas de cartão abertas | `ScheduledObligation` | ver nota abaixo |
+
+**Nota sobre faturas.** `CreditCard` e `Statement` não existem em nenhuma migration do MVP — cartões são Etapa 8. A Feature 7 de [`ROUTING_MVP.md`](./ROUTING_MVP.md) já resolve isso implicitamente: a lista de tabelas consultadas pelo Dashboard é `Account`, `BalanceSnapshot`, `Transaction`, `Category`, `ImportBatch`, `ScheduledObligation` e `ReconciliationItem` — sem `CreditCard`. **Decisão registrada:** no MVP, uma fatura aberta é representada como uma `ScheduledObligation` com vencimento e valor. Na Etapa 8, `Statement` assume esse papel e a fórmula ganha o segundo termo.
+
+**Veredito: calculável a partir da migration 4**, desde que ela entregue os campos de L-1.
+
+## I-1 — Saldo consolidado
+
+A Feature 7 especifica *"saldo atual consolidado pelo snapshot mais recente de cada conta ativa"*. Essa redação é correta apenas quando não existem lançamentos posteriores ao snapshot — o que deixa de valer assim que a pessoa registra uma despesa em dinheiro ou importa um extrato mais recente que o saldo declarado.
+
+Fórmula correta, que degenera na redação atual quando não há lançamento posterior:
+
+```
+Para cada Account ativa do perfil, na moeda de referência:
+  s  = BalanceSnapshot mais recente (maior capturedAt)
+  saldoConta = s.balanceCents
+             + Σ Transaction.amountCents
+                 onde accountId = conta
+                   e occurredOn > s.capturedAt
+                   e status ≠ 'pending'
+
+SaldoConsolidado = Σ saldoConta
+```
+
+Conta sem nenhum snapshot **não contribui com zero**: ela contribui com "desconhecido" e força o indicador a estado parcial. Somar zero é afirmar que a conta está zerada — o mesmo erro de D-2, em outra escala.
+
+| Insumo | Origem | Estado |
+| --- | --- | --- |
+| Contas ativas | `Account.isActive` | **existe** |
+| Último saldo por conta | `BalanceSnapshot` | **existe** |
+| Lançamentos posteriores | `Transaction` | **existe** |
+| Moeda de referência | `Account.currency` | existe, mas ver L-4 |
+| Origem e confiança do saldo | — | **ausente**, ver L-3 |
+
+**Veredito: calculável hoje**, com as ressalvas L-3 e L-4.
+
+## I-2 — Gastos do mês
+
+```
+GastosDoMês = Σ (−Transaction.amountCents)
+              onde amountCents < 0
+                e occurredOn dentro do mês corrente
+                e profileId = perfil
+                e categoria.kind ≠ 'transfer'
+                e a transação não pertence a um par de transferência própria
+```
+
+Comparação obrigatória por R-4: mesmo intervalo de dias do mês anterior (dia 1 até o dia de hoje), não o mês anterior inteiro. Comparar 12 dias contra 30 produz uma queda falsa todo início de mês.
+
+**Veredito: calculável hoje.** O filtro de transferência é parcial até a migration 6 — ver L-5.
+
+## I-3 — Média diária
+
+```
+MédiaDiária = GastosDoMês ÷ diasDecorridos
+```
+
+O documento de produto pede comparação com *"o limite ideal planejado para o período"*. Esse limite exige `Budget`, que **não existe em nenhuma migration do MVP** e pertence à Etapa 9. Portanto a comparação contra orçamento é **impossível no MVP**.
+
+Substituto honesto e calculável: comparar contra a média diária do mês anterior no mesmo ponto. Mede aceleração de ritmo sem inventar uma meta que a pessoa nunca definiu.
+
+`diasDecorridos` conta dias do mês, não dias com lançamento — do contrário um fim de semana sem gasto inflaria a média.
+
+**Veredito: calculável hoje na forma substituta. A forma original está bloqueada até a Etapa 9.**
+
+## I-4 — Comprometido até o fim do período
+
+```
+Comprometido = Σ ScheduledObligation.amountCents
+               onde status = 'open' e dueDate ≤ fimDoPeríodo
+```
+
+É o subtraendo de V, exposto como número próprio para que o veredito seja explicável sem clique — exigência de R-2.
+
+**Veredito: depende da migration 4.**
+
+## A — Fila de conciliação
+
+Não é gráfico, é fila de trabalho (BP-11). Contagem e lista dos `ReconciliationItem` abertos, ordenados por impacto financeiro decrescente.
+
+Enquanto a migration 6 não existe, o substituto é `Transaction.status = 'pending'`, que já é contado pela API atual. É uma aproximação: `status` marca o lançamento, não a pendência com motivo e confiança.
+
+**Veredito: aproximação hoje; correto a partir da migration 6.**
+
+## G-1 — Projeção de caixa do período
+
+O gráfico que carrega a Grande Ideia. Responde *"o dinheiro dura até o fim do período?"* — e é o único elemento da tela que mostra o **futuro**.
+
+```
+Para cada dia d de hoje até fimDoPeríodo:
+  saldoProjetado(d) = SaldoConsolidado
+                    − Σ ScheduledObligation.amountCents
+                        onde status = 'open' e dueDate ≤ d
+```
+
+Forma: **linha em degraus**, série única, com a área abaixo preenchida. Cada degrau é uma obrigação vencendo. Ênfase (R-10) no ponto de cruzamento do zero, quando existir; rótulo direto apenas nesse ponto e no valor final.
+
+Regra de honestidade: a linha **não** incorpora renda futura prevista. Se incorporasse, deixaria de ser Saldo Livre de Risco e viraria previsão — que é outra coisa e exige outro nome na tela.
+
+| Insumo | Origem | Estado |
+| --- | --- | --- |
+| Saldo consolidado | I-1 | existe |
+| Obrigações com vencimento e valor | `ScheduledObligation` | **migration 4** |
+
+**Veredito: depende da migration 4 e dos campos de L-1.**
+
+## G-2 — Gastos por categoria
+
+```
+Para o período:
+  Σ (−amountCents) agrupado por categoryId
+  onde amountCents < 0
+    e profileId = perfil
+    e categoria.kind = 'expense'
+  ordenado desc, top 7 + "Outros"
+  transações com categoryId nulo → grupo "Sem categoria"
+```
+
+**"Sem categoria" nunca é descartado.** Omitir o não-classificado faz a soma das barras divergir do total de gastos, e o usuário não tem como perceber. Ele aparece como grupo próprio, no cinza de desênfase, e funciona como convite à conciliação.
+
+Forma: **barra horizontal** — nomes de categoria são longos, e R-36 proíbe texto rotacionado. Ordenada por valor. Sete grupos mais "Outros" respeita o teto de classes de R-6.
+
+**Veredito: calculável hoje. É o único gráfico do conjunto que não exige nenhuma migration nova.** Ressalva de transferências em L-5.
+
+## G-3 — Entradas e saídas por mês
+
+```
+Por mês do intervalo coberto:
+  entradas = Σ amountCents  onde amountCents > 0 e kind = 'income'
+  saídas   = Σ |amountCents| onde amountCents < 0 e kind = 'expense'
+  resultado = entradas − saídas
+```
+
+Forma: **barra divergente ancorada no zero** — entradas acima, saídas abaixo, cinza neutro na linha zero, conforme R-18. Duas matizes opostas, jamais duas quentes vizinhas (o erro de D-5).
+
+**Restrição dura: só renderizar meses com cobertura de dados confirmada.** Um mês sem extrato importado tem entrada e saída zero no banco, mas isso não significa que a pessoa não movimentou dinheiro — significa que não sabemos. Renderizar esse mês como uma barra vazia é a mesma mentira de D-2, distribuída ao longo do eixo do tempo.
+
+[`ONBOARDING.md`](./ONBOARDING.md) já exige distinguir *"período coberto pelos extratos"* de *"períodos sem cobertura de dados"*. O schema atual **não registra período coberto** — ver L-2. Sem isso, este gráfico não pode ser publicado com honestidade.
+
+**Veredito: os valores são calculáveis hoje; o gráfico está bloqueado até L-2 ser resolvido.**
+
+## Matriz de viabilidade
+
+| ID | Elemento | Estado | Bloqueio |
+| --- | --- | --- | --- |
+| **G-2** | Gastos por categoria | **Calculável hoje** | — (ressalva L-5) |
+| **I-1** | Saldo consolidado | **Calculável hoje** | — (ressalvas L-3, L-4) |
+| **I-2** | Gastos do mês | **Calculável hoje** | — (ressalva L-5) |
+| **I-3** | Média diária (vs. mês anterior) | **Calculável hoje** | — |
+| **A** | Fila de conciliação | Aproximação hoje | migration 6 para a forma correta |
+| **V** | Saldo Livre de Risco | Depende de migration | migration 4 + L-1 |
+| **I-4** | Comprometido no período | Depende de migration | migration 4 + L-1 |
+| **G-1** | Projeção de caixa | Depende de migration | migration 4 + L-1 |
+| **G-3** | Entradas e saídas por mês | **Bloqueado** | L-2 (cobertura temporal) |
+| — | Média diária vs. orçamento | **Bloqueado** | `Budget` é Etapa 9 |
+| — | ARCA, XP, notícias, cartões | Fora de escopo | Etapas 8, 14, 15, 16, 17 |
+
+Leitura direta: **quatro dos nove elementos já são calculáveis com o schema de hoje**, três destravam com uma única migration (a 4), um depende de um campo que ainda não foi especificado, e um está corretamente fora do MVP.
+
+## Lacunas de modelo a resolver
+
+Cada item é pré-requisito de um elemento acima. Nenhum deles está especificado hoje.
+
+**L-1 — `ScheduledObligation` precisa de campos que nenhum documento define.**
+[`ROUTING_MVP.md`](./ROUTING_MVP.md) descreve a tabela apenas como *"compromisso com valor e vencimento"*, listando `id`, `profileId`, `accountId?` e `categoryId?`. Faltam, no mínimo:
+
+| Campo | Por que é indispensável |
+| --- | --- |
+| `amountCents` (`BigInt`) | sem valor não há subtração |
+| `dueDate` (data civil) | sem vencimento não há período nem degrau em G-1 |
+| `status` (`open` / `paid` / `cancelled`) | **sem isso, obrigação já paga continua sendo descontada** — o Saldo Livre de Risco fica permanentemente pessimista e o erro cresce a cada mês |
+| `recurrence` | uma conta mensal precisa gerar as ocorrências do período |
+| `isEstimated` (booleano) | [`ONBOARDING.md`](./ONBOARDING.md) aceita valor aproximado; o veredito precisa sinalizar quando é estimativa |
+
+O campo `status` é o mais crítico dos cinco. Sem ele, V e G-1 estão errados por construção, não por implementação.
+
+**L-2 — `ImportBatch` não registra o período coberto.**
+O schema tem `format`, `fingerprint`, `status`, `fileName` e `importedAt` — a data da importação, não o intervalo do extrato. Sem `periodStart` e `periodEnd`, o sistema não sabe distinguir "mês sem movimento" de "mês sem extrato". Bloqueia G-3 e impede a métrica de cobertura que [`ONBOARDING.md`](./ONBOARDING.md) exige. A Feature 4 já prevê que o parser detecte o período; falta persistir.
+
+**L-3 — `BalanceSnapshot` não registra origem nem confiança.**
+[`ONBOARDING.md`](./ONBOARDING.md) pergunta explicitamente *"O saldo veio do banco ou foi estimado?"* e define `BANK_REPORTED` ou `USER_DECLARED`. O modelo atual guarda só o valor e o instante. Sem um campo `source`, o dashboard não consegue cumprir R-26 nem separar valor confirmado de valor declarado.
+
+**L-4 — Consolidação entre moedas não está resolvida.**
+`Account.currency` existe com padrão `BRL`, mas o saldo consolidado soma centavos de contas diferentes sem conferir a moeda. Com uma conta em outra moeda, o número resultante não significa nada. A decisão 8 de [`ONBOARDING.md`](./ONBOARDING.md) — se o MVP aceita múltiplas moedas — segue **em aberto**. Até ser decidida, a fórmula deve filtrar por uma moeda de referência e declarar na tela quantas contas ficaram de fora.
+
+**L-5 — Transferência entre contas próprias infla despesa até a migration 6.**
+`OwnAccountTransfer` só chega na migration 6. Antes dela, mover dinheiro entre contas do próprio usuário aparece como despesa em uma conta e receita em outra, inflando I-2, G-2 e G-3. Mitigação disponível hoje: `Category.kind = 'transfer'`, aplicado manualmente. É paliativo e precisa ser dito na interface, não escondido.
+
+**L-6 — Conflito de nomenclatura entre documentos.**
+A mesma entidade aparece como `ScheduledObligation` em [`ROUTING_MVP.md`](./ROUTING_MVP.md) e [`DATA_MODEL.md`](./DATA_MODEL.md), e como `RecurringObligation` em [`ONBOARDING.md`](./ONBOARDING.md). O mesmo ocorre com `PixIdentifier` versus `PixKey`. A migration 4 precisa fixar um nome e os demais documentos devem ser corrigidos no mesmo change set.
+
+## Defeitos adicionais encontrados na API atual
+
+Levantados ao verificar as fórmulas. Somam-se a D-1 a D-10 da Parte 3.
+
+**D-11 — Nenhuma consulta do dashboard é escopada por perfil.**
+As cinco consultas de [`route.ts`](../src/app/api/dashboard/route.ts) — `account.findMany`, dois `transaction.count`, `transaction.findMany` e `importBatch.count` — não filtram `profileId`. Hoje é inofensivo porque existe um perfil por banco local, mas contraria diretamente [`ESTRUTURA_DE_DADOS.md`](./ESTRUTURA_DE_DADOS.md) §4, que exige incluir o escopo do usuário na consulta e testar acessos cruzados negativos. Corrigir antes que exista um segundo perfil, não depois.
+
+**D-12 — O saldo ignora lançamentos posteriores ao snapshot.**
+A soma usa apenas o `BalanceSnapshot` mais recente por conta. Uma despesa em dinheiro lançada hoje não altera o saldo exibido. Ver a fórmula corrigida em I-1.
+
+**D-13 — Conta sem snapshot é contabilizada como zero.**
+`account.balanceSnapshots[0]?.balanceCents ?? 0n` trata ausência de dado como saldo zero. Uma conta recém-cadastrada e ainda sem saldo informado reduz o consolidado silenciosamente.
+
+**D-14 — Despesa do mês inclui transferências e lançamentos pendentes.**
+O filtro é apenas `amountCents < 0`. Não exclui transferência própria nem `status = 'pending'`. Infla gastos do mês e, por consequência, a média diária.
+
+**D-15 — Divisão truncada sem regra declarada.**
+`expenseCents / BigInt(elapsedDays)` descarta a fração. É defensável, mas precisa ser decisão documentada e consistente com as demais divisões monetárias do produto.
+
+## Ordem de habilitação
+
+```mermaid
+flowchart LR
+    H["Hoje<br/>G-2 · I-1 · I-2 · I-3"] --> L2["Resolver L-2<br/>libera G-3"]
+    H --> M4["Migration 4 + L-1<br/>libera V · I-4 · G-1"]
+    M4 --> M6["Migration 6<br/>corrige A · resolve L-5"]
+    M6 --> E9["Etapa 9<br/>orçamento na média diária"]
+```
+
+1. **Agora, sem migration:** corrigir D-11 a D-15; publicar I-1, I-2, I-3 e G-2 com estados corretos.
+2. **Migration 4, com os campos de L-1:** publicar V, I-4 e G-1 — o dashboard passa a cumprir a promessa do produto.
+3. **Resolver L-2** em `ImportBatch`: publicar G-3 com cobertura declarada.
+4. **Migration 6:** substituir a aproximação de A e eliminar a distorção de L-5.
+5. **Etapa 9:** trocar a comparação da média diária pelo orçamento real.
+
+Enquanto V não existir, o dashboard **não deve promover nenhum outro número a figura-herói**. Um painel sem veredito é preferível a um painel que promove a métrica errada — o defeito D-1.
+
+---
+
 # Checklist de revisão
 
 Aplicar antes de aprovar qualquer tela com número. Um item reprovado bloqueia a entrega.
@@ -523,6 +821,9 @@ Aplicar antes de aprovar qualquer tela com número. Um item reprovado bloqueia a
 - [ ] Todo número tem comparação, meta ou tendência.
 - [ ] Nenhum indicador mede o software em vez das finanças.
 - [ ] Cada gráfico responde a uma pergunta declarada no título.
+- [ ] Cada número tem fórmula fechada e origem de dado confirmada no schema (Parte 5).
+- [ ] Nenhum período sem cobertura de dados é renderizado como zero.
+- [ ] Ausência de dado é distinguível de valor zero em todo agregado.
 
 **Forma**
 - [ ] Nenhuma pizza, rosca, 3D ou segundo eixo Y.
@@ -583,6 +884,11 @@ Cinco verificações computadas: faixa de luminosidade, piso de croma, separaç�
 3. Decidir se a densidade será configurável (confortável/compacto) já no MVP ou depois.
 4. Definir o período padrão do Saldo Livre de Risco na tela: mês civil, próximos 30 dias, ou escolha do usuário.
 5. Versionar o validador de paleta e ligá-lo ao CI.
+6. Especificar os campos de `ScheduledObligation` na migration 4, conforme L-1 — em especial `status`, sem o qual o Saldo Livre de Risco fica errado por construção.
+7. Acrescentar `periodStart` e `periodEnd` a `ImportBatch` (L-2) e definir como a cobertura temporal é exibida.
+8. Acrescentar `source` a `BalanceSnapshot` (L-3), alinhado a `BANK_REPORTED` / `USER_DECLARED` de [`ONBOARDING.md`](./ONBOARDING.md).
+9. Resolver a decisão 8 de [`ONBOARDING.md`](./ONBOARDING.md) — múltiplas moedas no MVP — que hoje bloqueia a correção de L-4.
+10. Fixar a nomenclatura de `ScheduledObligation`/`RecurringObligation` e `PixIdentifier`/`PixKey` (L-6) e corrigir os documentos divergentes no mesmo change set.
 
 ---
 
