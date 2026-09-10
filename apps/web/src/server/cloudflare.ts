@@ -1,0 +1,5 @@
+import { cookies } from 'next/headers';
+const base=()=>{const v=process.env.CLOUDFLARE_API_BASE_URL;if(!v)throw new Error('CLOUDFLARE_API_BASE_URL não configurada');return v.replace(/\/$/,'')};
+const shared=()=>process.env.CLOUDFLARE_BFF_SHARED_SECRET??'';
+export async function cloud(path:string,init:RequestInit={},authenticated=false){const method=init.method??'GET';const boot=await fetch(`${base()}/api/action-codes`,{method:'POST',headers:{'Content-Type':'application/json','X-Talentum-BFF':shared()},body:JSON.stringify({method,path}),cache:'no-store'});if(!boot.ok)return boot;const {actionCode}=await boot.json() as {actionCode:string};const access=authenticated?(await cookies()).get('__Host-talentum-access')?.value:undefined;return fetch(`${base()}${path}`,{...init,cache:'no-store',headers:{'Content-Type':'application/json','X-Talentum-BFF':shared(),'X-Action-Code':actionCode,...(access?{Authorization:`Bearer ${access}`}:{}) ,...init.headers}})}
+export const cookieOptions=(maxAge:number)=>({httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax' as const,path:'/',maxAge});
