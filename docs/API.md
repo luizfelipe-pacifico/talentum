@@ -78,6 +78,8 @@ As rotas finais devem nascer junto dos casos de uso e testes; esta tabela não a
 
 ## Web, autenticação, download e feedback
 
+As rotas de autenticação, perfil, releases e concessões estão implementadas no Worker e são consumidas exclusivamente pelo BFF em `apps/web`. A validação ponta a ponta permanece dependente da configuração dos segredos e do cliente OAuth no ambiente publicado.
+
 | Método | Rota | Acesso | Proteção adicional |
 | --- | --- | --- | --- |
 | `POST` | `/api/action-codes` | público ou autenticado | bootstrap, rate limit e vínculo ao contrato pretendido |

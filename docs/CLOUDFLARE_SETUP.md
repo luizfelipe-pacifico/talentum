@@ -91,7 +91,9 @@ pnpm exec wrangler secret put TOKEN_HASH_PEPPER --config cloudflare/wrangler.jso
 pnpm exec wrangler secret put BFF_SHARED_SECRET --config cloudflare/wrangler.jsonc
 ```
 
-Quando o OAuth for implementado, cadastre também o segredo do provedor com `wrangler secret put`. O identificador público do cliente pode ser uma variável comum; o client secret deve permanecer secreto.
+O segredo do provedor OAuth deve ser cadastrado com `wrangler secret put`. O identificador público do cliente pode ser uma variável comum; o client secret deve permanecer secreto.
+
+Para o fluxo Google atual, cadastre também `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`. Configure no cliente OAuth exatamente `https://talentum.vercel.app/api/auth/callback` como redirect de produção. A LP precisa de `CLOUDFLARE_API_BASE_URL` e `CLOUDFLARE_BFF_SHARED_SECRET` no runtime da Vercel.
 
 ## 8. Publicar e validar o Worker
 

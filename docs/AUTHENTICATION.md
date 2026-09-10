@@ -4,6 +4,10 @@
 
 Web e Electron usam Authorization Code com PKCE S256. Implicit Grant e fluxo por senha do usuário são proibidos. Toda validação e autorização ocorre no backend.
 
+## Estado atual da web
+
+O fluxo Google da LP está implementado entre BFF e Worker: PKCE S256, `state`, `nonce`, assinatura RS256 via JWKS, access token opaco de 15 minutos e refresh token opaco rotativo de 30 dias. O BFF guarda ambos em cookies `HttpOnly`; reutilização de refresh revoga a família e a sessão. A operação em produção depende dos Worker Secrets e redirects cadastrados no provedor.
+
 ## Credenciais
 
 | Credencial | Duração | Web | Electron | Servidor |
