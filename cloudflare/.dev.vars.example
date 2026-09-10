@@ -3,3 +3,5 @@
 SESSION_SIGNING_SECRET=gere-um-segredo-local-diferente
 TOKEN_HASH_PEPPER=gere-outro-segredo-local-diferente
 BFF_SHARED_SECRET=gere-um-terceiro-segredo-local-diferente
+GOOGLE_CLIENT_ID=id-publico-sintetico.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=segredo-oauth-sintetico
