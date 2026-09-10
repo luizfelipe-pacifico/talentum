@@ -47,6 +47,9 @@ Não copie valores reais para `.env.example`. O arquivo `.env` local não deve s
 | `pnpm cloudflare:migrations:list:remote` | lista migrations pendentes no D1 remoto |
 | `pnpm cloudflare:migrations:apply:remote` | aplica migrations revisadas no D1 remoto |
 | `pnpm cloudflare:deploy` | publica o Worker autenticado |
+| `pnpm cloudflare:test` | testa contratos, migration de runtime e isolamento da LP |
+| `pnpm web:typecheck` | verifica os tipos da LP/BFF isolada |
+| `pnpm web:build` | gera a build isolada destinada à Vercel |
 
 `pnpm dev` e `pnpm dev:all` executam `prisma migrate deploy` antes de abrir o servidor. A URL local padrão aponta para `temp/talentum-local.db`, que é ignorado pelo Git. Crie migrations com `pnpm prisma:migrate --name <nome>`; não use `prisma db push` como fluxo do projeto.
 
