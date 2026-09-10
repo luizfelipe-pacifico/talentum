@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { useApp } from '@/components/app-state';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
+import { HOME_AREAS } from '@/lib/demo-data';
 
 function SectionTitle({ title }: { title: string }) {
   return <div className="card-header"><h2 className="h-display">{title}</h2></div>;
@@ -11,6 +12,43 @@ function SectionTitle({ title }: { title: string }) {
 
 function EmptyState({ icon, title, text, action }: { icon: string; title: string; text: string; action?: ReactNode }) {
   return <section className="card card-lg empty"><i className={`bi ${icon}`} aria-hidden="true"/><h2 className="h-display">{title}</h2><p className="muted">{text}</p>{action}</section>;
+}
+
+/* Início: porta de entrada do sistema. Não exibe número financeiro de propósito —
+   um zero sem confirmação do backend é uma afirmação falsa (docs/DASHBOARD.md, D-2). */
+export function HomePage() {
+  const app = useApp();
+  return <div className="stack-lg">
+    <section className="card card-lg">
+      <p className="eyebrow">Talentum</p>
+      <h2 className="h-display-lg">Clareza para o presente. Disciplina para o futuro.</h2>
+      <p className="muted">Importe um extrato ou cadastre sua posição atual. O Talentum organiza os lançamentos e mostra quanto realmente sobra depois dos compromissos do período.</p>
+      <div className="row-tight">
+        <button type="button" className="btn btn-primary" onClick={app.openImport}>Importar extrato</button>
+        <Link className="btn btn-neutral" href="/onboarding">Cadastrar posição atual</Link>
+      </div>
+      <div className="callout callout-info">
+        <i className="bi bi-hdd" aria-hidden="true" />
+        <p className="small">Seus dados financeiros ficam somente neste dispositivo. Extratos, saldos e transações não são enviados à nuvem.</p>
+      </div>
+    </section>
+
+    <section className="stack">
+      <h2 className="h-display">Áreas do sistema</h2>
+      <div className="grid grid-260">
+        {HOME_AREAS.map((area) => (
+          <Link key={area.href} href={area.href} className="card card-sm home-area">
+            <span className="home-area-head">
+              <i className={`bi ${area.icon}`} aria-hidden="true" />
+              <span className="home-area-title">{area.label}</span>
+            </span>
+            <span className="small muted">{area.text}</span>
+            <span className="btn-link">Abrir<i className="bi bi-arrow-right-short" aria-hidden="true" /></span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  </div>;
 }
 
 export function DashboardPage() {

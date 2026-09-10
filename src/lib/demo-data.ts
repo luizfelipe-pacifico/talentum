@@ -8,8 +8,10 @@ export type NavEntry = {
   badge?: string;
 };
 
+/* A rota raiz é o Início e não aparece aqui de propósito: chega-se a ela pela
+   marca no topo da sidebar, não por um item de navegação. */
 export const NAV: NavEntry[] = [
-  { href: '/', icon: 'bi-speedometer2', label: 'Dashboard' },
+  { href: '/dashboard', icon: 'bi-speedometer2', label: 'Dashboard' },
   { href: '/extratos', icon: 'bi-receipt', label: 'Extratos' },
   { href: '/conciliacao', icon: 'bi-check2-square', label: 'Conciliação' },
   { href: '/patrimonio', icon: 'bi-columns-gap', label: 'Patrimônio' },
@@ -19,6 +21,7 @@ export const NAV: NavEntry[] = [
 
 /** Título e contexto do cabeçalho, por prefixo de rota. Mais específico primeiro. */
 export const PAGE_META: { prefix: string; title: string; context: string }[] = [
+  { prefix: '/dashboard', title: 'Dashboard', context: 'Sua posição financeira atual' },
   { prefix: '/extratos', title: 'Extratos e cartões', context: 'Importação, lançamentos, faturas e benefícios' },
   { prefix: '/conciliacao', title: 'Conciliação financeira', context: 'Nenhum item aguardando decisão' },
   { prefix: '/patrimonio', title: 'Patrimônio e metas', context: 'Cadastre seu patrimônio para iniciar' },
@@ -29,7 +32,17 @@ export const PAGE_META: { prefix: string; title: string; context: string }[] = [
   { prefix: '/configuracoes', title: 'Configurações', context: 'Preferências do aplicativo' },
   { prefix: '/onboarding', title: 'Primeiro acesso', context: 'Fotografia financeira inicial e privacidade local' },
   { prefix: '/layout-guide', title: 'Guia de layout', context: 'Tokens, componentes e regras do sistema visual' },
-  { prefix: '/', title: 'Dashboard', context: 'Sua posição financeira atual' },
+  { prefix: '/', title: 'Início', context: 'Ponto de partida do Talentum' },
+];
+
+/** Cartões de acesso às áreas, exibidos no Início. */
+export const HOME_AREAS: { href: string; icon: string; label: string; text: string }[] = [
+  { href: '/dashboard', icon: 'bi-speedometer2', label: 'Dashboard', text: 'Saldo, gastos do mês e o que já está comprometido.' },
+  { href: '/extratos', icon: 'bi-receipt', label: 'Extratos', text: 'Lançamentos importados, cartões e recorrências.' },
+  { href: '/conciliacao', icon: 'bi-check2-square', label: 'Conciliação', text: 'Confirme ou corrija o que ficou em dúvida.' },
+  { href: '/patrimonio', icon: 'bi-columns-gap', label: 'Patrimônio', text: 'Ativos, metas e destinação de aportes.' },
+  { href: '/invest', icon: 'bi-newspaper', label: 'Invest', text: 'Economia e mercado ligados aos seus ativos.' },
+  { href: '/historico', icon: 'bi-clock-history', label: 'Histórico', text: 'Trilha de eventos, dados locais e backup.' },
 ];
 
 export const TAB_GROUPS: { prefix: string; tabs: { href: string; label: string }[] }[] = [
