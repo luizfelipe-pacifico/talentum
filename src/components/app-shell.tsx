@@ -39,12 +39,19 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="shell" style={{ ['--sidebar-w' as string]: app.collapsed ? '76px' : '248px' }}>
       <aside className="sidebar" aria-label="Navegação principal">
-        <div className="sidebar-brand">
+        {/* A marca é o caminho para o Início: não existe item "Início" na navegação. */}
+        <Link
+          href="/"
+          className="sidebar-brand"
+          aria-label="Início do Talentum"
+          aria-current={pathname === '/' ? 'page' : undefined}
+          title="Início"
+        >
           <span className="brand-symbol" aria-hidden="true">
             <Image className="brand-logo" src={logoDark} alt="" priority unoptimized />
           </span>
           {expanded && <span className="sidebar-wordmark">Talentum</span>}
-        </div>
+        </Link>
 
         <button
           type="button"

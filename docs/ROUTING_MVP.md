@@ -380,7 +380,7 @@ Permite confirmar ou corrigir transações incertas sem apagar o dado original. 
 
 ### O que faz
 
-Resume a posição atual usando somente consultas do backend. Não é uma tela separada de “Início”: a rota `/` é o Dashboard.
+Resume a posição atual usando somente consultas do backend. O Dashboard vive em `/dashboard`; a raiz `/` é o Início do sistema, uma porta de entrada sem número financeiro. O conjunto de indicadores e gráficos, com a fórmula e a viabilidade de cada um, está em [`DASHBOARD.md`](./DASHBOARD.md).
 
 ### Indicadores do MVP
 
@@ -394,7 +394,9 @@ Resume a posição atual usando somente consultas do backend. Não é uma tela s
 
 ### Rotas de interface
 
-- `/`
+- `/dashboard`
+
+A raiz `/` é o Início: apresenta o produto, o aviso de privacidade local, a ação de importar ou cadastrar a posição e os atalhos para as áreas. Ela não exibe valor financeiro — um zero sem confirmação do backend é uma afirmação falsa. O Início não possui item próprio na navegação lateral: chega-se a ele pela marca no topo da sidebar.
 
 ### APIs locais
 
