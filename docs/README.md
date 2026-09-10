@@ -22,6 +22,7 @@ Este diretório separa as fontes de verdade técnicas dos materiais de produto e
 | [`CLOUDFLARE_SETUP.md`](./CLOUDFLARE_SETUP.md) | Configuração ordenada do Worker, D1, migrations, segredos e integração com a Vercel |
 | [`BEST_PRACTICES.md`](./BEST_PRACTICES.md) | Práticas gerais de engenharia e contribuição |
 | [`BRANDING.md`](./BRANDING.md) | Identidade visual e regras de interface |
+| [`DASHBOARD.md`](./DASHBOARD.md) | Padrões de dashboard e visualização de dados: referências, base teórica, auditoria e regras normativas |
 
 ## Produto e referências
 
@@ -49,4 +50,4 @@ Conflitos devem ser corrigidos na fonte, não explicados apenas em comentários 
 
 ## Atualização da documentação
 
-Mudanças gerais de arquitetura atualizam `ARCHITECTURE.md` e a arquitetura específica afetada; mudanças de fluxo atualizam `HOW-IT-WORKS.md`; mudanças de persistência atualizam `DATA_MODEL.md`; mudanças de autenticação atualizam `AUTHENTICATION.md` e `SECURITY.md`. Decisões com alternativas relevantes ganham ADR em `docs/decisions/`.
+Mudanças gerais de arquitetura atualizam `ARCHITECTURE.md` e a arquitetura específica afetada; mudanças de fluxo atualizam `HOW-IT-WORKS.md`; mudanças de persistência atualizam `DATA_MODEL.md`; mudanças de autenticação atualizam `AUTHENTICATION.md` e `SECURITY.md`; mudanças em painéis, indicadores ou gráficos atualizam `DASHBOARD.md` e, quando tocarem em tokens visuais, também `BRANDING.md`. Decisões com alternativas relevantes ganham ADR em `docs/decisions/`.
