@@ -1,0 +1,2 @@
+import { NextResponse } from 'next/server'; import { cloud } from '../../../../server/cloudflare';
+export async function GET(request:Request){const result=await cloud('/api/auth/start',{method:'POST',body:'{}'});if(!result.ok)return NextResponse.redirect(new URL('/?auth=erro',request.url));const {authorizationUrl}=await result.json() as {authorizationUrl:string};return NextResponse.redirect(authorizationUrl)}
