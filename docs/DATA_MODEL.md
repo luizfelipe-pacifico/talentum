@@ -4,9 +4,28 @@ As regras operacionais obrigatórias para criar, consultar, migrar e escalar est
 
 ## Status
 
-Modelo conceitual planejado. O `schema.prisma` atual implementa `LocalProfile`, `UserPreference` e o núcleo financeiro inicial formado por `Institution`, `Account`, `BalanceSnapshot`, `Category`, `ImportBatch` e `Transaction`. Os demais agregados deste documento ainda não foram implementados.
+Modelo conceitual planejado. O `schema.prisma` atual implementa `LocalProfile`, `UserPreference`, o núcleo financeiro formado por `Institution`, `Account`, `BalanceSnapshot`, `Category`, `ImportBatch` e `Transaction`, e `ScheduledObligation`. Os demais agregados deste documento ainda não foram implementados.
 
-O schema evolui somente por migrations versionadas. A migration `mvp_financial_core` cria o núcleo financeiro; ambientes executam `prisma migrate deploy` e nunca dependem de alteração manual ou `db push` em produção.
+O schema evolui somente por migrations versionadas. `mvp_financial_core` cria o núcleo financeiro e `mvp_scheduled_obligations` cria as obrigações; ambientes executam `prisma migrate deploy` e nunca dependem de alteração manual ou `db push` em produção.
+
+### `ScheduledObligation` — atual
+
+Compromisso com valor e vencimento. É o subtraendo do Saldo Livre de Risco.
+
+| Campo | Papel |
+| --- | --- |
+| `id` | identificador opaco |
+| `profileId`, `accountId?`, `categoryId?` | relações por chave estrangeira |
+| `description` | rótulo local do compromisso |
+| `amountCents` | `BigInt`, centavos inteiros |
+| `dueDate` | vencimento; define se entra no período |
+| `status` | `open`, `paid` ou `cancelled` |
+| `recurrence` | `none`, `weekly`, `monthly` ou `yearly` |
+| `isEstimated` | valor informado como aproximado |
+
+Invariante: **somente `status = 'open'` é descontado**. Sem esse campo, uma obrigação já paga continuaria sendo subtraída e o Saldo Livre de Risco ficaria permanentemente pessimista. Índice principal em `(profileId, status, dueDate)`, derivado da consulta do painel.
+
+No MVP, uma fatura de cartão aberta é representada como `ScheduledObligation`: `CreditCard` e `Statement` pertencem à Etapa 8 do roadmap.
 
 ## Princípios
 

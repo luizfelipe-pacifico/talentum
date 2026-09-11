@@ -216,12 +216,12 @@ border: 1px solid var(--line);`}
         >
           <div className="type-scale">
             <div className="type-row">
-              <p className="metric-hero">R$ 1.234,56</p>
-              <p className="tiny muted num">.metric-hero · Playfair · 36–52px · métrica central da tela</p>
+              <p className="figure figure-hero"><span className="figure-symbol">R$</span><span className="figure-value">1.234,56</span></p>
+              <p className="tiny muted num">.figure-hero · Montserrat · 38–56px · veredito da tela</p>
             </div>
             <div className="type-row">
-              <p className="metric num">R$ 1.234,56</p>
-              <p className="tiny muted num">.metric · Playfair · 32px · métrica de card</p>
+              <p className="figure"><span className="figure-symbol">R$</span><span className="figure-value">1.234,56</span></p>
+              <p className="tiny muted num">.figure · Montserrat · 30px · métrica de card</p>
             </div>
             <div className="type-row">
               <p className="h-display-lg">Título de seção</p>
@@ -331,7 +331,8 @@ border: 1px solid var(--line);`}
           hint="Nesta ordem, sempre. No máximo uma ação primária por tela."
           block
           code={`<div className="stack-lg">
-  <section className="grid dashboard-kpis"> ... </section>
+  <section className="card card-lg verdict"> ... </section>
+  <section className="grid grid-260"> ... </section>
   <section className="card"> ... </section>
   <p className="note">Origem do dado e limitação conhecida.</p>
 </div>`}
@@ -530,17 +531,19 @@ border: 1px solid var(--line);`}
           title="Card de métrica"
           hint="Rótulo, número, origem do dado e: quando existir: a ação que o alimenta."
           block
-          code={`<article className="card card-lg">
-  <p className="eyebrow">Saldo livre de risco</p>
-  <p className="metric metric-hero num">R$ 0,00</p>
-  <p className="small muted">Origem do cálculo e período considerado.</p>
-  <button className="btn btn-primary">Importar extrato</button>
-</article>`}
+          code={`<section className="card card-lg verdict">
+  <p className="eyebrow">Saldo Livre de Risco · 1 a 30 de setembro</p>
+  <p className="figure figure-hero">
+    <span className="figure-symbol">R$</span>
+    <span className="figure-value">1.234,56</span>
+  </p>
+  <p className="verdict-formula">saldo em conta menos o que já está comprometido</p>
+</section>`}
         >
           <div className="grid grid-300">
             <article className="card card-lg">
               <p className="eyebrow">Saldo livre de risco</p>
-              <p className="metric metric-hero num">R$ 1.234,56</p>
+              <p className="figure figure-hero"><span className="figure-symbol">R$</span><span className="figure-value">1.234,56</span></p>
               <p className="small muted">
                 Amostra de formatação. Na tela real, o período e o que foi descontado precisam ser abríveis.
               </p>
@@ -550,7 +553,7 @@ border: 1px solid var(--line);`}
             </article>
             <article className="card">
               <p className="eyebrow">Média de gastos diária</p>
-              <p className="metric num">R$ 85,00</p>
+              <p className="figure"><span className="figure-symbol">R$</span><span className="figure-value">85,00</span></p>
               <p className="small muted">Calculada pelo backend no mês atual.</p>
               <span className="chip">
                 <i className="bi bi-dash" aria-hidden="true" />
