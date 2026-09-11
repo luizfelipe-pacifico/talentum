@@ -251,7 +251,8 @@ Cria a estrutura usada para interpretar receitas, despesas, transferências e va
 ### Migration
 
 - `mvp_financial_core` já cria `Category`.
-- Migration posterior cria renda, obrigação e regras.
+- `mvp_scheduled_obligations` já cria `ScheduledObligation`, consumida pelo Dashboard. O CRUD e a tela de recorrências continuam pertencendo a esta feature.
+- Migration posterior cria renda e regras de estabelecimento.
 
 ### Concluída quando
 
@@ -384,13 +385,17 @@ Resume a posição atual usando somente consultas do backend. O Dashboard vive e
 
 ### Indicadores do MVP
 
-- saldo atual consolidado pelo snapshot mais recente de cada conta ativa;
-- despesas do mês;
-- média diária do mês;
-- quantidade de contas, importações e pendências;
-- obrigações previstas;
-- Saldo Livre de Risco, com fórmula e período explicáveis;
-- gastos por categoria e fluxo mensal.
+O conjunto, a forma e a fórmula de cada elemento estão em [`DASHBOARD.md`](./DASHBOARD.md), Parte 5.
+
+- **Saldo Livre de Risco**, veredito da tela, com período e decomposição visíveis;
+- saldo consolidado: último snapshot de cada conta ativa **mais os lançamentos posteriores a ele**, com as contas sem saldo informado contadas à parte;
+- gastos do mês, com variação contra o mesmo intervalo de dias do mês anterior;
+- média diária, com a mesma base de comparação;
+- total comprometido no período e quantidade de obrigações;
+- fila de conciliação como faixa de atenção;
+- gastos por categoria.
+
+Fluxo mensal de entradas e saídas continua **bloqueado**: `ImportBatch` não registra o período coberto, então um mês sem extrato seria renderizado como um mês sem movimento (lacuna L-2).
 
 ### Rotas de interface
 
@@ -407,15 +412,18 @@ A raiz `/` é o Início: apresenta o produto, o aviso de privacidade local, a a�
 
 ### Tabelas consultadas
 
-- `Account`, `BalanceSnapshot`, `Transaction`, `Category`, `ImportBatch`, `ScheduledObligation` e `ReconciliationItem`.
+- `Account`, `BalanceSnapshot`, `Transaction`, `Category`, `ImportBatch` e `ScheduledObligation`.
+- `ReconciliationItem` ainda não existe: a fila usa `Transaction.status = 'pending'` como aproximação declarada até a migration de conciliação.
 
 ### Estado atual
 
-`GET /api/dashboard` já consulta o SQLite por meio do backend e exige `X-Action-Code`. O frontend mostra zeros apenas quando as consultas retornam zero registros; os demais cálculos ainda serão completados.
+`GET /api/dashboard` e `GET /api/dashboard/categories` consultam o SQLite pelo backend, exigem `X-Action-Code` e são escopados por `profileId`. O Saldo Livre de Risco, o saldo consolidado, os gastos do mês, a média diária, o comprometido no período e os gastos por categoria estão implementados, com fórmulas em módulo puro e testes unitários.
+
+A interface possui os quatro estados: esqueleto no carregamento, faixa de erro com repetição, estado vazio e estado com dados. **Nenhum valor é renderizado sem confirmação do backend** — com a consulta indisponível a tela informa a falha em vez de exibir `R$ 0,00`.
 
 ### Concluída quando
 
-- Nenhum indicador vem de constante do frontend; alterar uma transação ou obrigação altera o Dashboard; fórmulas possuem testes unitários e teste ponta a ponta.
+- Nenhum indicador vem de constante do frontend; alterar uma transação ou obrigação altera o Dashboard; fórmulas possuem testes unitários. **Atendido**, exceto o teste ponta a ponta automatizado, que depende do fluxo de importação da Feature 4.
 
 ## Feature 8 — Histórico, reversão e segurança local
 
@@ -447,7 +455,8 @@ Registra importações e alterações relevantes sem guardar o código temporár
 | 1 | `init` | `LocalProfile`, `UserPreference` | criada |
 | 2 | `mvp_financial_core` | `Institution`, `Account`, `BalanceSnapshot`, `Category`, `ImportBatch`, `Transaction` | criada |
 | 3 | `mvp_onboarding` | `OnboardingSession`, `OnboardingAnswer` | planejada |
-| 4 | `mvp_financial_planning` | `IncomeSource`, `ScheduledObligation`, `MerchantRule`, `PixIdentifier` | planejada |
+| 4 | `mvp_scheduled_obligations` | `ScheduledObligation` | criada |
+| 4b | `mvp_financial_planning` | `IncomeSource`, `MerchantRule`, `PixIdentifier` | planejada |
 | 5 | `mvp_import_details` | `ImportFile`, `CsvMappingProfile`, `ImportIssue` | planejada |
 | 6 | `mvp_reconciliation` | `ReconciliationItem`, `ReconciliationDecision`, `FinancialAdjustment`, `OwnAccountTransfer` | planejada |
 | 7 | `mvp_timeline_backup` | `TimelineEvent`, `DatabaseBackup` | planejada |

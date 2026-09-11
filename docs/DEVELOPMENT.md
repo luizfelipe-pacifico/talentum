@@ -37,6 +37,7 @@ Não copie valores reais para `.env.example`. O arquivo `.env` local não deve s
 | `pnpm build` | chama `next build` |
 | `pnpm start` | executa a build pelo servidor Next.js na porta 3000 |
 | `pnpm typecheck` | chama `tsc --noEmit` |
+| `pnpm test` | roda a suíte com o executor nativo do Node |
 | `pnpm prisma:generate` | chama `prisma generate` |
 | `pnpm prisma:validate` | chama `prisma validate` |
 | `pnpm prisma:migrate` | cria/aplica migrações locais de desenvolvimento |
@@ -87,6 +88,14 @@ A imagem usa Ubuntu 24.04, Node.js 22 copiado da imagem oficial, execução por 
 - integrações externas simuladas em testes;
 - fluxos críticos cobertos por integração antes da distribuição;
 - nenhum teste depende de credencial ou serviço pessoal.
+
+## Testes
+
+`pnpm test` usa o executor embutido do Node (`node --test`), sem biblioteca adicional. Os arquivos ficam em `tests/` com extensão `.test.mjs`.
+
+As fórmulas financeiras vivem em `src/server/dashboard-metrics.ts`, um módulo puro sem Prisma e sem relógio implícito, e são testadas diretamente: o Node faz *type stripping* nativo e importa o `.ts` sem etapa de build. A flag `--experimental-strip-types` é passada explicitamente para manter compatibilidade a partir do Node 22.13; em Node 22.18 ou superior ela é dispensável.
+
+Testes de contrato leem o próprio código-fonte e verificam invariantes que não podem regredir em silêncio: exigência de `X-Action-Code`, escopo por `profileId` em toda cláusula `where`, ausência de texto monetário formatado no backend, ausência de Prisma no frontend e imutabilidade das migrations já aplicadas.
 
 ## Dados de teste
 
