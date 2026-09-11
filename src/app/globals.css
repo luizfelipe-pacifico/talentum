@@ -40,6 +40,13 @@
   /* Exceção documentada: monoespaçada do sistema, usada só em trecho de código
      da guia de layout. Nenhuma tela de produto usa esta família. */
   --font-mono: ui-monospace, 'Cascadia Mono', 'Consolas', 'Liberation Mono', monospace;
+
+  /* Tokens de visualização de dados. A paleta da marca é quente e quase
+     monocromática: ótima como interface, inadequada como cor de série
+     (docs/DASHBOARD.md, D-5 e R-13). Estes dois passam nas verificações de
+     contraste contra as superfícies do produto nos dois temas. */
+  --data-1: #2a78d6;
+  --data-recessive: #898781;
 }
 
 html.dark {
@@ -62,6 +69,8 @@ html.dark {
   --info-s: #26313a;
 
   --shadow-md: 0 8px 24px rgb(0 0 0 / 34%);
+
+  --data-1: #3987e5;
 }
 
 * {
@@ -267,8 +276,193 @@ p {
   margin: 0;
 }
 
-.dashboard-kpis {
-  grid-template-columns: minmax(0, 1.12fr) repeat(2, minmax(0, 1fr));
+/* ── Dashboard: figuras, deltas, estados e gráfico ────────────── */
+
+/* Figuras monetárias usam a sans do produto, não a serifada de display: um
+   número de painel é conteúdo operacional lido todo dia, não capa editorial
+   (docs/DASHBOARD.md, R-21). Figuras proporcionais no valor; `tabular-nums`
+   fica para tabela e eixo, onde os dígitos precisam alinhar (R-22). */
+.figure {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 30px;
+  line-height: 1.15;
+  color: var(--ink);
+}
+.figure-hero {
+  font-size: clamp(38px, 4vw, 56px);
+  line-height: 1.05;
+}
+.figure-symbol {
+  font-size: 0.52em;
+  font-weight: 500;
+  color: var(--ink2);
+}
+.figure-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.figure-negative {
+  color: var(--err);
+}
+
+.verdict {
+  gap: 14px;
+}
+.verdict-formula {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--ink2);
+}
+.verdict-formula .num {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.delta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 19px;
+  font-weight: 600;
+}
+.delta i {
+  font-size: 14px;
+}
+/* Direção também é comunicada por ícone e texto: cor nunca é o único canal
+   (docs/DASHBOARD.md, R-19 e R-35). Em despesa, subir é ruim. */
+.delta-up {
+  color: var(--err);
+}
+.delta-down {
+  color: var(--ok);
+}
+.delta-flat {
+  color: var(--ink2);
+}
+.delta .muted {
+  font-weight: 400;
+}
+
+.error-state {
+  border-color: var(--err);
+}
+/* Botão de ação dentro de cartão em coluna não deve esticar na largura toda. */
+.error-state > .btn,
+.attention > .btn {
+  align-self: flex-start;
+}
+
+/* Esqueleto com a forma do conteúdo final; nunca um zero formatado (R-28). */
+.skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: var(--sunken);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+.skeleton-eyebrow { width: 40%; height: 12px; }
+.skeleton-metric { width: 62%; height: 30px; }
+.skeleton-hero { width: 54%; height: 52px; }
+.skeleton-line { width: 78%; height: 13px; }
+.skeleton-chart { width: 100%; height: 180px; }
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
+
+/* Gastos por categoria. O gráfico é a própria tabela: a barra é acessório e os
+   valores permanecem legíveis sem depender de cor (R-11, R-35). */
+.catbar {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.catbar th[scope='col'] {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink2);
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--line);
+}
+.catbar th[scope='col'].right,
+.catbar td.right {
+  text-align: right;
+}
+.catbar th[scope='row'] {
+  text-align: left;
+  font-weight: 500;
+  color: var(--ink);
+  padding: 10px 16px 10px 0;
+  white-space: nowrap;
+}
+.catbar td {
+  padding: 10px 0;
+  vertical-align: middle;
+}
+.catbar td.right {
+  padding-left: 16px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.catbar tbody tr + tr th[scope='row'],
+.catbar tbody tr + tr td {
+  border-top: 1px solid var(--line);
+}
+.catbar-track {
+  display: inline-block;
+  vertical-align: middle;
+  width: min(100%, 320px);
+  height: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--sunken);
+  overflow: hidden;
+}
+.catbar-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-sm);
+  background: var(--data-1);
+}
+/* "Sem categoria" e "Outros" são contexto, não protagonistas. */
+.catbar-fill-recessive {
+  background: var(--data-recessive);
+}
+.catbar-share {
+  display: inline-block;
+  min-width: 52px;
+  margin-left: 10px;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink2);
+}
+
+.attention {
+  border-color: var(--amber);
+}
+
+@media (max-width: 720px) {
+  .catbar-track { width: 100%; }
+  .catbar th[scope='row'] { white-space: normal; }
 }
 
 /* ── Início ───────────────────────────────────────────────────── */
@@ -302,10 +496,6 @@ p {
 }
 .home-area .btn-link {
   margin-top: auto;
-}
-
-.dashboard-actions {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .settings-grid {
@@ -1834,8 +2024,6 @@ kbd {
 }
 
 @media (max-width: 1280px) {
-  .dashboard-kpis,
-  .dashboard-actions,
   .settings-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1844,9 +2032,6 @@ kbd {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .dashboard-kpis > :first-child {
-    grid-column: 1 / -1;
-  }
 }
 
 .empty > .btn {
@@ -1887,9 +2072,8 @@ kbd {
 }
 
 @media (max-width: 1040px) {
-  .grid-340, .grid-320, .grid-300, .grid-260, .grid-240, .grid-230, .dashboard-kpis, .dashboard-actions, .settings-grid { grid-template-columns: 1fr; }
+  .grid-340, .grid-320, .grid-300, .grid-260, .grid-240, .grid-230, .settings-grid { grid-template-columns: 1fr; }
   .topbar { align-items: flex-start; }
-  .dashboard-kpis > :first-child { grid-column: auto; }
 }
 
 /* ── Guia de layout ───────────────────────────────────────────── */

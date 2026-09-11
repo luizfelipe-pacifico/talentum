@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { useApp } from '@/components/app-state';
-import { useDashboardData } from '@/hooks/use-dashboard-data';
 import { HOME_AREAS } from '@/lib/demo-data';
 
 function SectionTitle({ title }: { title: string }) {
@@ -47,25 +46,6 @@ export function HomePage() {
           </Link>
         ))}
       </div>
-    </section>
-  </div>;
-}
-
-export function DashboardPage() {
-  const app = useApp();
-  const { data, loading, error } = useDashboardData();
-  const status = loading ? 'Consultando o banco local…' : error ? 'Não foi possível consultar o banco local.' : data.hasFinancialData ? `${data.transactionCount} transações registradas em ${data.accountCount} contas.` : 'Comece importando um extrato ou cadastrando sua posição atual.';
-  return <div className="stack-lg">
-    <p className="note">{status}</p>
-    <section className="grid dashboard-kpis">
-      <article className="card card-lg"><p className="eyebrow">Saldo atual registrado</p><p className="metric metric-hero num">{data.balance}</p><p className="small muted">{data.hasFinancialData ? `Consolidado de ${data.accountCount} contas no SQLite local.` : 'Nenhuma conta ou transação foi cadastrada.'}</p><button className="btn btn-primary" onClick={app.openImport}>Importar extrato</button></article>
-      <article className="card"><p className="eyebrow">Média de gastos diária</p><p className="metric num">{data.dailyAverage}</p><p className="small muted">{data.hasFinancialData ? 'Calculada pelo backend no mês atual.' : 'Será calculada depois da primeira importação.'}</p><span className="chip"><i className="bi bi-dash" />{data.hasFinancialData ? 'Sem meta configurada' : 'Sem dados'}</span></article>
-      <article className="card"><p className="eyebrow">Gastos do mês</p><p className="metric num">{data.monthExpenses}</p><p className="small muted">Somente transações persistidas entram no cálculo.</p></article>
-    </section>
-    <section className="grid dashboard-actions">
-      <article className="card"><SectionTitle title="Base financeira"/><p className="metric num">{data.accountCount}</p><p className="small muted">contas ativas cadastradas</p><Link className="btn btn-neutral" href="/onboarding">Cadastrar posição</Link></article>
-      <article className="card"><SectionTitle title="Extratos processados"/><p className="metric num">{data.importCount}</p><p className="small muted">lotes concluídos no banco local</p><button className="btn btn-primary" onClick={app.openImport}>Importar arquivo</button></article>
-      <article className="card"><SectionTitle title="Fila de conciliação"/><p className="metric num">{data.pendingCount}</p><p className="small muted">itens aguardando confirmação</p><Link className="btn btn-neutral" href="/conciliacao">Abrir fila</Link></article>
     </section>
   </div>;
 }

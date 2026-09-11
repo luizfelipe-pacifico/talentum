@@ -73,10 +73,6 @@ export const TAB_GROUPS: { prefix: string; tabs: { href: string; label: string }
   { prefix: '/perfil', tabs: [{ href: '/historico', label: 'Timeline' }, { href: '/perfil', label: 'Perfil e progresso' }, { href: '/perfil/privacidade', label: 'Dados e backup' }] },
 ];
 
-export const CONTAS: { label: string; saldo: string }[] = [
-  { label: 'Sem contas', saldo: '' },
-];
-
 export const IMPORT_LABELS = ['Seleção do arquivo', 'Processamento', 'Triagem'];
 
 export const THEME_OPTIONS = [

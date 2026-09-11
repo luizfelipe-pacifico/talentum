@@ -7,7 +7,7 @@ import type { ReactNode } from 'react';
 import logoDark from '../../icon-talentum-dark.svg';
 import { useApp } from '@/components/app-state';
 import { Overlays } from '@/components/overlays';
-import { CONTAS, NAV, PAGE_META, TAB_GROUPS, THEME_OPTIONS } from '@/lib/demo-data';
+import { NAV, PAGE_META, TAB_GROUPS, THEME_OPTIONS } from '@/lib/demo-data';
 
 function isActive(pathname: string, href: string) {
   return href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
@@ -64,7 +64,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <>
               <span style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                 <span className="sidebar-account-label">Conta ativa</span>
-                <span className="sidebar-account-name">{CONTAS[app.contaIndex].label}</span>
+                <span className="sidebar-account-name">Todas as contas</span>
               </span>
               <i className="bi bi-chevron-expand" style={{ fontSize: 12, color: '#b7b2a9', flex: 'none' }} />
             </>
@@ -128,11 +128,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="row-tight">
-            <span className="chip" title="Nenhuma informação financeira foi importada.">
-              <i className="bi bi-database" />
-              Sem dados importados
-            </span>
-
             {app.offline && (
               <span className="chip chip-info chip-lg">
                 <i className="bi bi-wifi-off" />

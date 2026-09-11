@@ -18,6 +18,7 @@ model LocalProfile {
   categories    Category[]
   importBatches ImportBatch[]
   transactions  Transaction[]
+  obligations   ScheduledObligation[]
 }
 
 model UserPreference {
@@ -59,6 +60,7 @@ model Account {
   institution      Institution?      @relation(fields: [institutionId], references: [id], onDelete: SetNull)
   balanceSnapshots BalanceSnapshot[]
   transactions     Transaction[]
+  obligations      ScheduledObligation[]
 
   @@index([profileId])
   @@index([institutionId])
@@ -84,6 +86,7 @@ model Category {
   updatedAt    DateTime      @updatedAt
   profile      LocalProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
   transactions Transaction[]
+  obligations  ScheduledObligation[]
 
   @@unique([profileId, name, kind])
   @@index([profileId])
@@ -126,5 +129,33 @@ model Transaction {
   @@index([profileId, occurredOn])
   @@index([accountId, occurredOn])
   @@index([importBatchId])
+  @@index([categoryId])
+}
+
+/// Compromisso com valor e vencimento. Subtraendo do Saldo Livre de Risco.
+/// `status` é indispensável: sem ele, obrigação já paga continuaria sendo
+/// descontada e o veredito ficaria errado por construção (docs/DASHBOARD.md, L-1).
+model ScheduledObligation {
+  id          String       @id @default(uuid())
+  profileId   String
+  accountId   String?
+  categoryId  String?
+  description String
+  amountCents BigInt
+  dueDate     DateTime
+  /// open | paid | cancelled
+  status      String       @default("open")
+  /// none | monthly | weekly | yearly
+  recurrence  String       @default("none")
+  /// Valor informado como aproximado no onboarding.
+  isEstimated Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  profile     LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  account     Account?     @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  category    Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([profileId, status, dueDate])
+  @@index([accountId])
   @@index([categoryId])
 }

@@ -44,7 +44,24 @@ The interface exists to help users understand their financial position and act w
 
 The ratio is a composition guideline, not a requirement to measure every screen mathematically. A screen should still feel predominantly light, structurally dark, and selectively accented.
 
+### Data visualization tokens
+
+The core palette is warm and near-monochrome. That is an asset for the interface and a liability for charts: measured against the product surfaces, Walnut and Amber fail the categorical checks in both themes, and in dark mode they fall below the normal-vision separation floor — two adjacent browns that even full-colour-vision readers struggle to tell apart.
+
+Chart marks therefore take their own tokens, and the brand accent stays in the chrome:
+
+| Token | Light | Dark | Role |
+| --- | --- | --- | --- |
+| `--data-1` | `#2a78d6` | `#3987e5` | single-series and primary-series mark |
+| `--data-recessive` | `#898781` | `#898781` | de-emphasised groups such as "Outros" and "Sem categoria" |
+
+Both clear 3:1 against the light (`#FFFDF8`) and dark (`#2A2622`) chart surfaces. Classical Amber remains the **emphasis** colour — one highlighted series against grey — and is never a categorical slot.
+
+The full eight-slot categorical palette is **not ratified**: it is still an open decision recorded in [`DASHBOARD.md`](./DASHBOARD.md), R-15. Introduce it only after validating it against these surfaces.
+
 ### Semantic colors
+
+Semantic tokens mean *state* and are never used as chart series colours: measured against each other they collapse under deuteranopia. Every semantic use ships with an icon and a label.
 
 The brand accent must not represent every system state. Success, warning, error, and informational feedback require distinguishable semantic colors. Select accessible, muted tones that harmonize with the core palette and document them as tokens before implementation.
 

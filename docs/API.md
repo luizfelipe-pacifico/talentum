@@ -10,10 +10,19 @@ Este documento mistura contratos atuais e planejados. As rotas marcadas como atu
 | --- | --- | --- | --- |
 | `POST` | `/api/action-codes` | bootstrap e validação Zod | emitir código de ação por 60 segundos |
 | `GET` | `/api/system/status` | `X-Action-Code` de uso único | verificar comunicação frontend/API |
-| `GET` | `/api/dashboard` | `X-Action-Code` de uso único | consultar indicadores calculados no SQLite local |
-
-`GET /api/dashboard` retorna saldo consolidado, gastos e média diária do mês e quantidades de contas, transações, importações e pendências. A chamada solicita primeiro um código para o mesmo método e caminho em `POST /api/action-codes`. Valores monetários são calculados com `BigInt` em centavos e formatados no backend; o endpoint não devolve transações individuais nem conteúdo de arquivos.
+| `GET` | `/api/dashboard` | `X-Action-Code` de uso único | indicadores do painel calculados no SQLite local |
+| `GET` | `/api/dashboard/categories` | `X-Action-Code` de uso único | gastos por categoria no período |
 | `GET` | `/api/health/live` | somente infraestrutura | healthcheck sem dados de aplicação |
+
+Toda consulta do painel é escopada por `profileId`, resolvido no servidor por `getLocalProfileId()`. Sem perfil local, a resposta é `{ "hasProfile": false }` e a interface leva ao onboarding; nenhum zero é devolvido no lugar de um valor desconhecido.
+
+`GET /api/dashboard` retorna o Saldo Livre de Risco, o saldo consolidado, o total comprometido no período, gastos e média diária do mês com a variação contra o mesmo intervalo do mês anterior, e as quantidades de contas com saldo conhecido e desconhecido, pendências e importações.
+
+`GET /api/dashboard/categories` retorna as fatias de gasto do período, já ordenadas, com a cauda somada em `Outros` e os lançamentos sem categoria em uma fatia própria. A soma das fatias é sempre igual a `totalCents`.
+
+**Valores monetários trafegam como centavos inteiros em `string`** — `BigInt` não é serializável em JSON — e são formatados apenas na renderização. O backend não devolve texto monetário formatado. Nenhum dos dois endpoints devolve transações individuais, descrições de lançamento ou conteúdo de arquivo.
+
+As fórmulas e os critérios de cada indicador estão em [`DASHBOARD.md`](./DASHBOARD.md), Parte 5.
 
 O armazenamento atual dos códigos é em memória e serve somente ao backend local de processo único. Antes de execução distribuída, deverá ser substituído por mecanismo atômico apropriado ao provedor.
 
@@ -62,7 +71,6 @@ Esse mecanismo reduz replay e vincula a intenção à chamada, mas não substitu
 | `GET` | `/api/transactions` | listar e filtrar transações |
 | `PATCH` | `/api/transactions/:id` | corrigir classificação ou metadados |
 | `POST` | `/api/reconciliations/:id/resolve` | concluir uma pendência |
-| `GET` | `/api/dashboard` | obter projeções e saldo livre |
 | `POST` | `/api/portfolio/contribution-simulation` | simular aporte por pilares |
 | `GET` | `/api/timeline` | consultar eventos locais |
 

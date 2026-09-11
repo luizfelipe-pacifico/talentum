@@ -248,7 +248,9 @@ Táticas de verificação: **storyboard reverso** (percorrer o resultado final e
 
 # Parte 3 — Auditoria do dashboard atual
 
-**Escopo auditado:** [`src/components/demo-pages.tsx:16-33`](../src/components/demo-pages.tsx#L16-L33) (`DashboardPage`), [`src/hooks/use-dashboard-data.ts`](../src/hooks/use-dashboard-data.ts), [`src/app/api/dashboard/route.ts`](../src/app/api/dashboard/route.ts) e os tokens em [`src/app/globals.css`](../src/app/globals.css). Estado: **atual**, verificado no repositório.
+**Escopo auditado:** `DashboardPage` em `src/components/demo-pages.tsx`, `src/hooks/use-dashboard-data.ts`, `src/app/api/dashboard/route.ts` e os tokens em [`src/app/globals.css`](../src/app/globals.css), no estado do repositório em 10 de setembro de 2026.
+
+> **Situação em 11 de setembro de 2026.** Esta auditoria foi **atendida**. D-1 a D-15 estão corrigidos: o painel foi reescrito em [`src/components/dashboard.tsx`](../src/components/dashboard.tsx), as fórmulas isoladas em [`src/server/dashboard-metrics.ts`](../src/server/dashboard-metrics.ts) com testes unitários, e o contrato refeito em [`src/app/api/dashboard/route.ts`](../src/app/api/dashboard/route.ts). O texto abaixo permanece como registro do que foi encontrado e por quê — apagá-lo apagaria a justificativa das regras da Parte 4.
 
 ## O que existe hoje
 
@@ -419,7 +421,7 @@ A ordem é narrativa (Lição 6, começando pelo fim): a resposta primeiro, depo
 
 **R-14. Tokens semânticos nunca são cor de série.** `--ok`, `--warn`, `--err` e `--info` significam estado. Como preenchimento, reprovam entre si (ΔE 6.0 err↔ok sob deuteranopia). Usá-los em séries faria uma série impersonar um estado. Todo uso semântico vem com **ícone e rótulo**, jamais cor sozinha.
 
-**R-15. Paleta categórica validada.** **Em aberto — exige ratificação em [`BRANDING.md`](./BRANDING.md) antes do uso.** Proposta, já validada contra as superfícies reais do Talentum:
+**R-15. Paleta categórica validada.** Os slots 1 e o cinza de desênfase estão **ratificados** em [`BRANDING.md`](./BRANDING.md) como `--data-1` e `--data-recessive`, e são os que o painel usa hoje. Os oito slots abaixo seguem **em aberto** até existir um gráfico com múltiplas séries:
 
 | Slot | Matiz | Claro | Escuro |
 | --- | --- | --- | --- |
@@ -719,27 +721,31 @@ Forma: **barra divergente ancorada no zero** — entradas acima, saídas abaixo,
 
 ## Matriz de viabilidade
 
-| ID | Elemento | Estado | Bloqueio |
+Atualizada em 11 de setembro de 2026, após a implementação.
+
+| ID | Elemento | Estado | Observação |
 | --- | --- | --- | --- |
-| **G-2** | Gastos por categoria | **Calculável hoje** | — (ressalva L-5) |
-| **I-1** | Saldo consolidado | **Calculável hoje** | — (ressalvas L-3, L-4) |
-| **I-2** | Gastos do mês | **Calculável hoje** | — (ressalva L-5) |
-| **I-3** | Média diária (vs. mês anterior) | **Calculável hoje** | — |
-| **A** | Fila de conciliação | Aproximação hoje | migration 6 para a forma correta |
-| **V** | Saldo Livre de Risco | Depende de migration | migration 4 + L-1 |
-| **I-4** | Comprometido no período | Depende de migration | migration 4 + L-1 |
-| **G-1** | Projeção de caixa | Depende de migration | migration 4 + L-1 |
-| **G-3** | Entradas e saídas por mês | **Bloqueado** | L-2 (cobertura temporal) |
+| **V** | Saldo Livre de Risco | **Implementado** | migration `mvp_scheduled_obligations` criada com os campos de L-1 |
+| **I-1** | Saldo consolidado | **Implementado** | inclui lançamentos posteriores ao snapshot; contas sem saldo sinalizadas |
+| **I-2** | Gastos do mês | **Implementado** | comparação contra o mesmo intervalo do mês anterior |
+| **I-3** | Média diária | **Implementado** | comparação de ritmo, não orçamento |
+| **I-4** | Comprometido no período | **Implementado** | exposto como número próprio, para tornar V explicável |
+| **A** | Fila de conciliação | **Implementado como aproximação** | usa `Transaction.status = 'pending'`; a forma correta espera `ReconciliationItem` |
+| **G-2** | Gastos por categoria | **Implementado** | ressalva L-5 permanece até a conciliação |
+| **G-1** | Projeção de caixa | Calculável, não implementado | depende de volume de obrigações que ainda não há como cadastrar pela interface |
+| **G-3** | Entradas e saídas por mês | **Bloqueado** | L-2: `ImportBatch` não registra período coberto |
 | — | Média diária vs. orçamento | **Bloqueado** | `Budget` é Etapa 9 |
 | — | ARCA, XP, notícias, cartões | Fora de escopo | Etapas 8, 14, 15, 16, 17 |
 
-Leitura direta: **quatro dos nove elementos já são calculáveis com o schema de hoje**, três destravam com uma única migration (a 4), um depende de um campo que ainda não foi especificado, e um está corretamente fora do MVP.
+Sete dos nove elementos estão no ar. G-1 aguarda o CRUD de obrigações da Feature 3; G-3 aguarda L-2.
 
 ## Lacunas de modelo a resolver
 
 Cada item é pré-requisito de um elemento acima. Nenhum deles está especificado hoje.
 
-**L-1 — `ScheduledObligation` precisa de campos que nenhum documento define.**
+**L-1 — RESOLVIDO em 11/09/2026.** `ScheduledObligation` foi criada pela migration `mvp_scheduled_obligations` com `amountCents`, `dueDate`, `status`, `recurrence` e `isEstimated`, e está documentada em [`DATA_MODEL.md`](./DATA_MODEL.md). O registro original segue abaixo.
+
+**L-1 — `ScheduledObligation` precisava de campos que nenhum documento definia.**
 [`ROUTING_MVP.md`](./ROUTING_MVP.md) descreve a tabela apenas como *"compromisso com valor e vencimento"*, listando `id`, `profileId`, `accountId?` e `categoryId?`. Faltam, no mínimo:
 
 | Campo | Por que é indispensável |
@@ -769,7 +775,7 @@ A mesma entidade aparece como `ScheduledObligation` em [`ROUTING_MVP.md`](./ROUT
 
 ## Defeitos adicionais encontrados na API atual
 
-Levantados ao verificar as fórmulas. Somam-se a D-1 a D-10 da Parte 3.
+Levantados ao verificar as fórmulas. Somam-se a D-1 a D-10 da Parte 3. **Todos corrigidos em 11/09/2026**; permanecem registrados porque explicam as regras.
 
 **D-11 — Nenhuma consulta do dashboard é escopada por perfil.**
 As cinco consultas de [`route.ts`](../src/app/api/dashboard/route.ts) — `account.findMany`, dois `transaction.count`, `transaction.findMany` e `importBatch.count` — não filtram `profileId`. Hoje é inofensivo porque existe um perfil por banco local, mas contraria diretamente [`ESTRUTURA_DE_DADOS.md`](./ESTRUTURA_DE_DADOS.md) §4, que exige incluir o escopo do usuário na consulta e testar acessos cruzados negativos. Corrigir antes que exista um segundo perfil, não depois.
@@ -879,12 +885,12 @@ Cinco verificações computadas: faixa de luminosidade, piso de croma, separaç�
 
 # Decisões em aberto
 
-1. Ratificar a paleta categórica de R-15 em [`BRANDING.md`](./BRANDING.md) como *tokens* oficiais de visualização, ou derivar alternativa a partir das rampas da marca pelo procedimento de aproximação.
+1. Ratificar a paleta categórica **completa** de R-15. Os dois tokens efetivamente necessários hoje — `--data-1` e `--data-recessive` — já foram ratificados em [`BRANDING.md`](./BRANDING.md); os oito slots seguem em aberto até existir gráfico com múltiplas séries.
 2. Definir os *tokens* exatos de ganho e perda financeira, distintos dos quatro semânticos atuais.
 3. Decidir se a densidade será configurável (confortável/compacto) já no MVP ou depois.
 4. Definir o período padrão do Saldo Livre de Risco na tela: mês civil, próximos 30 dias, ou escolha do usuário.
 5. Versionar o validador de paleta e ligá-lo ao CI.
-6. Especificar os campos de `ScheduledObligation` na migration 4, conforme L-1 — em especial `status`, sem o qual o Saldo Livre de Risco fica errado por construção.
+6. ~~Especificar os campos de `ScheduledObligation`~~ — **resolvido**: migration `mvp_scheduled_obligations`. Falta o CRUD e a tela de recorrências, que pertencem à Feature 3.
 7. Acrescentar `periodStart` e `periodEnd` a `ImportBatch` (L-2) e definir como a cobertura temporal é exibida.
 8. Acrescentar `source` a `BalanceSnapshot` (L-3), alinhado a `BANK_REPORTED` / `USER_DECLARED` de [`ONBOARDING.md`](./ONBOARDING.md).
 9. Resolver a decisão 8 de [`ONBOARDING.md`](./ONBOARDING.md) — múltiplas moedas no MVP — que hoje bloqueia a correção de L-4.

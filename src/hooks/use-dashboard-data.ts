@@ -1,57 +1,61 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { getWithActionCode } from '@/lib/api-client';
 
-export type DashboardData = {
-  hasFinancialData: boolean;
-  balance: string;
-  monthExpenses: string;
-  dailyAverage: string;
-  accountCount: number;
-  transactionCount: number;
+export type DashboardMetrics = {
+  period: { start: string; end: string; elapsedDays: number };
+  /* Centavos chegam como string e são formatados na renderização. */
+  riskFreeBalanceCents: string;
+  balanceCents: string;
+  committedCents: string;
+  committedCount: number;
+  monthExpensesCents: string;
+  monthExpensesChange: number | null;
+  dailyAverageCents: string;
+  dailyAverageChange: number | null;
+  accountsWithKnownBalance: number;
+  accountsWithUnknownBalance: number;
   pendingCount: number;
   importCount: number;
 };
 
-const emptyData: DashboardData = {
-  hasFinancialData: false,
-  balance: 'R$ 0,00',
-  monthExpenses: 'R$ 0,00',
-  dailyAverage: 'R$ 0,00',
-  accountCount: 0,
-  transactionCount: 0,
-  pendingCount: 0,
-  importCount: 0,
-};
+export type DashboardPayload = { hasProfile: false } | ({ hasProfile: true } & DashboardMetrics);
 
-export function useDashboardData() {
-  const [data, setData] = useState<DashboardData>(emptyData);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+/* Estado discriminado de propósito: não existe valor padrão para exibir.
+   Um zero renderizado durante carregamento ou falha é uma afirmação falsa sobre
+   o dinheiro da pessoa usuária (docs/DASHBOARD.md, D-2 e R-29). */
+export type DashboardState =
+  | { status: 'loading' }
+  | { status: 'error'; retry: () => void }
+  | { status: 'ready'; payload: DashboardPayload };
 
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const codeResponse = await fetch('/api/action-codes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ method: 'GET', path: '/api/dashboard' }),
-        });
-        if (!codeResponse.ok) throw new Error('ACTION_CODE_FAILED');
-        const { actionCode } = (await codeResponse.json()) as { actionCode: string };
-        const response = await fetch('/api/dashboard', { headers: { 'X-Action-Code': actionCode }, cache: 'no-store' });
-        if (!response.ok) throw new Error('DASHBOARD_FAILED');
-        if (active) setData((await response.json()) as DashboardData);
-      } catch {
-        if (active) setError(true);
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-    void load();
-    return () => { active = false; };
+export function useDashboardData(): DashboardState {
+  const [state, setState] = useState<DashboardState>({ status: 'loading' });
+  const [attempt, setAttempt] = useState(0);
+
+  const retry = useCallback(() => {
+    setState({ status: 'loading' });
+    setAttempt((current) => current + 1);
   }, []);
 
-  return { data, loading, error };
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+
+    getWithActionCode<DashboardPayload>('/api/dashboard', controller.signal)
+      .then((payload) => {
+        if (active) setState({ status: 'ready', payload });
+      })
+      .catch(() => {
+        if (active) setState({ status: 'error', retry });
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [attempt, retry]);
+
+  return state;
 }
