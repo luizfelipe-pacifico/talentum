@@ -8,6 +8,7 @@
   # Talentum
 
   **Seu piloto automático financeiro, local-first e open-source.**
+https://talentum-tech.vercel.app
 
   [![Status: planejamento ativo](https://img.shields.io/badge/status-planejamento%20ativo-B8773D)](#estado-do-projeto)
   [![Plataformas: Windows e Linux](https://img.shields.io/badge/plataformas-Windows%20%7C%20Linux-1A110A)](#arquitetura)
@@ -175,8 +176,9 @@ pnpm prisma:migrate
 | --- | --- |
 | `pnpm dev` | Limpa o cache do Next.js, libera a porta 3000 e inicia o servidor local |
 | `pnpm dev:all` | Inicia o Next.js e abre a aplicação no Electron |
-| `pnpm docker:up` | Constrói e inicia o servidor local em Docker |
-| `pnpm docker:down` | Encerra o servidor sem remover o volume SQLite |
+| `pnpm docker:up` | Constrói e inicia o app local em `localhost:3000` e a LP em `localhost:3100` |
+| `pnpm docker:up:detached` | Inicia os dois serviços em segundo plano e aguarda os healthchecks |
+| `pnpm docker:down` | Encerra os dois serviços sem remover o volume SQLite |
 | `pnpm build` | Gera a build de produção do Next.js |
 | `pnpm start` | Executa a build de produção na porta 3000 |
 | `pnpm typecheck` | Verifica os tipos TypeScript |
@@ -184,7 +186,7 @@ pnpm prisma:migrate
 | `pnpm prisma:validate` | Valida o schema Prisma |
 | `pnpm prisma:migrate` | Cria e aplica migrações SQLite locais |
 
-O container Ubuntu 24.04 executa o servidor Next.js como usuário não-root; a janela Electron é iniciada no host. Dados SQLite usam um volume nomeado e não entram na imagem.
+Os containers executam os servidores Next.js como usuários não-root; a janela Electron é iniciada no host. O app local usa um volume nomeado para o SQLite, que não entra na imagem. A LP é servida separadamente em `http://localhost:3100`, preservando o limite arquitetural entre o site público e o produto local.
 
 ## Documentação
 
