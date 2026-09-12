@@ -19,6 +19,11 @@ Categorias, planejamento e compromissos possuem contratos locais atuais em
 trafega como centavos inteiros em `string`. Uma fonte de renda prevista nunca é
 somada ao saldo antes de existir como transação efetiva.
 
+O detalhe de lançamento usa `GET|PATCH /api/transactions/:transactionId`; seu
+histórico imutável usa `GET /api/transactions/:transactionId/history`. A edição
+aceita somente descrição, categoria e estado, valida propriedade e categoria no
+backend e persiste antes/depois na mesma transação SQLite.
+
 | Método | Rota | Proteção | Finalidade |
 | --- | --- | --- | --- |
 | `POST` | `/api/action-codes` | bootstrap e validação Zod | emitir código de ação por 60 segundos |

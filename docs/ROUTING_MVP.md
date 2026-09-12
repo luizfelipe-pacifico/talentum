@@ -366,8 +366,8 @@ Exibe os lançamentos persistidos com paginação, filtros, origem do lote e est
 ### APIs locais
 
 - `GET /api/transactions` — **atual**, com filtro validado, paginação por cursor e ordenação determinística com desempate por `id`
-- `GET|PATCH /api/transactions/[transactionId]` — planejada
-- `GET /api/transactions/[transactionId]/history` — planejada
+- `GET|PATCH /api/transactions/[transactionId]` — **atual**
+- `GET /api/transactions/[transactionId]/history` — **atual**
 
 ### Consulta
 
@@ -379,7 +379,10 @@ Exibe os lançamentos persistidos com paginação, filtros, origem do lote e est
 
 - Sem transações, a rota apresenta estado vazio; com registros, cada linha corresponde a uma `Transaction.id` retornada pelo backend.
 
-**Atendido para a listagem.** `/extratos` consome `GET /api/transactions` e possui os quatro estados. Edição de lançamento e histórico por transação continuam planejados.
+**Atendido.** `/extratos` consome `GET /api/transactions`, possui os quatro
+estados e liga cada linha ao detalhe por `Transaction.id`. A edição valida
+propriedade e categoria no backend e registra antes/depois em
+`TransactionRevision`; o histórico individual é somente leitura.
 
 ## Feature 6 — Conciliação
 
@@ -504,6 +507,7 @@ Registra importações e alterações relevantes sem guardar o código temporár
 | 4c | `mvp_pix_identifier` | `PixIdentifier` | planejada na Feature 2 |
 | 5 | `mvp_import_details` | `ImportFile`, `CsvMappingProfile`, `ImportIssue`, colunas de período em `ImportBatch` e `Transaction.externalId` | criada |
 | 5b | `balance_snapshot_source` | `BalanceSnapshot.importBatchId`, para que desfazer a importação não apague saldo informado à mão | criada |
+| 5c | `transaction_revisions` | `TransactionRevision` | criada |
 | 6 | `mvp_reconciliation` | `ReconciliationItem`, `ReconciliationDecision`, `FinancialAdjustment`, `OwnAccountTransfer` | planejada |
 | 7 | `mvp_timeline_backup` | `TimelineEvent`, `DatabaseBackup` | planejada |
 
