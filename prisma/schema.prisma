@@ -29,6 +29,8 @@ model LocalProfile {
   reconciliationDecisions ReconciliationDecision[]
   financialAdjustments FinancialAdjustment[]
   ownAccountTransfers OwnAccountTransfer[]
+  timelineEvents TimelineEvent[]
+  databaseBackups DatabaseBackup[]
 }
 
 model OnboardingSession {
@@ -171,6 +173,7 @@ model ImportBatch {
   files            ImportFile[]
   issues           ImportIssue[]
   balanceSnapshots BalanceSnapshot[]
+  timelineEvents    TimelineEvent[]
 
   @@unique([profileId, fingerprint])
   @@index([profileId, importedAt])
@@ -268,6 +271,7 @@ model Transaction {
   financialAdjustments FinancialAdjustment[]
   outgoingTransfers OwnAccountTransfer[] @relation("OutgoingTransfer")
   incomingTransfers OwnAccountTransfer[] @relation("IncomingTransfer")
+  timelineEvents TimelineEvent[]
 
   @@unique([accountId, externalId])
   @@index([profileId, occurredOn])
@@ -315,6 +319,7 @@ model TransactionRevision {
   createdAt     DateTime     @default(now())
   profile       LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   transaction   Transaction  @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  timelineEvents TimelineEvent[]
 
   @@index([profileId, createdAt])
   @@index([transactionId, createdAt])
@@ -349,6 +354,7 @@ model ReconciliationDecision {
   reconciliationItem   ReconciliationItem  @relation(fields: [reconciliationItemId], references: [id], onDelete: Cascade)
   adjustment           FinancialAdjustment?
   transfer             OwnAccountTransfer?
+  timelineEvents       TimelineEvent[]
 
   @@index([profileId, createdAt])
   @@index([reconciliationItemId, createdAt])
@@ -386,6 +392,47 @@ model OwnAccountTransfer {
   @@unique([outgoingTransactionId, incomingTransactionId])
   @@index([profileId, createdAt])
   @@index([incomingTransactionId])
+}
+
+/// Evento local redigido. Guarda apenas metadados estruturados e IDs opacos.
+model TimelineEvent {
+  id                       String                  @id @default(uuid())
+  profileId                String
+  kind                     String
+  title                    String
+  description              String
+  importBatchId            String?
+  transactionId            String?
+  transactionRevisionId    String?
+  reconciliationDecisionId String?
+  reversible               Boolean                 @default(false)
+  revertedAt               DateTime?
+  createdAt                DateTime                @default(now())
+  profile                  LocalProfile             @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  importBatch              ImportBatch?             @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  transaction              Transaction?             @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  transactionRevision      TransactionRevision?     @relation(fields: [transactionRevisionId], references: [id], onDelete: SetNull)
+  reconciliationDecision   ReconciliationDecision?  @relation(fields: [reconciliationDecisionId], references: [id], onDelete: SetNull)
+
+  @@index([profileId, createdAt])
+  @@index([importBatchId])
+  @@index([transactionId])
+}
+
+/// Metadados de um backup local; caminho, chave e conteúdo nunca entram aqui.
+model DatabaseBackup {
+  id            String       @id @default(uuid())
+  profileId     String
+  schemaVersion String
+  checksum      String
+  byteSize      Int
+  status        String
+  verifiedAt    DateTime?
+  createdAt     DateTime     @default(now())
+  profile       LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, createdAt])
+  @@index([profileId, status, verifiedAt])
 }
 
 /// Entrada futura declarada. Não aumenta o Saldo Livre de Risco antes de ser
