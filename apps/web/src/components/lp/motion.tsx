@@ -27,6 +27,40 @@ export function useReducedMotion() {
   return reduced;
 }
 
+/** Indicador discreto de posição; o trilho e os controles nativos ficam ocultos. */
+export function ScrollPosition() {
+  const [metrics, setMetrics] = useState({ top: 4, height: 44, visible: false });
+
+  useEffect(() => {
+    const update = () => {
+      const root = document.documentElement;
+      const viewport = root.clientHeight;
+      const scrollable = root.scrollHeight - viewport;
+      const available = Math.max(viewport - 8, 0);
+      const height = Math.max(44, Math.round((viewport / root.scrollHeight) * available));
+      const top = scrollable > 0 ? 4 + Math.round((root.scrollTop / scrollable) * (available - height)) : 4;
+      setMetrics({ top, height, visible: scrollable > 0 });
+    };
+
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, []);
+
+  if (!metrics.visible) return null;
+  return (
+    <span
+      className="lp-scroll-position"
+      aria-hidden="true"
+      style={{ height: metrics.height, transform: `translateY(${metrics.top}px)` }}
+    />
+  );
+}
+
 type RevealProps = {
   children: ReactNode;
   /** Atraso em milissegundos para escalonar itens de uma mesma fileira. */

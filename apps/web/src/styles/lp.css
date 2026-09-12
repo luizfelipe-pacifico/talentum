@@ -57,6 +57,18 @@
      As camadas decorativas são recortadas nas próprias seções. */
 }
 
+.lp-scroll-position {
+  position: fixed;
+  z-index: 200;
+  top: 0;
+  right: 3px;
+  width: 6px;
+  border-radius: 999px;
+  background: var(--lp-ebony);
+  box-shadow: 0 0 0 1px rgb(244 241 234 / 38%);
+  pointer-events: none;
+}
+
 /* Claro é o tema padrão do projeto: a landing page é sempre clara.
    Ela não segue a preferência do sistema nem o seletor de tema do aplicativo,
    para que a página pública tenha uma única aparência combinada. */

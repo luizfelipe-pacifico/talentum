@@ -300,6 +300,8 @@ Motion should confirm cause and effect, not decorate the interface.
 
 ## Accessibility
 
+Na landing page, a barra de rolagem nativa fica oculta, sem trilho, botões ou setas. Um indicador fixo em ébano representa proporcionalmente a posição e o tamanho da viewport; rolagem por mouse, toque e teclado permanece nativa.
+
 - Meet WCAG 2.2 AA contrast requirements for text and interactive elements.
 - Maintain visible keyboard focus using a treatment distinct from the component border.
 - Provide complete keyboard navigation and logical focus order.
