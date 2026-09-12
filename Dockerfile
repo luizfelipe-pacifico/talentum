@@ -5,11 +5,11 @@ COPY --from=node-runtime /usr/local/ /usr/local/
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates openssl \
     && rm -rf /var/lib/apt/lists/* \
-    && corepack enable
+    && corepack enable pnpm
 WORKDIR /app
 
 FROM base AS dependencies
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
@@ -17,7 +17,8 @@ ENV TALENTUM_STANDALONE_BUILD=1
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN pnpm prisma:generate
-RUN pnpm build
+RUN pnpm build \
+    && pnpm prune --prod
 
 FROM base AS runner
 ENV NODE_ENV=production
@@ -30,9 +31,9 @@ RUN groupadd --system --gid 1001 nodejs \
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=dependencies --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 USER nextjs
 EXPOSE 3000
-CMD ["sh", "-c", "pnpm prisma migrate deploy && exec node server.js"]
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && exec node server.js"]

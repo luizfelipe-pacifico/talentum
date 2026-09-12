@@ -31,9 +31,10 @@ Não copie valores reais para `.env.example`. O arquivo `.env` local não deve s
 | --- | --- |
 | `pnpm dev` | libera a porta 3000, remove `.next` e inicia `next dev` |
 | `pnpm dev:all` | inicia o servidor, aguarda a porta e abre o Electron |
-| `pnpm docker:build` | constrói a imagem do servidor Next.js local |
-| `pnpm docker:up` | constrói e inicia o servidor em `127.0.0.1:3000` |
-| `pnpm docker:down` | encerra o servidor em container sem apagar o volume |
+| `pnpm docker:build` | constrói as imagens isoladas do app local e da LP |
+| `pnpm docker:up` | constrói e inicia o app em `127.0.0.1:3000` e a LP em `127.0.0.1:3100` |
+| `pnpm docker:up:detached` | inicia os dois serviços em segundo plano e aguarda os healthchecks |
+| `pnpm docker:down` | encerra os containers sem apagar o volume SQLite |
 | `pnpm build` | chama `next build` |
 | `pnpm start` | executa a build pelo servidor Next.js na porta 3000 |
 | `pnpm typecheck` | chama `tsc --noEmit` |
@@ -53,6 +54,8 @@ Não copie valores reais para `.env.example`. O arquivo `.env` local não deve s
 | `pnpm web:build` | gera a build isolada destinada à Vercel |
 
 `pnpm dev` e `pnpm dev:all` executam `prisma migrate deploy` antes de abrir o servidor. A URL local padrão aponta para `temp/talentum-local.db`, que é ignorado pelo Git. Crie migrations com `pnpm prisma:migrate --name <nome>`; não use `prisma db push` como fluxo do projeto.
+
+No fluxo Docker atual, `talentum-local` contém o backend e a interface desktop local; `talentum-web` contém somente a LP/BFF de `apps/web`. A URL padrão do Worker vista pela LP em container é `http://host.docker.internal:8787` e pode ser substituída por `CLOUDFLARE_API_BASE_URL`. Valores locais de integração devem ficar em `.env` ignorado, nunca no Compose versionado.
 
 O Electron roda no host e pode apontar tanto para `pnpm dev` quanto para o servidor iniciado pelo Compose. Ao iniciar, o container executa `prisma migrate deploy`, cria ou atualiza `/data/talentum-local.db` e só então sobe o servidor. O volume nomeado `talentum-data` preserva o SQLite entre recriações do container.
 

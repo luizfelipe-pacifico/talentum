@@ -48,6 +48,8 @@ Todos podem ler conteúdo com estado `PUBLISHED`. Criar post, comentar, curtir e
 - **GitHub Releases:** instaladores assinados de Windows e Linux produzidos pelo pipeline de release.
 - **Borda:** TLS, WAF, Turnstile e cabeçalhos de segurança.
 
+Em desenvolvimento local, a LP possui imagem Docker própria e é publicada apenas em `127.0.0.1:3100`. Ela não reutiliza a imagem do app local nem inclui Prisma, SQLite, Electron ou domínio financeiro. A Content Security Policy usa nonce novo por resposta, propagado pelo middleware ao renderizador do Next.js, para permitir somente os scripts emitidos pela própria renderização sem liberar scripts inline indiscriminadamente.
+
 ## Implantação
 
 A interface web será publicada em `https://talentum.vercel.app`. O backend permanece em Cloudflare Workers; o D1 nunca é acessado diretamente pelo navegador.
