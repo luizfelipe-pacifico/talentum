@@ -49,6 +49,28 @@
   --data-recessive: #898781;
 }
 
+.entity-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entity-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.entity-list li > span:first-child {
+  display: grid;
+  gap: var(--space-1);
+}
+
 html.dark {
   --bg: #211e1a;
   --surface: #2a2622;

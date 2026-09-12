@@ -263,6 +263,11 @@ Cria a estrutura usada para interpretar receitas, despesas, transferências e va
 
 - O frontend lista somente categorias e obrigações retornadas pelo backend, e o total comprometido possui teste unitário.
 
+**Atendido.** Categorias, fontes de renda, compromissos e regras de
+estabelecimento possuem persistência e APIs locais protegidas. As telas de
+categorias, rendas e recorrências consultam exclusivamente esses contratos;
+valores futuros de renda permanecem fora do Saldo Livre de Risco.
+
 ## Feature 4 — Importação CSV e OFX
 
 ### O que faz
@@ -495,7 +500,8 @@ Registra importações e alterações relevantes sem guardar o código temporár
 | 2 | `mvp_financial_core` | `Institution`, `Account`, `BalanceSnapshot`, `Category`, `ImportBatch`, `Transaction` | criada |
 | 3 | `mvp_onboarding` | `OnboardingSession`, `OnboardingAnswer` | criada |
 | 4 | `mvp_scheduled_obligations` | `ScheduledObligation` | criada |
-| 4b | `mvp_financial_planning` | `IncomeSource`, `MerchantRule`, `PixIdentifier` | planejada |
+| 4b | `mvp_income_merchant_rules` | `IncomeSource`, `MerchantRule` | criada |
+| 4c | `mvp_pix_identifier` | `PixIdentifier` | planejada na Feature 2 |
 | 5 | `mvp_import_details` | `ImportFile`, `CsvMappingProfile`, `ImportIssue`, colunas de período em `ImportBatch` e `Transaction.externalId` | criada |
 | 5b | `balance_snapshot_source` | `BalanceSnapshot.importBatchId`, para que desfazer a importação não apague saldo informado à mão | criada |
 | 6 | `mvp_reconciliation` | `ReconciliationItem`, `ReconciliationDecision`, `FinancialAdjustment`, `OwnAccountTransfer` | planejada |
@@ -506,7 +512,7 @@ Registra importações e alterações relevantes sem guardar o código temporár
 1. Concluir a trilha cloud de cadastro, sessão e autorização de downloads.
 2. ~~Implementar onboarding persistente.~~ — **concluída**
 3. Concluir instituições, contas e snapshots. — *parcial: criação e listagem existem; edição e desativação continuam planejadas.*
-4. Implementar categorias, rendas e obrigações.
+4. ~~Implementar categorias, rendas e obrigações.~~ — **concluída**
 5. ~~Implementar inspeção e mapeamento de CSV.~~ — **concluída**
 6. ~~Implementar parser e importação transacional de CSV/OFX.~~ — **concluída**
 7. ~~Implementar listagem real de extratos.~~ — **concluída**

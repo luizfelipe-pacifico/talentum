@@ -1,2 +1,2 @@
-import { RecurrencesPage } from '@/components/demo-pages';
-export default function Page() { return <RecurrencesPage />; }
+import { ObligationsPage } from '@/components/financial-planning';
+export default function Page() { return <ObligationsPage />; }

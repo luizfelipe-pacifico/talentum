@@ -22,6 +22,8 @@ model LocalProfile {
   csvMappings   CsvMappingProfile[]
   onboardingSessions OnboardingSession[]
   onboardingAnswers  OnboardingAnswer[]
+  incomes       IncomeSource[]
+  merchantRules MerchantRule[]
 }
 
 model OnboardingSession {
@@ -96,6 +98,7 @@ model Account {
   transactions     Transaction[]
   obligations      ScheduledObligation[]
   importBatches    ImportBatch[]
+  incomes          IncomeSource[]
 
   @@index([profileId])
   @@index([institutionId])
@@ -127,6 +130,7 @@ model Category {
   profile      LocalProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
   transactions Transaction[]
   obligations  ScheduledObligation[]
+  merchantRules MerchantRule[]
 
   @@unique([profileId, name, kind])
   @@index([profileId])
@@ -287,5 +291,44 @@ model ScheduledObligation {
 
   @@index([profileId, status, dueDate])
   @@index([accountId])
+  @@index([categoryId])
+}
+
+/// Entrada futura declarada. Não aumenta o Saldo Livre de Risco antes de ser
+/// efetivamente registrada como transação.
+model IncomeSource {
+  id               String       @id @default(uuid())
+  profileId        String
+  accountId        String?
+  description      String
+  amountCents      BigInt
+  frequency        String
+  nextExpectedDate DateTime?
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  profile          LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  account          Account?     @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@index([profileId, isActive])
+  @@index([accountId])
+}
+
+/// Regra local, determinística e revisável de classificação por estabelecimento.
+model MerchantRule {
+  id         String       @id @default(uuid())
+  profileId  String
+  categoryId String
+  pattern    String
+  matchType  String       @default("contains")
+  priority   Int          @default(0)
+  isActive   Boolean      @default(true)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  profile    LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  category   Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, pattern, matchType])
+  @@index([profileId, isActive, priority])
   @@index([categoryId])
 }

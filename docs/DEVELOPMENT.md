@@ -98,6 +98,8 @@ A imagem usa Ubuntu 24.04, Node.js 22 copiado da imagem oficial, execução por 
 Os contratos do onboarding são verificados em `tests/onboarding-contracts.test.mjs`:
 migration relacional, código de ação, escopo por perfil, concorrência otimista e
 presença das quatro etapas.
+Categorias, fontes de renda, obrigações e regras determinísticas possuem testes
+de contrato em `tests/financial-planning-contracts.test.mjs`.
 
 As fórmulas financeiras vivem em `src/server/dashboard-metrics.ts`, um módulo puro sem Prisma e sem relógio implícito, e são testadas diretamente: o Node faz *type stripping* nativo e importa o `.ts` sem etapa de build. A flag `--experimental-strip-types` é passada explicitamente para manter compatibilidade a partir do Node 22.13; em Node 22.18 ou superior ela é dispensável.
 
