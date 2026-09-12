@@ -13,6 +13,7 @@
     "dev:all": "node scripts/dev-all.mjs",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up --build",
+    "docker:up:detached": "docker compose up --build --detach --wait",
     "docker:down": "docker compose down",
     "build": "next build",
     "start": "next start -p 3000",
@@ -46,6 +47,7 @@
     "next": "^15.5.2",
     "ofx-data-extractor": "^1.5.0",
     "pdfjs-dist": "^6.3.289",
+    "prisma": "^6.15.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "zod": "^4.1.5"
@@ -57,7 +59,6 @@
     "@types/react-dom": "^19.1.9",
     "electron": "^37.3.1",
     "postcss": "^8.5.6",
-    "prisma": "^6.15.0",
     "tailwindcss": "^4.1.12",
     "typescript": "^5.9.2",
     "wrangler": "^4.33.1"

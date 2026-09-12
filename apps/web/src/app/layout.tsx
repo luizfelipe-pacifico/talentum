@@ -7,6 +7,7 @@ import '@fontsource/playfair-display/600.css';
 import '@fontsource/playfair-display/700.css';
 import '../styles/base.css';
 import '../styles/lp.css';
+import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -21,7 +22,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  // A leitura torna a renderização dinâmica e permite que o Next aplique aos
+  // scripts o nonce gerado pelo middleware para esta resposta.
+  await headers();
   return (
     <html lang="pt-BR">
       <body>{children}</body>

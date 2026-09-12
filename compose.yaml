@@ -20,5 +20,25 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  talentum-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "127.0.0.1:3100:3100"
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 3100
+      CLOUDFLARE_API_BASE_URL: ${CLOUDFLARE_API_BASE_URL:-http://host.docker.internal:8787}
+      CLOUDFLARE_BFF_SHARED_SECRET: ${CLOUDFLARE_BFF_SHARED_SECRET:-segredo-sintetico-local}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3100/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
 volumes:
   talentum-data:
