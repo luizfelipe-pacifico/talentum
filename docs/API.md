@@ -13,6 +13,12 @@ detectar edições concorrentes, e todas as operações são escopadas pelo
 `profileId` resolvido no backend. A conclusão exige confirmação de privacidade,
 moeda e fuso e grava as preferências localmente.
 
+Categorias, planejamento e compromissos possuem contratos locais atuais em
+`/api/categories`, `/api/incomes`, `/api/obligations` e
+`/api/merchant-rules`. Toda rota exige código efêmero e perfil local; dinheiro
+trafega como centavos inteiros em `string`. Uma fonte de renda prevista nunca é
+somada ao saldo antes de existir como transação efetiva.
+
 | Método | Rota | Proteção | Finalidade |
 | --- | --- | --- | --- |
 | `POST` | `/api/action-codes` | bootstrap e validação Zod | emitir código de ação por 60 segundos |

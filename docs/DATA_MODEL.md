@@ -12,6 +12,11 @@ unicidade `(onboardingSessionId, questionKey)` permite atualização idempotente
 e `version` aplica concorrência otimista. Dados financeiros consolidados
 pertencem às tabelas tipadas do domínio, não a esse rascunho de interface.
 
+`IncomeSource` registra entradas esperadas sem tratá-las como saldo disponível.
+`MerchantRule` relaciona um padrão local a uma `Category` e possui prioridade,
+tipo de comparação e estado. Ambos são atuais; `PixIdentifier` permanece na
+frente de contas e segurança de identificadores próprios.
+
 O schema evolui somente por migrations versionadas. `mvp_financial_core` cria o núcleo financeiro, `mvp_scheduled_obligations` cria as obrigações e `mvp_import_details` acrescenta os detalhes de importação; ambientes executam `prisma migrate deploy` e nunca dependem de alteração manual ou `db push` em produção.
 
 ### Detalhes de importação — atual
