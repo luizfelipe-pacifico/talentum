@@ -25,6 +25,10 @@ model LocalProfile {
   incomes       IncomeSource[]
   merchantRules MerchantRule[]
   transactionRevisions TransactionRevision[]
+  reconciliationItems ReconciliationItem[]
+  reconciliationDecisions ReconciliationDecision[]
+  financialAdjustments FinancialAdjustment[]
+  ownAccountTransfers OwnAccountTransfer[]
 }
 
 model OnboardingSession {
@@ -260,6 +264,10 @@ model Transaction {
   category      Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   importIssues  ImportIssue[]
   revisions     TransactionRevision[]
+  reconciliationItem ReconciliationItem?
+  financialAdjustments FinancialAdjustment[]
+  outgoingTransfers OwnAccountTransfer[] @relation("OutgoingTransfer")
+  incomingTransfers OwnAccountTransfer[] @relation("IncomingTransfer")
 
   @@unique([accountId, externalId])
   @@index([profileId, occurredOn])
@@ -310,6 +318,74 @@ model TransactionRevision {
 
   @@index([profileId, createdAt])
   @@index([transactionId, createdAt])
+}
+
+model ReconciliationItem {
+  id            String                   @id @default(uuid())
+  profileId     String
+  transactionId String                   @unique
+  reason        String
+  confidence    Int
+  status        String                   @default("pending")
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  profile       LocalProfile             @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  transaction   Transaction              @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  decisions     ReconciliationDecision[]
+
+  @@index([profileId, status, createdAt])
+}
+
+model ReconciliationDecision {
+  id                   String              @id @default(uuid())
+  profileId            String
+  reconciliationItemId String
+  kind                 String
+  beforeJson           String
+  afterJson            String
+  revertedAt           DateTime?
+  createdAt            DateTime            @default(now())
+  profile              LocalProfile        @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  reconciliationItem   ReconciliationItem  @relation(fields: [reconciliationItemId], references: [id], onDelete: Cascade)
+  adjustment           FinancialAdjustment?
+  transfer             OwnAccountTransfer?
+
+  @@index([profileId, createdAt])
+  @@index([reconciliationItemId, createdAt])
+}
+
+model FinancialAdjustment {
+  id            String                 @id @default(uuid())
+  profileId     String
+  transactionId String
+  decisionId    String                 @unique
+  kind          String
+  deltaCents    BigInt
+  note          String?
+  createdAt     DateTime               @default(now())
+  profile       LocalProfile           @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  transaction   Transaction            @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  decision      ReconciliationDecision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, createdAt])
+  @@index([transactionId])
+}
+
+model OwnAccountTransfer {
+  id                    String                 @id @default(uuid())
+  profileId             String
+  outgoingTransactionId String
+  incomingTransactionId String
+  decisionId            String                 @unique
+  createdAt             DateTime               @default(now())
+  profile               LocalProfile           @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  outgoingTransaction   Transaction            @relation("OutgoingTransfer", fields: [outgoingTransactionId], references: [id], onDelete: Cascade)
+  incomingTransaction   Transaction            @relation("IncomingTransfer", fields: [incomingTransactionId], references: [id], onDelete: Cascade)
+  decision              ReconciliationDecision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  @@unique([outgoingTransactionId, incomingTransactionId])
+  @@index([profileId, createdAt])
+  @@index([incomingTransactionId])
 }
 
 /// Entrada futura declarada. Não aumenta o Saldo Livre de Risco antes de ser

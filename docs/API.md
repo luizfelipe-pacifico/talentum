@@ -136,6 +136,17 @@ Esse mecanismo reduz replay e vincula a intenção à chamada, mas não substitu
 
 ## Rotas locais candidatas
 
+### Conciliação implementada
+
+| Método | Rota | Caso de uso |
+| --- | --- | --- |
+| `GET` | `/api/reconciliation-items` | listar até 100 pendências do perfil |
+| `GET` | `/api/reconciliation-items/:id` | consultar lançamento, categorias e decisões |
+| `POST` | `/api/reconciliation-items/:id/decisions` | confirmar, categorizar, ajustar ou parear transferência |
+| `POST` | `/api/reconciliation-decisions/:id/revert` | restaurar o estado anterior e reabrir a pendência |
+
+Valores monetários entram e saem como strings de centavos inteiros. Toda rota valida o código opaco de ação e o perfil local.
+
 | Método | Rota | Caso de uso |
 | --- | --- | --- |
 | `PATCH` | `/api/transactions/:id` | corrigir classificação ou metadados |

@@ -190,6 +190,19 @@ export async function persistImport(
           externalId: entry.externalId,
         })),
       });
+
+      const imported = await tx.transaction.findMany({
+        where: { profileId, importBatchId: batch.id, categoryId: null },
+        select: { id: true },
+      });
+      await tx.reconciliationItem.createMany({
+        data: imported.map(({ id }) => ({
+          profileId,
+          transactionId: id,
+          reason: 'category_unknown',
+          confidence: 0,
+        })),
+      });
     }
 
     if (inspection.issues.length > 0) {
