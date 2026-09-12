@@ -478,6 +478,8 @@ A interface possui os quatro estados: esqueleto no carregamento, faixa de erro c
 
 ## Feature 8 — Histórico, reversão e segurança local
 
+**Estado:** concluída no MVP local.
+
 ### O que faz
 
 Registra importações e alterações relevantes sem guardar o código temporário, segredos ou conteúdo bruto do extrato.
@@ -499,6 +501,8 @@ Registra importações e alterações relevantes sem guardar o código temporár
 
 - Eventos podem ser consultados sem expor segredos e migrations destrutivas exigem backup local validado.
 
+Importações, edições de lançamento e decisões de conciliação criam eventos redigidos e reversíveis. O preflight de migrations bloqueia SQL destrutivo pendente sem um `DatabaseBackup` verificado para a versão atual.
+
 ## Ordem de migrations do MVP
 
 | Ordem | Migration | Tabelas principais | Estado |
@@ -513,7 +517,7 @@ Registra importações e alterações relevantes sem guardar o código temporár
 | 5b | `balance_snapshot_source` | `BalanceSnapshot.importBatchId`, para que desfazer a importação não apague saldo informado à mão | criada |
 | 5c | `transaction_revisions` | `TransactionRevision` | criada |
 | 6 | `mvp_reconciliation` | `ReconciliationItem`, `ReconciliationDecision`, `FinancialAdjustment`, `OwnAccountTransfer` | planejada |
-| 7 | `mvp_timeline_backup` | `TimelineEvent`, `DatabaseBackup` | planejada |
+| 7 | `mvp_timeline_backup` | `TimelineEvent`, `DatabaseBackup` | criada |
 
 ## Ordem de implementação das features
 

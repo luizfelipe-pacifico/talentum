@@ -232,6 +232,15 @@ export async function persistImport(
       balanceRecorded = true;
     }
 
+    await tx.timelineEvent.create({ data: {
+      profileId,
+      kind: 'import',
+      title: 'Extrato importado',
+      description: `${fresh.length} lançamento(s) adicionado(s).`,
+      importBatchId: batch.id,
+      reversible: true,
+    } });
+
     return {
       importBatchId: batch.id,
       rowCount: inspection.entries.length,
@@ -260,6 +269,7 @@ export async function revertImport(profileId: string, importBatchId: string): Pr
   if (!batch) throw new ImportPersistError('ACCOUNT_NOT_FOUND');
 
   return db.$transaction(async (tx) => {
+    await tx.timelineEvent.updateMany({ where: { profileId, importBatchId: batch.id, revertedAt: null }, data: { revertedAt: new Date(), reversible: false } });
     const removed = await tx.transaction.deleteMany({ where: { profileId, importBatchId: batch.id } });
 
     // Apaga exatamente o saldo que esta importação gravou. Um saldo informado à

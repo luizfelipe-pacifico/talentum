@@ -9,6 +9,10 @@ const databaseUrl = process.env.DATABASE_URL ?? 'file:../temp/talentum-local.db'
 
 function applyMigrations() {
   const prismaCli = resolve('node_modules', 'prisma', 'build', 'index.js');
+  execFileSync(process.execPath, [resolve('scripts', 'migration-preflight.mjs')], {
+    stdio: 'inherit',
+    env: { ...process.env, DATABASE_URL: databaseUrl },
+  });
   execFileSync(process.execPath, [prismaCli, 'migrate', 'deploy'], {
     stdio: 'inherit',
     env: { ...process.env, DATABASE_URL: databaseUrl },

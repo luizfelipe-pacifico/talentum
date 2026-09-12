@@ -22,6 +22,7 @@
     "test": "node --experimental-strip-types --test \"tests/**/*.test.mjs\"",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
+    "prisma:preflight": "node scripts/migration-preflight.mjs",
     "prisma:migrate": "prisma migrate dev",
     "lp:imagens": "node scripts/preparar-imagens-lp.mjs",
     "lp:lut": "node scripts/gerar-lut.mjs",

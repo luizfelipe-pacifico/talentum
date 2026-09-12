@@ -25,6 +25,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ trans
   if(parsed.data.categoryId){const category=await db.category.findFirst({where:{id:parsed.data.categoryId,profileId:guarded.profileId},select:{id:true}});if(!category)return fail('CATEGORY_NOT_FOUND','A categoria não foi encontrada.',404);}
   const after={description:parsed.data.description??current.description,categoryId:parsed.data.categoryId===undefined?current.categoryId:parsed.data.categoryId,status:parsed.data.status??current.status};
   if(after.description===current.description&&after.categoryId===current.categoryId&&after.status===current.status)return ok({changed:false});
-  await db.$transaction([db.transaction.update({where:{id:transactionId},data:after}),db.transactionRevision.create({data:{profileId:guarded.profileId,transactionId,beforeJson:JSON.stringify(current),afterJson:JSON.stringify(after),reason:parsed.data.reason??null}})]);
+  await db.$transaction(async tx=>{await tx.transaction.update({where:{id:transactionId},data:after});const revision=await tx.transactionRevision.create({data:{profileId:guarded.profileId,transactionId,beforeJson:JSON.stringify(current),afterJson:JSON.stringify(after),reason:parsed.data.reason??null}});await tx.timelineEvent.create({data:{profileId:guarded.profileId,kind:'transaction_edit',title:'Lançamento alterado',description:'Descrição, categoria ou estado atualizado.',transactionId,transactionRevisionId:revision.id,reversible:true}})});
   return ok({changed:true});
 }

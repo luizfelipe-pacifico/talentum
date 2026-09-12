@@ -44,6 +44,7 @@ export async function decide(profileId:string, itemId:string, input:DecisionInpu
       const decision=await tx.reconciliationDecision.create({data:{profileId,reconciliationItemId:item.id,kind:input.kind,beforeJson:JSON.stringify(before),afterJson:JSON.stringify(after)}});
       await tx.ownAccountTransfer.create({data:{profileId,outgoingTransactionId:outgoing,incomingTransactionId:incoming,decisionId:decision.id}});
       await tx.reconciliationItem.updateMany({where:{profileId,transactionId:{in:[item.transaction.id,counterpart.id]}},data:{status:'resolved'}});
+      await tx.timelineEvent.create({data:{profileId,kind:'reconciliation',title:'Transferência conciliada',description:'Dois lançamentos entre contas próprias foram pareados.',transactionId:item.transactionId,reconciliationDecisionId:decision.id,reversible:true}});
       return {decisionId:decision.id};
     }
 
@@ -56,6 +57,7 @@ export async function decide(profileId:string, itemId:string, input:DecisionInpu
       const after:Snapshot[]=[{...snapshot(item.transaction),status:'posted'},{entity:'obligation',obligationId:obligation.id,status:'paid'}];
       const decision=await tx.reconciliationDecision.create({data:{profileId,reconciliationItemId:item.id,kind:input.kind,beforeJson:JSON.stringify(before),afterJson:JSON.stringify(after)}});
       await tx.reconciliationItem.update({where:{id:item.id},data:{status:'resolved'}});
+      await tx.timelineEvent.create({data:{profileId,kind:'reconciliation',title:'Compromisso conciliado',description:'Um lançamento foi associado a um compromisso.',transactionId:item.transactionId,reconciliationDecisionId:decision.id,reversible:true}});
       return {decisionId:decision.id};
     }
 
@@ -68,6 +70,7 @@ export async function decide(profileId:string, itemId:string, input:DecisionInpu
     const decision=await tx.reconciliationDecision.create({data:{profileId,reconciliationItemId:item.id,kind:input.kind,beforeJson:JSON.stringify(before),afterJson:JSON.stringify(after)}});
     if(input.kind==='adjustment') await tx.financialAdjustment.create({data:{profileId,transactionId:item.transactionId,decisionId:decision.id,kind:input.adjustmentKind,deltaCents:BigInt(input.adjustedAmountCents)-item.transaction.amountCents,note:input.note??null}});
     await tx.reconciliationItem.update({where:{id:item.id},data:{status:'resolved'}});
+    await tx.timelineEvent.create({data:{profileId,kind:'reconciliation',title:'Lançamento conciliado',description:`Decisão aplicada: ${input.kind}.`,transactionId:item.transactionId,reconciliationDecisionId:decision.id,reversible:true}});
     return {decisionId:decision.id};
   });
 }
@@ -85,6 +88,7 @@ export async function revertDecision(profileId:string, decisionId:string) {
     await tx.financialAdjustment.deleteMany({where:{decisionId:decision.id,profileId}});
     await tx.ownAccountTransfer.deleteMany({where:{decisionId:decision.id,profileId}});
     await tx.reconciliationDecision.update({where:{id:decision.id},data:{revertedAt:new Date()}});
+    await tx.timelineEvent.updateMany({where:{profileId,reconciliationDecisionId:decision.id,revertedAt:null},data:{revertedAt:new Date(),reversible:false}});
     await tx.reconciliationItem.updateMany({where:{profileId,transactionId:{in:before.filter((value):value is TransactionSnapshot=>value.entity==='transaction').map(value=>value.transactionId)}},data:{status:'pending'}});
     return {reverted:true};
   });

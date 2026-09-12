@@ -147,6 +147,10 @@ Esse mecanismo reduz replay e vincula a intenção à chamada, mas não substitu
 
 Valores monetários entram e saem como strings de centavos inteiros. Toda rota valida o código opaco de ação e o perfil local.
 
+### Histórico local implementado
+
+`GET /api/timeline-events` lista eventos redigidos, com filtro opcional `kind` e cursor. `POST /api/timeline-events/:id/revert` restaura importações, revisões ou conciliações pelo caso de uso original. A resposta nunca inclui snapshots, conteúdo de arquivo, chaves, hashes ou códigos de ação.
+
 | Método | Rota | Caso de uso |
 | --- | --- | --- |
 | `PATCH` | `/api/transactions/:id` | corrigir classificação ou metadados |
