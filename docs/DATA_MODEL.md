@@ -185,6 +185,10 @@ Restrições únicas: `(postId, userId)` em `FeedbackPostVote`, `(commentId, use
 
 ## Migrações
 
+## Conciliação local
+
+`ReconciliationItem` liga uma pendência a exatamente uma `Transaction`. Cada resolução cria uma `ReconciliationDecision` com snapshots JSON de campos estruturados antes/depois. `FinancialAdjustment` registra o delta em centavos; `OwnAccountTransfer` liga os dois lançamentos por IDs opacos. Reverter marca a decisão, restaura os snapshots e reabre o item sem apagar a trilha de auditoria.
+
 - cada alteração de schema deve incluir migração revisável;
 - migrações destrutivas exigem backup local e caminho de recuperação;
 - a aplicação deve registrar a versão do schema;

@@ -1,0 +1,3 @@
+import { revertDecision,ReconciliationError } from '@/server/reconciliation';
+import { fail,guardWithProfile,isDenied,ok } from '@/server/http';
+export async function POST(request:Request,context:{params:Promise<{decisionId:string}>}){const guarded=await guardWithProfile(request);if(isDenied(guarded))return guarded.response;try{const {decisionId}=await context.params;return ok(await revertDecision(guarded.profileId,decisionId))}catch(error){if(error instanceof ReconciliationError){if(error.code==='DECISION_NOT_FOUND')return fail(error.code,'A decisão não foi encontrada.',404);if(error.code==='DECISION_REVERTED')return fail(error.code,'A decisão já foi revertida.',409)}throw error}}

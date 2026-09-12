@@ -96,7 +96,7 @@ export async function GET(request: Request) {
       where: { profileId, status: 'open', dueDate: { lte: periodEnd } },
       select: { amountCents: true, dueDate: true, status: true },
     }),
-    db.transaction.count({ where: { profileId, status: 'pending' } }),
+    db.reconciliationItem.count({ where: { profileId, status: 'pending' } }),
     db.importBatch.count({ where: { profileId, status: 'completed' } }),
   ]);
 

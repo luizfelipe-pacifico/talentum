@@ -386,6 +386,8 @@ propriedade e categoria no backend e registra antes/depois em
 
 ## Feature 6 — Conciliação
 
+**Estado:** concluída no MVP local.
+
 ### O que faz
 
 Permite confirmar ou corrigir transações incertas sem apagar o dado original. Reconhece categoria, transferência entre contas próprias, obrigação e ajuste financeiro.
@@ -423,6 +425,8 @@ Permite confirmar ou corrigir transações incertas sem apagar o dado original. 
 ### Concluída quando
 
 - Nenhuma correção destrói o valor original e toda decisão relevante pode ser auditada e revertida.
+
+A importação cria uma pendência para cada lançamento sem categoria. Confirmar, categorizar, ajustar ou parear uma transferência grava uma decisão atômica com snapshots em centavos; a reversão restaura os snapshots e reabre a pendência.
 
 ## Feature 7 — Dashboard
 
