@@ -30,7 +30,9 @@ A rota que emite códigos é a única exceção. O código não substitui access
 
 ## Estado atual
 
-`pnpm dev` encerra um processo anterior na porta 3000, aguarda a liberação, remove `.next` e inicia o Next.js em `http://127.0.0.1:3000`. `pnpm dev:all` aguarda uma resposta HTTP válida, abre essa URL no Electron e encerra os dois processos em conjunto. A interface atual é um protótipo navegável com dados exclusivamente sintéticos; importação, conciliação, cálculos financeiros e persistência exibidos nas telas ainda são demonstrações locais, não casos de uso implementados.
+`pnpm dev` encerra um processo anterior na porta 3000, aguarda a liberação, remove `.next` e inicia o Next.js em `http://127.0.0.1:3000`. `pnpm dev:all` aguarda uma resposta HTTP válida, abre essa URL no Electron e encerra os dois processos em conjunto.
+
+Estão implementados e verificáveis: o painel, a importação de extrato em CSV e OFX, a listagem de lançamentos, o cadastro de perfil, instituições e contas, e a reversão de lote. Continuam sendo telas vazias à espera de implementação: cartões, conciliação, patrimônio, metas, notícias, histórico e gamificação — elas não exibem dado fictício, apenas o estado vazio.
 
 ## Inicialização planejada
 
@@ -50,27 +52,43 @@ Em produção, o processo deve escolher uma porta disponível ou usar um canal l
 
 ## Importação e conciliação
 
+O fluxo tem dois passos, e só o segundo escreve. **CSV e OFX estão
+implementados**; PDF é a Etapa 7 do [`ROADMAP.md`](./ROADMAP.md).
+
 ```mermaid
 flowchart LR
-    F[PDF ou OFX] --> V[Validar tipo e tamanho]
-    V --> P[Parser isolado]
+    F[CSV ou OFX] --> V[Validar tamanho e conteúdo real]
+    V --> D[Decodificar e consertar mojibake]
+    D --> P[Parser isolado e limitado]
     P --> N[Normalizar lançamentos]
-    N --> C[Classificar por regras]
-    C --> Q{Confiança suficiente?}
-    Q -- sim --> S[Salvar transação]
-    Q -- não --> T[Fila de conciliação]
-    T --> A[Usuário confirma ou corrige]
-    A --> S
-    S --> H[Registrar evento no histórico]
+    N --> R[Prévia: nada é gravado]
+    R --> U{Mapeamento correto?}
+    U -- não --> A[Pessoa ajusta as colunas]
+    A --> P
+    U -- sim --> G[Gravar lote em transação atômica]
+    G --> Q{Duplicado?}
+    Q -- arquivo inteiro --> X[Recusar o lote]
+    Q -- lançamento a lançamento --> S[Gravar só o que é novo]
+    S --> B[Registrar saldo final do extrato]
 ```
 
-Requisitos:
+Requisitos, todos atendidos pelo importador atual:
 
+- reconhecer o formato pelo **conteúdo**, nunca pela extensão ou pelo tipo declarado;
 - calcular uma impressão digital do arquivo para evitar importação duplicada;
+- deduplicar também por lançamento, para que extratos com período sobreposto não gravem o mesmo lançamento duas vezes;
 - executar a persistência em transação atômica;
 - manter rastreabilidade entre arquivo, lote e lançamentos;
-- permitir desfazer o lote sem afetar alterações posteriores não relacionadas;
+- declarar toda linha ilegível em vez de omiti-la;
+- registrar o intervalo coberto pelo arquivo, e não apenas a data da importação;
+- permitir desfazer o lote sem afetar alterações posteriores não relacionadas — inclusive preservando um saldo informado à mão depois da importação, o que exige que o saldo gravado pelo lote seja identificável, e não inferido pelo instante de criação;
+- não reter o conteúdo do extrato: apenas lançamentos e metadados do arquivo;
 - nunca enviar o extrato para serviços de IA externos.
+
+A classificação automática por regras e a fila de conciliação pertencem ao
+MVP 5. Hoje o lançamento importado entra como `posted` e **sem categoria** — ele
+aparece no painel na fatia "Sem categoria", que funciona como o convite à
+conciliação até que `ReconciliationItem` exista.
 
 ## Saldo Livre de Risco
 

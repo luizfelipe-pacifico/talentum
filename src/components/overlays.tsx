@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import Link from 'next/link';
 import { useApp } from '@/components/app-state';
 
 export function Overlays() {
@@ -30,22 +30,21 @@ function UnavailableDialog({title,text}:{title:string;text:string}) {
   return <div className="overlay"><button type="button" className="overlay-scrim" aria-label="Fechar" onClick={app.close}/><div role="dialog" aria-modal="true" aria-label={title} className="dialog"><div className="row-between"><h2 className="dialog-title">{title}</h2><button type="button" className="close-button" onClick={app.close} aria-label="Fechar"><i className="bi bi-x-lg"/></button></div><p className="muted">{text}</p><button type="button" className="btn btn-neutral" onClick={app.close}>Fechar</button></div></div>;
 }
 
+/* A importação real mora em /extratos/importar: ela tem prévia, mapeamento de
+   colunas, escolha de conta e confirmação, que não cabem em um diálogo. O
+   atalho global apenas leva até lá. */
 function ImportDialog() {
   const app=useApp();
-  const inputRef=useRef<HTMLInputElement>(null);
-  const [fileName,setFileName]=useState<string>();
   return <div className="overlay">
     <button type="button" className="overlay-scrim" aria-label="Fechar" onClick={app.close}/>
     <div role="dialog" aria-modal="true" aria-label="Importar extrato" className="dialog dialog-md">
-      <div className="row-between"><div><h2 className="dialog-title">Importar extrato</h2><p className="small muted">Selecione um CSV ou OFX para a inspeção local.</p></div><button type="button" className="close-button" onClick={app.close} aria-label="Fechar"><i className="bi bi-x-lg"/></button></div>
-      <div className="dropzone">
-        <i className="bi bi-file-earmark-arrow-up" aria-hidden="true"/>
-        <p><strong>{fileName ?? 'Nenhum arquivo selecionado'}</strong></p>
-        <p className="small muted">O parser e a gravação transacional ainda serão implementados conforme o Routing MVP.</p>
-        <input ref={inputRef} className="sr-only" type="file" accept=".csv,.ofx,text/csv,application/x-ofx" onChange={event=>setFileName(event.target.files?.[0]?.name)}/>
-        <button type="button" className="btn btn-primary" onClick={()=>inputRef.current?.click()}>Escolher arquivo</button>
+      <div className="row-between"><div><h2 className="dialog-title">Importar extrato</h2><p className="small muted">CSV ou OFX, processado no seu dispositivo.</p></div><button type="button" className="close-button" onClick={app.close} aria-label="Fechar"><i className="bi bi-x-lg"/></button></div>
+      <p className="muted">O assistente mostra a leitura do arquivo antes de gravar qualquer coisa: período coberto, lançamentos reconhecidos e linhas com problema.</p>
+      <div className="callout callout-info"><i className="bi bi-shield-lock"/><p className="small">O extrato é lido pelo backend local e não é enviado à nuvem. O conteúdo do arquivo não é armazenado.</p></div>
+      <div className="row-tight">
+        <Link className="btn btn-primary" href="/extratos/importar" onClick={app.close}>Abrir o assistente</Link>
+        <button type="button" className="btn btn-neutral" onClick={app.close}>Fechar</button>
       </div>
-      {fileName&&<div className="callout callout-info"><i className="bi bi-shield-lock"/><p className="small">O arquivo foi apenas selecionado no navegador. Nenhum dado foi importado ou enviado.</p></div>}
     </div>
   </div>;
 }

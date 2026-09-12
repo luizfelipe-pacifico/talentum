@@ -172,6 +172,11 @@ Cria a fotografia financeira inicial sem obrigar a pessoa a preencher tudo de um
 
 - O onboarding pode ser interrompido e retomado, e o Dashboard continua vazio até o backend confirmar a existência de dados financeiros.
 
+**Atendido.** A sessão e suas respostas são persistidas no SQLite, cada etapa é
+salva pela API local com concorrência otimista, e a revisão conclui explicitamente
+o fluxo e grava moeda/fuso em `UserPreference`. Sem conta, saldo ou importação,
+o Dashboard permanece no estado vazio.
+
 ## Feature 2 — Instituições, contas e saldos
 
 ### O que faz
@@ -284,12 +289,32 @@ Transforma um arquivo bancário em um lote rastreável de transações locais. C
 
 ### APIs locais
 
-- `POST /api/imports/inspect`
-- `POST /api/imports`
-- `GET /api/imports/[importBatchId]`
-- `PATCH /api/imports/[importBatchId]/mapping`
-- `POST /api/imports/[importBatchId]/confirm`
-- `DELETE /api/imports/[importBatchId]`
+- `POST /api/imports/inspect` — **atual**
+- `GET /api/imports` — **atual**
+- `POST /api/imports` — **atual**
+- `GET /api/imports/[importBatchId]` — **atual**
+- `DELETE /api/imports/[importBatchId]` — **atual**
+
+#### Desvio do desenho original: gravação em um passo
+
+As rotas `PATCH /api/imports/[importBatchId]/mapping` e
+`POST /api/imports/[importBatchId]/confirm` **não foram implementadas**, e o
+plano foi alterado deliberadamente.
+
+O desenho de três passos supunha uma área de rascunho no servidor: criar o lote,
+ajustar o mapeamento, confirmar. Isso obrigaria a reter o conteúdo do extrato
+entre as requisições — exatamente o que [`HOW-IT-WORKS.md`](./HOW-IT-WORKS.md)
+pede para evitar — ou a criar uma tabela de linhas em preparo que ficaria órfã
+sempre que alguém abandonasse o fluxo.
+
+O fluxo implementado mantém os mesmos passos para a pessoa e remove o estado
+intermediário: `inspect` é idempotente e pode ser chamado a cada ajuste do
+mapeamento, e `POST /api/imports` grava tudo em uma transação SQLite. O arquivo
+fica no cliente entre os dois passos e é reenviado na confirmação, então o
+extrato só existe no dispositivo e durante o processamento da requisição.
+
+Consequência aceita: o arquivo trafega duas vezes pela API local — em loopback,
+com teto de tamanho, sem custo de rede.
 
 ### Tabelas
 
@@ -304,11 +329,23 @@ Transforma um arquivo bancário em um lote rastreável de transações locais. C
 ### Migration
 
 - `mvp_financial_core` já cria `ImportBatch` e `Transaction`.
-- Migration posterior cria `ImportFile`, `CsvMappingProfile` e `ImportIssue`.
+- `mvp_import_details` cria `ImportFile`, `CsvMappingProfile` e `ImportIssue`, acrescenta `periodStart`/`periodEnd`/`accountId` e as contagens a `ImportBatch`, e cria `Transaction.externalId` com unicidade por conta.
 
 ### Concluída quando
 
 - CSV e OFX sintéticos importam corretamente; reenviar o mesmo arquivo não duplica dados; erro em uma linha não produz lote parcialmente confirmado.
+
+**Atendido.** Estado verificável:
+
+- CSV e OFX são lidos por módulos puros em `src/server/import/`, com detecção de separador, conserto de mojibake parcial, Windows-1252, inferência e conferência do papel de cada coluna;
+- o formato vem do conteúdo, nunca da extensão ou do `Content-Type` declarado;
+- reenviar o mesmo arquivo responde `409 DUPLICATE_BATCH`; período sobreposto grava só o que é novo e informa `duplicateCount`;
+- a gravação é uma única transação SQLite, então erro na metade não deixa lote parcial;
+- linha ilegível vira `ImportIssue`, nunca omissão silenciosa;
+- `DELETE` desfaz o lote sem tocar em outros;
+- cobertura em `tests/import-values`, `import-csv`, `import-ofx`, `import-inspect` (unitários, fixtures sintéticas) e `tests/import-e2e` (ponta a ponta contra o backend em execução, incluindo os controles de segurança).
+
+Fora do escopo da feature e ainda pendentes: PDF (Etapa 7 do [`ROADMAP.md`](./ROADMAP.md)) e a reutilização automática de `CsvMappingProfile`, cuja tabela já existe mas ainda não é gravada pelo fluxo.
 
 ## Feature 5 — Extratos e transações
 
@@ -323,9 +360,9 @@ Exibe os lançamentos persistidos com paginação, filtros, origem do lote e est
 
 ### APIs locais
 
-- `GET /api/transactions`
-- `GET|PATCH /api/transactions/[transactionId]`
-- `GET /api/transactions/[transactionId]/history`
+- `GET /api/transactions` — **atual**, com filtro validado, paginação por cursor e ordenação determinística com desempate por `id`
+- `GET|PATCH /api/transactions/[transactionId]` — planejada
+- `GET /api/transactions/[transactionId]/history` — planejada
 
 ### Consulta
 
@@ -336,6 +373,8 @@ Exibe os lançamentos persistidos com paginação, filtros, origem do lote e est
 ### Concluída quando
 
 - Sem transações, a rota apresenta estado vazio; com registros, cada linha corresponde a uma `Transaction.id` retornada pelo backend.
+
+**Atendido para a listagem.** `/extratos` consome `GET /api/transactions` e possui os quatro estados. Edição de lançamento e histórico por transação continuam planejados.
 
 ## Feature 6 — Conciliação
 
@@ -454,25 +493,26 @@ Registra importações e alterações relevantes sem guardar o código temporár
 | --- | --- | --- | --- |
 | 1 | `init` | `LocalProfile`, `UserPreference` | criada |
 | 2 | `mvp_financial_core` | `Institution`, `Account`, `BalanceSnapshot`, `Category`, `ImportBatch`, `Transaction` | criada |
-| 3 | `mvp_onboarding` | `OnboardingSession`, `OnboardingAnswer` | planejada |
+| 3 | `mvp_onboarding` | `OnboardingSession`, `OnboardingAnswer` | criada |
 | 4 | `mvp_scheduled_obligations` | `ScheduledObligation` | criada |
 | 4b | `mvp_financial_planning` | `IncomeSource`, `MerchantRule`, `PixIdentifier` | planejada |
-| 5 | `mvp_import_details` | `ImportFile`, `CsvMappingProfile`, `ImportIssue` | planejada |
+| 5 | `mvp_import_details` | `ImportFile`, `CsvMappingProfile`, `ImportIssue`, colunas de período em `ImportBatch` e `Transaction.externalId` | criada |
+| 5b | `balance_snapshot_source` | `BalanceSnapshot.importBatchId`, para que desfazer a importação não apague saldo informado à mão | criada |
 | 6 | `mvp_reconciliation` | `ReconciliationItem`, `ReconciliationDecision`, `FinancialAdjustment`, `OwnAccountTransfer` | planejada |
 | 7 | `mvp_timeline_backup` | `TimelineEvent`, `DatabaseBackup` | planejada |
 
 ## Ordem de implementação das features
 
 1. Concluir a trilha cloud de cadastro, sessão e autorização de downloads.
-2. Implementar onboarding persistente.
-3. Concluir instituições, contas e snapshots.
+2. ~~Implementar onboarding persistente.~~ — **concluída**
+3. Concluir instituições, contas e snapshots. — *parcial: criação e listagem existem; edição e desativação continuam planejadas.*
 4. Implementar categorias, rendas e obrigações.
-5. Implementar inspeção e mapeamento de CSV.
-6. Implementar parser e importação transacional de CSV/OFX.
-7. Implementar listagem real de extratos.
-8. Implementar conciliação e reversão.
+5. ~~Implementar inspeção e mapeamento de CSV.~~ — **concluída**
+6. ~~Implementar parser e importação transacional de CSV/OFX.~~ — **concluída**
+7. ~~Implementar listagem real de extratos.~~ — **concluída**
+8. Implementar conciliação e reversão. — *a reversão de lote existe; a fila de conciliação depende da migration 6.*
 9. Concluir Dashboard e Saldo Livre de Risco.
-10. Implementar histórico, backup de migrations e testes ponta a ponta.
+10. Implementar histórico, backup de migrations e testes ponta a ponta. — *os testes ponta a ponta da importação existem em `tests/import-e2e.test.mjs`.*
 11. Empacotar, assinar, publicar e validar Windows e Linux.
 
 ## Definition of Done do MVP

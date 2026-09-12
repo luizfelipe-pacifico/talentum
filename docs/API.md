@@ -6,12 +6,26 @@ Este documento mistura contratos atuais e planejados. As rotas marcadas como atu
 
 ## Rotas locais atuais
 
+O onboarding persistente possui os contratos atuais `GET|POST /api/onboarding`,
+`PATCH /api/onboarding/:onboardingId` e
+`POST /api/onboarding/:onboardingId/complete`. A atualização usa `version` para
+detectar edições concorrentes, e todas as operações são escopadas pelo
+`profileId` resolvido no backend. A conclusão exige confirmação de privacidade,
+moeda e fuso e grava as preferências localmente.
+
 | Método | Rota | Proteção | Finalidade |
 | --- | --- | --- | --- |
 | `POST` | `/api/action-codes` | bootstrap e validação Zod | emitir código de ação por 60 segundos |
 | `GET` | `/api/system/status` | `X-Action-Code` de uso único | verificar comunicação frontend/API |
 | `GET` | `/api/dashboard` | `X-Action-Code` de uso único | indicadores do painel calculados no SQLite local |
 | `GET` | `/api/dashboard/categories` | `X-Action-Code` de uso único | gastos por categoria no período |
+| `GET`/`POST` | `/api/profile` | `X-Action-Code` de uso único | consultar e criar o perfil local |
+| `GET`/`POST` | `/api/institutions` | `X-Action-Code` de uso único | listar e cadastrar instituições |
+| `GET`/`POST` | `/api/accounts` | `X-Action-Code` de uso único | listar e cadastrar contas e saldo informado |
+| `POST` | `/api/imports/inspect` | `X-Action-Code` de uso único | inspecionar um extrato sem gravar nada |
+| `GET`/`POST` | `/api/imports` | `X-Action-Code` de uso único | listar lotes e gravar um lote inteiro |
+| `GET`/`DELETE` | `/api/imports/:importBatchId` | `X-Action-Code` de uso único | detalhar e desfazer um lote |
+| `GET` | `/api/transactions` | `X-Action-Code` de uso único | listar lançamentos com filtro e cursor |
 | `GET` | `/api/health/live` | somente infraestrutura | healthcheck sem dados de aplicação |
 
 Toda consulta do painel é escopada por `profileId`, resolvido no servidor por `getLocalProfileId()`. Sem perfil local, a resposta é `{ "hasProfile": false }` e a interface leva ao onboarding; nenhum zero é devolvido no lugar de um valor desconhecido.
@@ -23,6 +37,53 @@ Toda consulta do painel é escopada por `profileId`, resolvido no servidor por `
 **Valores monetários trafegam como centavos inteiros em `string`** — `BigInt` não é serializável em JSON — e são formatados apenas na renderização. O backend não devolve texto monetário formatado. Nenhum dos dois endpoints devolve transações individuais, descrições de lançamento ou conteúdo de arquivo.
 
 As fórmulas e os critérios de cada indicador estão em [`DASHBOARD.md`](./DASHBOARD.md), Parte 5.
+
+### Importação de extrato
+
+O fluxo tem dois passos, e só o segundo escreve.
+
+`POST /api/imports/inspect` recebe o arquivo em `multipart/form-data` no campo
+`file`, opcionalmente com `mapping` e `dialect` em JSON. Ele **não persiste
+nada**: devolve formato, codificação, dialeto detectado, papel proposto de cada
+coluna, período coberto, saldo de fechamento, prévia dos primeiros lançamentos,
+problemas por linha, impressão digital e as contas disponíveis. É seguro chamar
+quantas vezes for preciso enquanto a pessoa ajusta o mapeamento.
+
+`POST /api/imports` recebe os mesmos campos mais `accountId` e grava o lote
+inteiro em uma única transação SQLite: `ImportBatch`, `ImportFile`, as
+`Transaction` novas, os `ImportIssue` e o `BalanceSnapshot` do saldo final.
+Responde `201` com as contagens de lidos, gravados e duplicados.
+
+O formato é decidido pelo **conteúdo**, nunca pela extensão ou pelo
+`Content-Type` declarado. O conteúdo do extrato não é retido: `ImportFile`
+guarda nome sanitizado, tamanho, tipo, codificação e o SHA-256 do texto
+normalizado.
+
+Deduplicação em dois níveis:
+
+| Situação | Controle | Resposta |
+| --- | --- | --- |
+| mesmo arquivo reenviado | `ImportBatch.fingerprint` único por perfil | `409 DUPLICATE_BATCH` |
+| extratos com período sobreposto | `Transaction.externalId` único por conta | `201`, com `duplicateCount` |
+
+Sem identificador de origem no arquivo, a comparação usa dia civil, valor e
+descrição, consumindo uma ocorrência por vez — dois lançamentos idênticos e
+legítimos no mesmo dia continuam sendo dois.
+
+`DELETE /api/imports/:importBatchId` desfaz o lote: remove os lançamentos que
+nasceram dele e o saldo que ele registrou, sem afetar outros lotes.
+
+### Vinculação do código de ação e query string
+
+O código é vinculado a **método e caminho**, sem a query. Ele identifica o
+contrato (`GET /api/transactions`), não os valores do filtro.
+
+A razão é de correção, não de conveniência: o backend valida o código contra o
+`pathname` da requisição, então amarrar o código à URL inteira faria toda
+listagem filtrada falhar. E não afrouxa a proteção — o código existe contra
+repetição, enquanto filtro, propriedade e escopo por `profileId` continuam
+validados no backend a cada requisição. Cliente e backend aplicam a mesma regra
+em `actionCodePath` e `requireActionCode`.
 
 O armazenamento atual dos códigos é em memória e serve somente ao backend local de processo único. Antes de execução distribuída, deverá ser substituído por mecanismo atômico apropriado ao provedor.
 
@@ -66,10 +127,8 @@ Esse mecanismo reduz replay e vincula a intenção à chamada, mas não substitu
 
 | Método | Rota | Caso de uso |
 | --- | --- | --- |
-| `POST` | `/api/imports` | validar e iniciar importação local |
-| `GET` | `/api/imports/:id` | consultar progresso e problemas |
-| `GET` | `/api/transactions` | listar e filtrar transações |
 | `PATCH` | `/api/transactions/:id` | corrigir classificação ou metadados |
+| `GET` | `/api/categories` | listar categorias do perfil |
 | `POST` | `/api/reconciliations/:id/resolve` | concluir uma pendência |
 | `POST` | `/api/portfolio/contribution-simulation` | simular aporte por pilares |
 | `GET` | `/api/timeline` | consultar eventos locais |

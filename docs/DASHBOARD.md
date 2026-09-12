@@ -733,11 +733,13 @@ Atualizada em 11 de setembro de 2026, após a implementação.
 | **A** | Fila de conciliação | **Implementado como aproximação** | usa `Transaction.status = 'pending'`; a forma correta espera `ReconciliationItem` |
 | **G-2** | Gastos por categoria | **Implementado** | ressalva L-5 permanece até a conciliação |
 | **G-1** | Projeção de caixa | Calculável, não implementado | depende de volume de obrigações que ainda não há como cadastrar pela interface |
-| **G-3** | Entradas e saídas por mês | **Bloqueado** | L-2: `ImportBatch` não registra período coberto |
+| **G-3** | Entradas e saídas por mês | Desbloqueado, não implementado | L-2 resolvido em 12/09/2026: `ImportBatch` registra `periodStart`/`periodEnd` |
 | — | Média diária vs. orçamento | **Bloqueado** | `Budget` é Etapa 9 |
 | — | ARCA, XP, notícias, cartões | Fora de escopo | Etapas 8, 14, 15, 16, 17 |
 
-Sete dos nove elementos estão no ar. G-1 aguarda o CRUD de obrigações da Feature 3; G-3 aguarda L-2.
+Sete dos nove elementos estão no ar. G-1 aguarda o CRUD de obrigações da Feature 3; G-3 já pode ser construído, agora que o período coberto é persistido.
+
+Observação sobre a fila de atenção (**A**): lançamento vindo de extrato nasce com `status = 'posted'`, porque já aconteceu. A aproximação por `Transaction.status = 'pending'` continua correta como fila de conciliação — ela simplesmente fica vazia até a migration 6 existir. O que a importação produz hoje é lançamento **sem categoria**, que aparece em G-2 como a fatia "Sem categoria" e serve de convite à conciliação.
 
 ## Lacunas de modelo a resolver
 
@@ -758,8 +760,10 @@ Cada item é pré-requisito de um elemento acima. Nenhum deles está especificad
 
 O campo `status` é o mais crítico dos cinco. Sem ele, V e G-1 estão errados por construção, não por implementação.
 
-**L-2 — `ImportBatch` não registra o período coberto.**
-O schema tem `format`, `fingerprint`, `status`, `fileName` e `importedAt` — a data da importação, não o intervalo do extrato. Sem `periodStart` e `periodEnd`, o sistema não sabe distinguir "mês sem movimento" de "mês sem extrato". Bloqueia G-3 e impede a métrica de cobertura que [`ONBOARDING.md`](./ONBOARDING.md) exige. A Feature 4 já prevê que o parser detecte o período; falta persistir.
+**L-2 — RESOLVIDO em 12/09/2026.** A migration `mvp_import_details` acrescentou `periodStart` e `periodEnd` a `ImportBatch`, e o importador da Feature 4 os grava a partir do intervalo detectado no arquivo. A cobertura temporal por conta passa a ser consultável. **G-3 deixa de estar bloqueado pelo modelo**; falta implementar o gráfico e definir como a cobertura é exibida (decisão 7 em aberto). O registro original segue abaixo.
+
+**L-2 — `ImportBatch` não registrava o período coberto.**
+O schema tinha `format`, `fingerprint`, `status`, `fileName` e `importedAt` — a data da importação, não o intervalo do extrato. Sem `periodStart` e `periodEnd`, o sistema não sabe distinguir "mês sem movimento" de "mês sem extrato". Bloqueia G-3 e impede a métrica de cobertura que [`ONBOARDING.md`](./ONBOARDING.md) exige. A Feature 4 já prevê que o parser detecte o período; falta persistir.
 
 **L-3 — `BalanceSnapshot` não registra origem nem confiança.**
 [`ONBOARDING.md`](./ONBOARDING.md) pergunta explicitamente *"O saldo veio do banco ou foi estimado?"* e define `BANK_REPORTED` ou `USER_DECLARED`. O modelo atual guarda só o valor e o instante. Sem um campo `source`, o dashboard não consegue cumprir R-26 nem separar valor confirmado de valor declarado.
@@ -891,7 +895,7 @@ Cinco verificações computadas: faixa de luminosidade, piso de croma, separaç�
 4. Definir o período padrão do Saldo Livre de Risco na tela: mês civil, próximos 30 dias, ou escolha do usuário.
 5. Versionar o validador de paleta e ligá-lo ao CI.
 6. ~~Especificar os campos de `ScheduledObligation`~~ — **resolvido**: migration `mvp_scheduled_obligations`. Falta o CRUD e a tela de recorrências, que pertencem à Feature 3.
-7. Acrescentar `periodStart` e `periodEnd` a `ImportBatch` (L-2) e definir como a cobertura temporal é exibida.
+7. ~~Acrescentar `periodStart` e `periodEnd` a `ImportBatch` (L-2)~~ — **resolvido**: migration `mvp_import_details`. Falta definir como a cobertura temporal é exibida e construir G-3.
 8. Acrescentar `source` a `BalanceSnapshot` (L-3), alinhado a `BANK_REPORTED` / `USER_DECLARED` de [`ONBOARDING.md`](./ONBOARDING.md).
 9. Resolver a decisão 8 de [`ONBOARDING.md`](./ONBOARDING.md) — múltiplas moedas no MVP — que hoje bloqueia a correção de L-4.
 10. Fixar a nomenclatura de `ScheduledObligation`/`RecurringObligation` e `PixIdentifier`/`PixKey` (L-6) e corrigir os documentos divergentes no mesmo change set.

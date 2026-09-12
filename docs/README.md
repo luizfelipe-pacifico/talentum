@@ -51,3 +51,10 @@ Conflitos devem ser corrigidos na fonte, não explicados apenas em comentários 
 ## Atualização da documentação
 
 Mudanças gerais de arquitetura atualizam `ARCHITECTURE.md` e a arquitetura específica afetada; mudanças de fluxo atualizam `HOW-IT-WORKS.md`; mudanças de persistência atualizam `DATA_MODEL.md`; mudanças de autenticação atualizam `AUTHENTICATION.md` e `SECURITY.md`; mudanças em painéis, indicadores ou gráficos atualizam `DASHBOARD.md` e, quando tocarem em tokens visuais, também `BRANDING.md`. Decisões com alternativas relevantes ganham ADR em `docs/decisions/`.
+
+## Decisões registradas
+
+| ADR | Assunto |
+| --- | --- |
+| [`0001-web-hosting.md`](./decisions/0001-web-hosting.md) | Hospedagem da LP na Vercel e do backend em Cloudflare Workers |
+| [`0002-leitor-ofx-proprio.md`](./decisions/0002-leitor-ofx-proprio.md) | Leitor OFX próprio em vez de `ofx-data-extractor` |

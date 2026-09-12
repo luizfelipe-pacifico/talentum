@@ -50,9 +50,9 @@ export function HomePage() {
   </div>;
 }
 
-export function StatementsPage(){const app=useApp();return <EmptyState icon="bi-receipt" title="Nenhum lançamento" text="As transações aparecerão somente depois de persistidas pelo backend local." action={<button className="btn btn-primary" onClick={app.openImport}>Importar extrato</button>}/>;}
+/* Extratos, importação e detalhe de lote deixaram de ser demonstrações: estão
+   implementados em statements.tsx, import-wizard.tsx e import-batch.tsx. */
 export function CardsPage(){return <EmptyState icon="bi-credit-card" title="Nenhum cartão cadastrado" text="Cartões e faturas serão exibidos quando existirem no banco local."/>;}
-export function ImportPage({batch=false}:{batch?:boolean}){const app=useApp();return <EmptyState icon="bi-file-earmark-arrow-up" title={batch?'Lote não encontrado':'Importar extrato'} text={batch?'O backend não retornou um lote para este ID.':'CSV e OFX serão processados localmente e gravados por lote no SQLite.'} action={!batch?<button className="btn btn-primary" onClick={app.openImport}>Selecionar arquivo</button>:undefined}/>;}
 export function RecurrencesPage(){return <EmptyState icon="bi-calendar2-check" title="Nenhuma obrigação cadastrada" text="Contas recorrentes e vencimentos aparecerão depois de gravados pelo backend."/>;}
 export function ReconciliationPage(){return <EmptyState icon="bi-check2-square" title="Nada para conciliar" text="A fila será preenchida com transações pendentes retornadas pelo backend local."/>;}
 export function InvoiceCheckPage(){return <EmptyState icon="bi-receipt-cutoff" title="Nenhuma fatura para conferir" text="A conferência será habilitada quando uma fatura existir no banco local."/>;}

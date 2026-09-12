@@ -33,9 +33,6 @@ importers:
       next:
         specifier: ^15.5.2
         version: 15.5.25(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      ofx-data-extractor:
-        specifier: ^1.5.0
-        version: 1.5.0
       pdfjs-dist:
         specifier: ^6.3.289
         version: 6.3.289
@@ -1404,9 +1401,6 @@ packages:
     resolution: {integrity: sha512-NuAESUOUMrlIXOfHKzD6bpPu3tYt3xvjNdRIQ+FeT0lNb4K8WR70CaDxhuNguS2XG+GjkyMwOzsN5ZktImfhLA==}
     engines: {node: '>= 0.4'}
 
-  ofx-data-extractor@1.5.0:
-    resolution: {integrity: sha512-Yjbx/Svqu18gItfd0D1GD23ibMB5cjZjTfNsJAcGFNHuTTLyIS8UDTM6RHi2QLXzjxa89MVFdYT+CUCuQ5uhCg==}
-
   ohash@2.0.12:
     resolution: {integrity: sha512-65S/5gk9YSsaRjcyf7Nfa6h/d3E8/1gslpXfI4W7Dxn/oap8IKRuNT5VXkLQ1YFKIEg4apRY4Pj6aiwFzrDdmw==}
 
@@ -2730,8 +2724,6 @@ snapshots:
 
   object-keys@1.1.1:
     optional: true
-
-  ofx-data-extractor@1.5.0: {}
 
   ohash@2.0.12: {}
 

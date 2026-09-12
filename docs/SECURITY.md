@@ -18,6 +18,7 @@ Este documento é normativo para autenticação, APIs, arquivos, banco de dados,
 | Ameaça | Controle mínimo |
 | --- | --- |
 | Arquivo malicioso | limites de tamanho, detecção real de tipo, parser isolado e timeout |
+| Nome de arquivo hostil | nome original tratado como rótulo, nunca como caminho |
 | API local acessada por outro processo | bind em loopback, origem controlada e segredo efêmero por sessão |
 | Roubo do banco local | permissões do sistema, opção de cifragem e ausência de dados em logs |
 | Furto do backup remoto | AES-256-GCM no cliente e chave ausente do servidor |
@@ -51,6 +52,26 @@ Este documento é normativo para autenticação, APIs, arquivos, banco de dados,
 - aplicar `Cache-Control: no-store` na emissão e no consumo;
 - responder com erro genérico sem revelar se o código existiu;
 - manter autenticação, autorização, CSRF, rate limit e idempotência independentes.
+
+## Importação de extrato
+
+Controles implementados em `src/server/import/`, todos aplicados antes de
+qualquer escrita:
+
+- teto de tamanho verificado **antes** de materializar os bytes na memória, além de tetos de linhas, colunas e caracteres por campo (`limits.ts`);
+- formato reconhecido pelo conteúdo; extensão e `Content-Type` declarados não decidem nada;
+- byte de controle no arquivo reprova a importação: extrato é texto, e conteúdo binário disfarçado de CSV é o vetor a barrar;
+- decodificação tenta UTF-8 estrito antes de Windows-1252, nessa ordem — o inverso decodificaria um arquivo UTF-8 silenciosamente errado;
+- nenhum conteúdo embutido é executado, e o leitor OFX não resolve entidade externa;
+- nome original sanitizado e usado apenas como rótulo; o arquivo nunca é escrito em disco;
+- conteúdo do extrato não é retido: `ImportFile` guarda nome, tamanho, tipo, codificação e hash;
+- mensagens de erro usam código estável e texto genérico, sem caminho local, SQL, nome interno ou trecho do documento;
+- toda consulta do importador é escopada por `profileId`, e a conta de destino é validada como pertencente ao perfil — ID opaco não é autorização.
+
+Cobertura em `tests/import-inspect.test.mjs` (limites e recusas) e
+`tests/import-e2e.test.mjs` (código de ação ausente, reutilizado, vinculado a
+outra rota ou a outro método; binário disfarçado; conta inexistente; filtro
+inválido; `no-store`; ausência de stack trace na resposta).
 
 ## Controles por ambiente
 
