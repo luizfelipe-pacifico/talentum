@@ -19,6 +19,39 @@ model LocalProfile {
   importBatches ImportBatch[]
   transactions  Transaction[]
   obligations   ScheduledObligation[]
+  csvMappings   CsvMappingProfile[]
+  onboardingSessions OnboardingSession[]
+  onboardingAnswers  OnboardingAnswer[]
+}
+
+model OnboardingSession {
+  id          String             @id @default(uuid())
+  profileId   String
+  status      String             @default("draft")
+  currentStep String             @default("profile")
+  version     Int                @default(1)
+  completedAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  profile     LocalProfile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  answers     OnboardingAnswer[]
+
+  @@index([profileId, status, updatedAt])
+}
+
+model OnboardingAnswer {
+  id                    String            @id @default(uuid())
+  onboardingSessionId   String
+  profileId             String
+  questionKey           String
+  valueJson             String
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  onboardingSession     OnboardingSession @relation(fields: [onboardingSessionId], references: [id], onDelete: Cascade)
+  profile               LocalProfile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([onboardingSessionId, questionKey])
+  @@index([profileId])
 }
 
 model UserPreference {
@@ -40,8 +73,9 @@ model Institution {
   name      String
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
-  profile   LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  accounts  Account[]
+  profile     LocalProfile        @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  accounts    Account[]
+  csvMappings CsvMappingProfile[]
 
   @@index([profileId])
 }
@@ -61,20 +95,26 @@ model Account {
   balanceSnapshots BalanceSnapshot[]
   transactions     Transaction[]
   obligations      ScheduledObligation[]
+  importBatches    ImportBatch[]
 
   @@index([profileId])
   @@index([institutionId])
 }
 
 model BalanceSnapshot {
-  id           String   @id @default(uuid())
+  id           String       @id @default(uuid())
   accountId    String
   balanceCents BigInt
   capturedAt   DateTime
-  createdAt    DateTime @default(now())
-  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  /// Lote que gravou este saldo, quando ele veio de uma importação. É o que
+  /// permite desfazer a importação sem apagar um saldo informado à mão depois.
+  importBatchId String?
+  createdAt    DateTime     @default(now())
+  account      Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  importBatch  ImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
 
   @@index([accountId, capturedAt])
+  @@index([importBatchId])
 }
 
 model Category {
@@ -92,21 +132,104 @@ model Category {
   @@index([profileId])
 }
 
+/// Lote de importação. `periodStart`/`periodEnd` registram o intervalo que o
+/// arquivo cobre — não a data em que foi importado. Sem eles o sistema não
+/// distingue "mês sem movimento" de "mês sem extrato" (docs/DASHBOARD.md, L-2).
 model ImportBatch {
-  id          String        @id @default(uuid())
-  profileId   String
-  format      String
-  fingerprint String
-  status      String
-  fileName    String?
-  importedAt  DateTime      @default(now())
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  profile     LocalProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
+  id             String        @id @default(uuid())
+  profileId      String
+  accountId      String?
+  format         String
+  fingerprint    String
+  status         String
+  fileName       String?
+  /// Primeiro dia civil coberto pelo arquivo.
+  periodStart    DateTime?
+  /// Último dia civil coberto pelo arquivo.
+  periodEnd      DateTime?
+  /// Linhas convertidas com sucesso pelo parser.
+  rowCount       Int           @default(0)
+  /// Linhas efetivamente gravadas como transação.
+  importedCount  Int           @default(0)
+  /// Linhas descartadas por já existirem na conta.
+  duplicateCount Int           @default(0)
+  importedAt     DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  profile        LocalProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  account        Account?      @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  transactions     Transaction[]
+  files            ImportFile[]
+  issues           ImportIssue[]
+  balanceSnapshots BalanceSnapshot[]
 
   @@unique([profileId, fingerprint])
   @@index([profileId, importedAt])
+  @@index([accountId])
+  @@index([profileId, periodStart, periodEnd])
+}
+
+/// Metadados do arquivo importado. O conteúdo bruto não é retido: o extrato é
+/// processado em memória e descartado (docs/HOW-IT-WORKS.md).
+model ImportFile {
+  id            String      @id @default(uuid())
+  importBatchId String
+  /// Nome informado pelo navegador, já sanitizado. Nunca usado como caminho.
+  originalName  String
+  byteSize      Int
+  /// SHA-256 do texto normalizado. Mesma base da impressão digital do lote.
+  contentHash   String
+  mediaType     String
+  encoding      String
+  createdAt     DateTime    @default(now())
+  importBatch   ImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+
+  @@index([importBatchId])
+  @@index([contentHash])
+}
+
+/// Problema encontrado em uma linha do arquivo. Existe para que uma linha
+/// ilegível seja declarada, e não silenciosamente omitida do lote.
+model ImportIssue {
+  id            String       @id @default(uuid())
+  importBatchId String
+  transactionId String?
+  /// Linha do arquivo, contada a partir de 1, como a pessoa a vê.
+  lineNumber    Int
+  /// error | warning
+  severity      String
+  code          String
+  message       String
+  createdAt     DateTime     @default(now())
+  importBatch   ImportBatch  @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  @@index([importBatchId])
+  @@index([transactionId])
+}
+
+/// Mapeamento de colunas reutilizável por instituição. Evita repetir a
+/// conferência a cada extrato do mesmo banco.
+model CsvMappingProfile {
+  id               String       @id @default(uuid())
+  profileId        String
+  institutionId    String?
+  name             String
+  separator        String
+  hasHeader        Boolean      @default(true)
+  decimalSeparator String       @default("auto")
+  /// Papéis das colunas, na ordem do arquivo, separados por vírgula.
+  roles            String
+  /// Assinatura do cabeçalho, para reconhecer o mesmo layout automaticamente.
+  headerSignature  String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  profile          LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  institution      Institution? @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+
+  @@unique([profileId, name])
+  @@index([profileId])
+  @@index([profileId, headerSignature])
 }
 
 model Transaction {
@@ -118,14 +241,21 @@ model Transaction {
   occurredOn    DateTime
   description   String
   amountCents   BigInt
+  /// pending | posted
   status        String        @default("pending")
+  /// Identificador do lançamento no banco de origem (FITID no OFX, coluna de
+  /// identificação no CSV). É a chave estável que impede que dois extratos com
+  /// período sobreposto gravem o mesmo lançamento duas vezes.
+  externalId    String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   profile       LocalProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
   account       Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
   importBatch   ImportBatch?  @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
   category      Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  importIssues  ImportIssue[]
 
+  @@unique([accountId, externalId])
   @@index([profileId, occurredOn])
   @@index([accountId, occurredOn])
   @@index([importBatchId])

@@ -4,9 +4,42 @@ As regras operacionais obrigatórias para criar, consultar, migrar e escalar est
 
 ## Status
 
-Modelo conceitual planejado. O `schema.prisma` atual implementa `LocalProfile`, `UserPreference`, o núcleo financeiro formado por `Institution`, `Account`, `BalanceSnapshot`, `Category`, `ImportBatch` e `Transaction`, e `ScheduledObligation`. Os demais agregados deste documento ainda não foram implementados.
+Modelo conceitual planejado. O `schema.prisma` atual implementa `LocalProfile`, `UserPreference`, `OnboardingSession`, `OnboardingAnswer`, o núcleo financeiro formado por `Institution`, `Account`, `BalanceSnapshot`, `Category`, `ImportBatch` e `Transaction`, a `ScheduledObligation` e os detalhes de importação `ImportFile`, `ImportIssue` e `CsvMappingProfile`. Os demais agregados deste documento ainda não foram implementados.
 
-O schema evolui somente por migrations versionadas. `mvp_financial_core` cria o núcleo financeiro e `mvp_scheduled_obligations` cria as obrigações; ambientes executam `prisma migrate deploy` e nunca dependem de alteração manual ou `db push` em produção.
+`OnboardingSession` mantém estado, etapa, versão e conclusão do primeiro acesso;
+`OnboardingAnswer` guarda respostas simples relacionadas à sessão e ao perfil. A
+unicidade `(onboardingSessionId, questionKey)` permite atualização idempotente,
+e `version` aplica concorrência otimista. Dados financeiros consolidados
+pertencem às tabelas tipadas do domínio, não a esse rascunho de interface.
+
+O schema evolui somente por migrations versionadas. `mvp_financial_core` cria o núcleo financeiro, `mvp_scheduled_obligations` cria as obrigações e `mvp_import_details` acrescenta os detalhes de importação; ambientes executam `prisma migrate deploy` e nunca dependem de alteração manual ou `db push` em produção.
+
+### Detalhes de importação — atual
+
+A migration `mvp_import_details` é **aditiva**: as colunas novas entram por
+`ALTER TABLE ADD COLUMN` e nenhuma tabela já aplicada é reconstruída.
+
+| Estrutura | Papel |
+| --- | --- |
+| `ImportBatch.periodStart`, `ImportBatch.periodEnd` | intervalo civil coberto pelo arquivo, não a data da importação |
+| `ImportBatch.accountId` | conta de destino do lote |
+| `ImportBatch.rowCount`, `importedCount`, `duplicateCount` | o que foi lido, o que foi gravado e o que já existia |
+| `Transaction.externalId` | identificador do lançamento no banco de origem (`FITID` no OFX, coluna de identificação no CSV) |
+| `ImportFile` | metadados do arquivo: nome sanitizado, tamanho, tipo, codificação e SHA-256 do texto normalizado |
+| `ImportIssue` | linha que não pôde ser convertida, com motivo |
+| `CsvMappingProfile` | mapeamento de colunas reutilizável por instituição |
+| `BalanceSnapshot.importBatchId` | lote que gravou o saldo, quando ele veio de uma importação |
+
+Invariantes acrescentadas:
+
+1. `periodStart`/`periodEnd` resolvem a lacuna **L-2** de [`DASHBOARD.md`](./DASHBOARD.md): sem eles o sistema não distingue “mês sem movimento” de “mês sem extrato”, e o gráfico de entradas e saídas por mês não pode ser publicado com honestidade.
+2. `(accountId, externalId)` é único. No SQLite `NULL` é distinto de `NULL`, então lançamentos sem identificador de origem continuam permitidos — para esses, a comparação usa dia civil, valor e descrição.
+3. `ImportFile` guarda **metadados, nunca conteúdo**. O extrato é processado em memória e descartado; o `contentHash` é a mesma impressão digital do lote.
+4. Uma linha ilegível vira `ImportIssue` e é declarada. Ela não é importada nem omitida em silêncio.
+5. Lançamento vindo de extrato nasce com `status = 'posted'`: ele já aconteceu. `pending` continua reservado à fila de conciliação, que nasce na migration 6.
+6. `BalanceSnapshot.importBatchId` identifica a origem do saldo. Desfazer uma importação apaga somente o saldo que ela gravou; um saldo informado à mão depois não tem lote e permanece. Sem esse vínculo, a reversão só conseguiria identificar o saldo por aproximação — pelo instante de criação — e destruiria dado da pessoa usuária.
+
+O schema atual é criado pelas migrations `init`, `mvp_financial_core`, `mvp_scheduled_obligations`, `mvp_import_details` e `balance_snapshot_source`, nessa ordem.
 
 ### `ScheduledObligation` — atual
 
@@ -73,8 +106,8 @@ erDiagram
 
 ## Invariantes
 
-1. `ImportBatch.fingerprint` é único por perfil e impede duplicação acidental.
-2. Toda transação importada referencia o lote de origem.
+1. `ImportBatch.fingerprint` é único por perfil e impede duplicação acidental. Ele é calculado sobre o texto decodificado com quebras de linha normalizadas, de modo que o mesmo extrato reexportado com CRLF continue sendo reconhecido.
+2. Toda transação importada referencia o lote de origem, e desfazer o lote remove exatamente o que ele criou.
 3. Ajustes não sobrescrevem silenciosamente o valor original; preservam antes, depois e motivo.
 4. Uma conciliação concluída registra autor, instante e decisão.
 5. O total de uma posição nunca é inferido de percentuais armazenados.

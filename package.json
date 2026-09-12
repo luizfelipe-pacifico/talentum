@@ -45,7 +45,6 @@
     "bootstrap-icons": "^1.13.1",
     "google-auth-library": "^11.0.2",
     "next": "^15.5.2",
-    "ofx-data-extractor": "^1.5.0",
     "pdfjs-dist": "^6.3.289",
     "prisma": "^6.15.0",
     "react": "^19.1.1",

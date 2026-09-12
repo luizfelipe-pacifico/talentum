@@ -1,2 +1,6 @@
-import { ImportPage } from '@/components/demo-pages';
-export default function Page() { return <ImportPage batch />; }
+import { ImportBatchPage } from '@/components/import-batch';
+
+export default async function Page({ params }: { params: Promise<{ loteId: string }> }) {
+  const { loteId } = await params;
+  return <ImportBatchPage importBatchId={loteId} />;
+}

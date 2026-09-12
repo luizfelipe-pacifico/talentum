@@ -4,7 +4,7 @@
 
 O projeto está em pré-alpha. Já existe uma base Next.js full-stack, API REST local inicial, shell Electron, Prisma/SQLite, execução do servidor local por Docker e scaffold do Worker/D1. Os módulos financeiros e as rotas cloud de negócio ainda não foram implementados.
 
-A interface desktop atual recria o layout de referência como protótipo navegável. As rotas sob `src/app/` usam dados sintéticos de `src/lib/demo-data.ts`; botões e estados demonstrativos não implicam persistência ou integração pronta.
+Painel, importação de extrato (CSV e OFX), listagem de lançamentos e cadastro de perfil, instituições e contas estão implementados sobre o SQLite local. As demais rotas sob `src/app/` continuam sendo telas de estado vazio à espera de implementação; `src/lib/demo-data.ts` guarda apenas configuração de navegação e rótulos, nunca dado financeiro.
 
 ## Requisitos
 
@@ -59,14 +59,14 @@ No fluxo Docker atual, `talentum-local` contém o backend e a interface desktop 
 
 O Electron roda no host e pode apontar tanto para `pnpm dev` quanto para o servidor iniciado pelo Compose. Ao iniciar, o container executa `prisma migrate deploy`, cria ou atualiza `/data/talentum-local.db` e só então sobe o servidor. O volume nomeado `talentum-data` preserva o SQLite entre recriações do container.
 
-O SQLite local já possui `LocalProfile`, `UserPreference` e o núcleo financeiro inicial. O D1 possui migration própria para identidade mínima, sessão, releases e feedback. Consulte [`CLOUDFLARE_SETUP.md`](./CLOUDFLARE_SETUP.md) antes de criar ou aplicar migrations cloud.
+O SQLite local já possui `LocalProfile`, `UserPreference`, o núcleo financeiro, as obrigações e os detalhes de importação. O D1 possui migration própria para identidade mínima, sessão, releases e feedback. Consulte [`CLOUDFLARE_SETUP.md`](./CLOUDFLARE_SETUP.md) antes de criar ou aplicar migrations cloud.
 
 A imagem usa Ubuntu 24.04, Node.js 22 copiado da imagem oficial, execução por usuário não-root e somente os pacotes de sistema necessários para TLS/Prisma. Electron não roda dentro da imagem.
 
 ## Dependências confirmadas no documento-fonte
 
 - Next.js App Router, React, Tailwind CSS, Electron, Prisma/SQLite e PDF.js estão instalados.
-- O nome genérico “Node-OFX” foi concretizado como `ofx-data-extractor`, com tipos, normalização e validação. A escolha substitui o pacote legado `ofx`, cujo repositório é conhecido como `node-ofx`.
+- O genérico “Node-OFX” havia sido concretizado como `ofx-data-extractor`. Ao implementar a Feature 4, a biblioteca se mostrou inadequada: ela falha em OFX 1.x/SGML — o formato que os bancos brasileiros exportam — e normaliza dinheiro para `number`, o que `DATA_MODEL.md` proíbe. A dependência foi **removida** e substituída por um leitor próprio e limitado em `src/server/import/ofx.ts`. A decisão, com alternativas e consequências, está em [`decisions/0002-leitor-ofx-proprio.md`](./decisions/0002-leitor-ofx-proprio.md).
 - AES-256-GCM usa `node:crypto`; não exige biblioteca adicional.
 - Workers AI e Ollama são integrações HTTP futuras; não exigem SDK no scaffold.
 - O empacotador de `.exe` e AppImage ainda depende de ADR e não foi escolhido antecipadamente.
@@ -95,10 +95,35 @@ A imagem usa Ubuntu 24.04, Node.js 22 copiado da imagem oficial, execução por 
 ## Testes
 
 `pnpm test` usa o executor embutido do Node (`node --test`), sem biblioteca adicional. Os arquivos ficam em `tests/` com extensão `.test.mjs`.
+Os contratos do onboarding são verificados em `tests/onboarding-contracts.test.mjs`:
+migration relacional, código de ação, escopo por perfil, concorrência otimista e
+presença das quatro etapas.
 
 As fórmulas financeiras vivem em `src/server/dashboard-metrics.ts`, um módulo puro sem Prisma e sem relógio implícito, e são testadas diretamente: o Node faz *type stripping* nativo e importa o `.ts` sem etapa de build. A flag `--experimental-strip-types` é passada explicitamente para manter compatibilidade a partir do Node 22.13; em Node 22.18 ou superior ela é dispensável.
 
 Testes de contrato leem o próprio código-fonte e verificam invariantes que não podem regredir em silêncio: exigência de `X-Action-Code`, escopo por `profileId` em toda cláusula `where`, ausência de texto monetário formatado no backend, ausência de Prisma no frontend e imutabilidade das migrations já aplicadas.
+
+O importador de extrato é testado em três camadas:
+
+| Arquivo | Camada | Depende de servidor? |
+| --- | --- | --- |
+| `import-values.test.mjs` | valor monetário e data civil | não |
+| `import-csv.test.mjs` | dialeto, aspas, mapeamento e codificação | não |
+| `import-ofx.test.mjs` | OFX em SGML e em XML | não |
+| `import-inspect.test.mjs` | inspeção completa e limites de segurança | não |
+| `import-e2e.test.mjs` | fluxo HTTP real e controles de segurança | **sim** |
+
+O teste ponta a ponta roda contra o backend em execução — `pnpm dev` ou
+`pnpm docker:up` — e é **pulado automaticamente** quando não há servidor,
+para que `pnpm test` continue verde offline. Ele cria seu próprio perfil e
+conta sintéticos e desfaz os lotes que cria. Use `TALENTUM_E2E_URL` para apontar
+para outro endereço.
+
+Os módulos puros de `src/server/import/` usam extensão `.ts` explícita nos
+imports relativos. Isso é o que permite ao executor do Node importá-los
+diretamente, sem etapa de build, e por isso `allowImportingTsExtensions` está
+ligado no `tsconfig.json`. Pelo mesmo motivo eles não usam *parameter
+properties*: o modo `strip-only` do Node não as suporta.
 
 ## Dados de teste
 

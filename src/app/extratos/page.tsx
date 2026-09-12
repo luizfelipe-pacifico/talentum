@@ -1,2 +1,2 @@
-import { StatementsPage } from '@/components/demo-pages';
+import { StatementsPage } from '@/components/statements';
 export default function Page() { return <StatementsPage />; }

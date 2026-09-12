@@ -2450,3 +2450,81 @@ kbd {
     position: static;
   }
 }
+
+/* ── Importação de extrato ────────────────────────────────────── */
+/* Feature 4 de docs/ROUTING_MVP.md. As classes abaixo pertencem ao assistente
+   de importação e ao detalhe do lote. Nenhuma delas introduz cor, raio ou
+   espaçamento novo: todas reusam os tokens já definidos no topo do arquivo. */
+
+/* Tabela de dados mistos: texto à esquerda, números à direita sob demanda.
+   A `.tbl` base alinha toda célula à direita porque nasceu para colunas
+   puramente numéricas; aqui a descrição precisa começar na margem. */
+.tbl-data td,
+.tbl-data th[scope='col'] {
+  text-align: left;
+}
+
+.tbl-data td.right,
+.tbl-data th[scope='col'].right {
+  text-align: right;
+}
+
+.dropzone-active {
+  border-color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 6%, var(--surface));
+}
+
+/* Pares rótulo/valor do resumo de leitura e do detalhe do lote. */
+.spec-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin: 18px 0 0;
+}
+
+.spec-grid dt {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.spec-grid dd {
+  margin: 4px 0 0;
+  font-size: 20px;
+  line-height: 28px;
+  color: var(--ink);
+}
+
+/* Conferência do papel de cada coluna do CSV. */
+.mapping-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.mapping-header {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 720px) {
+  .spec-grid,
+  .mapping-grid,
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+}

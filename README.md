@@ -1,4 +1,4 @@
-<div align="center">
+intuma f<div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./icon-talentum-dark.svg">
     <source media="(prefers-color-scheme: light)" srcset="./icon-talentum-light.svg">
@@ -21,7 +21,7 @@ https://talentum-tech.vercel.app
 O Talentum nasce para quem quer cuidar melhor do dinheiro, mas não tem tempo para alimentar planilhas ou classificar cada compra manualmente. O aplicativo pretende importar extratos, organizar transações, antecipar compromissos e transformar dados financeiros em próximos passos claros — mantendo os dados sensíveis no dispositivo do usuário.
 
 > [!IMPORTANT]
-> O projeto está em fase inicial de especificação e estruturação. As telas e capacidades descritas abaixo representam a visão do produto e não devem ser interpretadas como funcionalidades já disponíveis.
+> O projeto está em fase inicial. As telas e capacidades descritas abaixo representam a visão do produto; o que já está implementado e verificável está listado em [Estado do projeto](#estado-do-projeto). Tudo o que não aparece lá ainda não existe.
 
 ## O problema que queremos resolver
 
@@ -145,7 +145,16 @@ Os ícones usados neste README pertencem ao [Bootstrap Icons](https://icons.getb
 
 ## Estado do projeto
 
-O repositório está em **pré-alpha**. Hoje ele contém a visão consolidada, documentação, identidade visual, base Next.js full-stack, API REST inicial, Prisma/SQLite, Docker e shell Electron. Os módulos financeiros e serviços Cloudflare ainda serão implementados.
+O repositório está em **pré-alpha**. Hoje ele contém a visão consolidada, documentação, identidade visual, base Next.js full-stack, API REST local, Prisma/SQLite, Docker e shell Electron.
+
+Já funcionam de ponta a ponta, sobre o banco local:
+
+- importação de extrato em **CSV e OFX**, com prévia antes de gravar, conferência do papel de cada coluna, deduplicação por arquivo e por lançamento, gravação atômica e reversão do lote;
+- listagem de lançamentos;
+- cadastro de perfil local, instituições e contas com saldo informado;
+- painel com Saldo Livre de Risco, saldo consolidado, gastos do mês, média diária, comprometido no período e gastos por categoria.
+
+Ainda não implementados: importação de PDF, conciliação, cartões e faturas, patrimônio e ARCA, metas, notícias, gamificação, backup cifrado e os serviços Cloudflare de cadastro e download.
 
 ### Roadmap inicial
 
@@ -182,6 +191,7 @@ pnpm prisma:migrate
 | `pnpm build` | Gera a build de produção do Next.js |
 | `pnpm start` | Executa a build de produção na porta 3000 |
 | `pnpm typecheck` | Verifica os tipos TypeScript |
+| `pnpm test` | Roda a suíte com o executor nativo do Node |
 | `pnpm prisma:generate` | Gera o Prisma Client |
 | `pnpm prisma:validate` | Valida o schema Prisma |
 | `pnpm prisma:migrate` | Cria e aplica migrações SQLite locais |
