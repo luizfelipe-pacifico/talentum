@@ -108,7 +108,7 @@ export function StatementsPage() {
               return (
                 <tr key={row.id}>
                   <td className="num">{shortDate(row.occurredOn)}</td>
-                  <td>{row.description}</td>
+                  <td><Link className="btn-link" href={`/extratos/${row.id}`}>{row.description}</Link></td>
                   <td className="small muted">{row.account?.name ?? '—'}</td>
                   <td className="small">
                     {row.category ? (

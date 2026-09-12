@@ -24,6 +24,7 @@ model LocalProfile {
   onboardingAnswers  OnboardingAnswer[]
   incomes       IncomeSource[]
   merchantRules MerchantRule[]
+  transactionRevisions TransactionRevision[]
 }
 
 model OnboardingSession {
@@ -258,6 +259,7 @@ model Transaction {
   importBatch   ImportBatch?  @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
   category      Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   importIssues  ImportIssue[]
+  revisions     TransactionRevision[]
 
   @@unique([accountId, externalId])
   @@index([profileId, occurredOn])
@@ -292,6 +294,22 @@ model ScheduledObligation {
   @@index([profileId, status, dueDate])
   @@index([accountId])
   @@index([categoryId])
+}
+
+/// Histórico local e imutável de uma edição manual de lançamento.
+model TransactionRevision {
+  id            String       @id @default(uuid())
+  profileId     String
+  transactionId String
+  beforeJson    String
+  afterJson     String
+  reason        String?
+  createdAt     DateTime     @default(now())
+  profile       LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  transaction   Transaction  @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, createdAt])
+  @@index([transactionId, createdAt])
 }
 
 /// Entrada futura declarada. Não aumenta o Saldo Livre de Risco antes de ser

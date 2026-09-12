@@ -17,6 +17,12 @@ pertencem às tabelas tipadas do domínio, não a esse rascunho de interface.
 tipo de comparação e estado. Ambos são atuais; `PixIdentifier` permanece na
 frente de contas e segurança de identificadores próprios.
 
+`TransactionRevision` é o histórico atual de edições manuais de uma
+`Transaction`. Cada registro pertence ao perfil e ao lançamento por foreign
+keys e preserva os estados anterior e posterior, além do motivo opcional. O
+histórico é local, imutável pela API e removido em cascata somente com a própria
+transação.
+
 O schema evolui somente por migrations versionadas. `mvp_financial_core` cria o núcleo financeiro, `mvp_scheduled_obligations` cria as obrigações e `mvp_import_details` acrescenta os detalhes de importação; ambientes executam `prisma migrate deploy` e nunca dependem de alteração manual ou `db push` em produção.
 
 ### Detalhes de importação — atual
