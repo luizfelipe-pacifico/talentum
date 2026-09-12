@@ -1,17 +1,76 @@
+# Dependências e saídas de build
 node_modules/
 .next/
 dist/
 out/
+build/
+release/
+coverage/
+.turbo/
+.vercel/
+*.tsbuildinfo
+
+# Segredos e configuração de ambiente
 .env
 .env.*
 !.env.example
 .dev.vars
 .dev.vars.*
 !.dev.vars.example
+
+# Material criptográfico. Inclui a chave local que protege identificadores
+# PIX no dispositivo: ela vive ao lado do SQLite e nunca entra no Git.
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_rsa.*
+id_ecdsa
+id_ed25519
+*.asc
+
+# Bancos locais, dumps e backups
 *.db
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite3
+*.dump
+*.sql.gz
+*.bak
+*.orig
+*.rej
+
+# Extratos e faturas. Arquivo bancário real nunca entra no repositório
+# (docs/ROUTING_MVP.md, regra 10). Fixtures precisam ser sintéticas e ficam
+# em tests/fixtures/, o único caminho liberado.
+*.csv
+*.ofx
+*.qif
+*.pdf
+!tests/fixtures/**/*.csv
+!tests/fixtures/**/*.ofx
+!tests/fixtures/**/*.qif
+!docs/**/*.pdf
+
+# Logs, diagnósticos e transcrições
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.heapsnapshot
+*.cpuprofile
+
+# Estado local de ferramentas e do editor
+.wrangler/
 temp/
 tmp
-*.tsbuildinfo
-.wrangler/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
