@@ -1,7 +1,8 @@
-const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, session } = require('electron');
 const path = require('node:path');
 
 const url = process.env.TALENTUM_URL || 'http://127.0.0.1:3000';
+const trustedOrigin = new URL(url).origin;
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
 if (!hasSingleInstanceLock) {
@@ -41,9 +42,15 @@ async function createWindow() {
       `O servidor local não respondeu em ${url}.\n\n${error.message}`,
     );
   }
+
+  window.webContents.on('will-navigate', (event, destination) => {
+    if (new URL(destination).origin !== trustedOrigin) event.preventDefault();
+  });
+  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
 }
 
 function senderWindow(event) {
+  if (event.senderFrame?.url && new URL(event.senderFrame.url).origin !== trustedOrigin) return null;
   return BrowserWindow.fromWebContents(event.sender);
 }
 
@@ -61,6 +68,8 @@ app.setAppUserModelId('org.talentum.app');
 
 if (hasSingleInstanceLock) {
   app.whenReady().then(() => {
+    session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
+    session.defaultSession.setPermissionCheckHandler(() => false);
     createWindow();
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
