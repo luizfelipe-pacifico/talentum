@@ -53,7 +53,7 @@ export function toTransactionInput(row: TransactionRow): TransactionInput {
  */
 export async function loadConsolidatedBalance(profileId: string): Promise<ConsolidatedBalance> {
   const accounts = await db.account.findMany({
-    where: { profileId, isActive: true },
+    where: { profileId, isActive: true, currency: 'BRL' },
     select: {
       id: true,
       balanceSnapshots: {

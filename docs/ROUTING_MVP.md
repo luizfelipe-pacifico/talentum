@@ -533,7 +533,7 @@ A interface possui os quatro estados: esqueleto no carregamento, faixa de erro c
 - a validação de paleta exigida por R-20 deixou de ser pendência: [`scripts/validate-palette.mjs`](../scripts/validate-palette.mjs) está versionado e `tests/palette.test.mjs` trava a reprodução dos veredictos registrados na auditoria;
 - os tokens de ganho e perda foram ratificados com medição nos dois temas, fechando a decisão 2 de `DASHBOARD.md`.
 
-Fora do escopo da Feature 7 e ainda pendentes: a fila de atenção usa `ReconciliationItem`, que pertence à Feature 6; a comparação da média diária contra orçamento depende de `Budget`, que é a Etapa 9 do [`ROADMAP.md`](./ROADMAP.md); e a consolidação entre moedas (lacuna L-4) segue em aberto.
+Fora do escopo da Feature 7: a comparação da média diária contra orçamento depende de `Budget`, que é a Etapa 9 do [`ROADMAP.md`](./ROADMAP.md). A fila de atenção já usa `ReconciliationItem`; a consolidação do MVP considera apenas contas em BRL e não soma moedas incompatíveis.
 
 ## Feature 8 — Histórico, reversão e segurança local
 
@@ -575,7 +575,7 @@ Importações, edições de lançamento e decisões de conciliação criam event
 | 5 | `mvp_import_details` | `ImportFile`, `CsvMappingProfile`, `ImportIssue`, colunas de período em `ImportBatch` e `Transaction.externalId` | criada |
 | 5b | `balance_snapshot_source` | `BalanceSnapshot.importBatchId`, para que desfazer a importação não apague saldo informado à mão | criada |
 | 5c | `transaction_revisions` | `TransactionRevision` | criada |
-| 6 | `mvp_reconciliation` | `ReconciliationItem`, `ReconciliationDecision`, `FinancialAdjustment`, `OwnAccountTransfer` | planejada |
+| 6 | `mvp_reconciliation` | `ReconciliationItem`, `ReconciliationDecision`, `FinancialAdjustment`, `OwnAccountTransfer` | criada |
 | 7 | `mvp_timeline_backup` | `TimelineEvent`, `DatabaseBackup` | criada |
 
 ## Ordem de implementação das features

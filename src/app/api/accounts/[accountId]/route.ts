@@ -15,7 +15,7 @@ const patchSchema = z
   .object({
     name: z.string().trim().min(1).max(120).optional(),
     type: z.enum(ACCOUNT_TYPES).optional(),
-    currency: z.string().trim().length(3).toUpperCase().optional(),
+    currency: z.literal('BRL').optional(),
     isActive: z.boolean().optional(),
     /** `null` desvincula a conta da instituição. */
     institutionId: z.string().trim().min(1).max(64).nullable().optional(),
