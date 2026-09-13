@@ -14,6 +14,7 @@ https://talentum-tech.vercel.app
   [![Plataformas: Windows e Linux](https://img.shields.io/badge/plataformas-Windows%20%7C%20Linux-1A110A)](#arquitetura)
   [![Dados: local-first](https://img.shields.io/badge/dados-local--first-5C4033)](#privacidade-por-princípio)
   [![Contribuições: bem-vindas](https://img.shields.io/badge/contribuições-bem--vindas-4A4A4A)](#como-contribuir)
+  [![Licença: MIT](https://img.shields.io/badge/licença-MIT-B8773D)](./LICENSE)
 </div>
 
 > *Talentum* vem do latim: uma unidade de grande valor e, por extensão, aquilo que nos foi confiado para administrar e multiplicar.
@@ -233,7 +234,7 @@ Parsers comunitários devem usar amostras sintéticas e anonimizadas. Nunca envi
 
 ## Licença e transparência
 
-O Talentum é desenvolvido de forma aberta e aceita colaboração da comunidade. A licença definitiva do código ainda precisa ser formalizada em um arquivo `LICENSE` antes da primeira distribuição pública. Dependências e recursos de terceiros permanecem sob suas respectivas licenças.
+O Talentum é distribuído sob a [licença MIT](./LICENSE). Dependências e recursos de terceiros permanecem sob suas respectivas licenças. Consulte também as políticas de contribuição, conduta e segurança em [`.github/`](./.github/).
 
 ---
 
