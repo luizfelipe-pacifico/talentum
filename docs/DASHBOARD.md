@@ -732,12 +732,25 @@ Atualizada em 11 de setembro de 2026, após a implementação.
 | **I-4** | Comprometido no período | **Implementado** | exposto como número próprio, para tornar V explicável |
 | **A** | Fila de conciliação | **Implementado como aproximação** | usa `Transaction.status = 'pending'`; a forma correta espera `ReconciliationItem` |
 | **G-2** | Gastos por categoria | **Implementado** | ressalva L-5 permanece até a conciliação |
-| **G-1** | Projeção de caixa | Calculável, não implementado | depende de volume de obrigações que ainda não há como cadastrar pela interface |
-| **G-3** | Entradas e saídas por mês | Desbloqueado, não implementado | L-2 resolvido em 12/09/2026: `ImportBatch` registra `periodStart`/`periodEnd` |
+| **G-1** | Projeção de caixa | **Implementado** | `GET /api/dashboard/risk-free-balance`; linha em degraus com ênfase no cruzamento do zero |
+| **G-3** | Entradas e saídas por mês | **Implementado** | `GET /api/dashboard/cash-flow`; só meses com cobertura, `partial` declarado na tela |
 | — | Média diária vs. orçamento | **Bloqueado** | `Budget` é Etapa 9 |
 | — | ARCA, XP, notícias, cartões | Fora de escopo | Etapas 8, 14, 15, 16, 17 |
 
-Sete dos nove elementos estão no ar. G-1 aguarda o CRUD de obrigações da Feature 3; G-3 já pode ser construído, agora que o período coberto é persistido.
+**Os nove elementos estão no ar.** G-1 e G-3 foram implementados em 12/09/2026,
+depois que o CRUD de obrigações (Feature 3) e a cobertura temporal em
+`ImportBatch` (L-2) removeram os dois bloqueios.
+
+Duas garantias de honestidade que a implementação carrega:
+
+- **G-1 não incorpora renda futura prevista.** Se incorporasse, deixaria de ser
+  Saldo Livre de Risco e viraria previsão — que é outra coisa e exigiria outro
+  nome na tela. Obrigação já vencida antes da janela pesa no primeiro dia, em
+  vez de sumir: ela continua devendo.
+- **G-3 não devolve mês sem cobertura de extrato.** Mês coberto e sem lançamento
+  entra com zero, porque aí o zero é fato; mês com extrato parcial entra
+  esmaecido e rotulado, porque meio mês de extrato parece mês de gasto baixo e
+  ninguém percebe sozinho.
 
 Observação sobre a fila de atenção (**A**): lançamento vindo de extrato nasce com `status = 'posted'`, porque já aconteceu. A aproximação por `Transaction.status = 'pending'` continua correta como fila de conciliação — ela simplesmente fica vazia até a migration 6 existir. O que a importação produz hoje é lançamento **sem categoria**, que aparece em G-2 como a fatia "Sem categoria" e serve de convite à conciliação.
 
@@ -773,6 +786,8 @@ O schema tinha `format`, `fingerprint`, `status`, `fileName` e `importedAt` — 
 
 **L-5 — Transferência entre contas próprias infla despesa até a migration 6.**
 `OwnAccountTransfer` só chega na migration 6. Antes dela, mover dinheiro entre contas do próprio usuário aparece como despesa em uma conta e receita em outra, inflando I-2, G-2 e G-3. Mitigação disponível hoje: `Category.kind = 'transfer'`, aplicado manualmente. É paliativo e precisa ser dito na interface, não escondido.
+
+**L-6 — RESOLVIDO em 12/09/2026.** `ScheduledObligation` foi fixada pela migration `mvp_scheduled_obligations` e `PixIdentifier` pela migration `mvp_pix_identifiers`. [`ONBOARDING.md`](./ONBOARDING.md) foi corrigido no mesmo change set para usar os dois nomes. O registro original segue abaixo.
 
 **L-6 — Conflito de nomenclatura entre documentos.**
 A mesma entidade aparece como `ScheduledObligation` em [`ROUTING_MVP.md`](./ROUTING_MVP.md) e [`DATA_MODEL.md`](./DATA_MODEL.md), e como `RecurringObligation` em [`ONBOARDING.md`](./ONBOARDING.md). O mesmo ocorre com `PixIdentifier` versus `PixKey`. A migration 4 precisa fixar um nome e os demais documentos devem ser corrigidos no mesmo change set.
@@ -883,22 +898,39 @@ Acrescentar `--pairs all` para dispersão, bolhas, mapas e *small multiples*, on
 
 Cinco verificações computadas: faixa de luminosidade, piso de croma, separação sob protanopia e deuteranopia (ΔE ≥ 8; piso 6–8 apenas com codificação secundária), piso de visão normal (ΔE ≥ 15, **portão rígido**) e contraste contra a superfície (≥ 3:1; abaixo disso exige canal de alívio).
 
-> **Pendência de ferramenta.** O script usado nesta pesquisa não está versionado no repositório. Incorporá-lo — ou um equivalente — como verificação de CI é **planejado** e pré-requisito de R-20.
+> **Pendência de ferramenta — RESOLVIDA em 12/09/2026.** O validador está
+> versionado em [`scripts/validate-palette.mjs`](../scripts/validate-palette.mjs)
+> e coberto por `tests/palette.test.mjs`, que roda em `pnpm test`. Ligá-lo ao CI
+> continua pendente, porque o projeto ainda não tem CI.
+>
+> O script usa CIEDE2000 para diferença perceptual, OKLCh para luminosidade e
+> croma, e a simulação de Viénot, Brettel & Mollon (1999) para protanopia e
+> deuteranopia. **A pesquisa original não registrou quais métricas usou**, e por
+> isso os ΔE aqui não batem dígito a dígito com os números anotados abaixo — os
+> *veredictos*, sim: o teste reproduz as reprovações de D-5 e as aprovações de
+> R-15 nos dois temas. Os valores de OKLCh e de contraste batem exatamente
+> (`#5C4033 L=0.399 C=0.045`; 2.77:1, 2.13:1 e 2.65:1), o que confirma o
+> pipeline de cor. Daqui em diante as métricas estão fixadas e comparáveis.
+>
+> O piso de croma se aplica só a marca **categórica**. O cinza de desênfase é
+> acromático de propósito e precisa ser declarado com `--neutral`, por escolha
+> explícita de quem roda — inferi-lo por croma baixo faria o defeito D-5, em que
+> a Nogueira lia como cinza sem querer, passar despercebido.
 
 ---
 
 # Decisões em aberto
 
-1. Ratificar a paleta categórica **completa** de R-15. Os dois tokens efetivamente necessários hoje — `--data-1` e `--data-recessive` — já foram ratificados em [`BRANDING.md`](./BRANDING.md); os oito slots seguem em aberto até existir gráfico com múltiplas séries.
-2. Definir os *tokens* exatos de ganho e perda financeira, distintos dos quatro semânticos atuais.
+1. Ratificar a paleta categórica **completa** de R-15. Os quatro tokens efetivamente usados hoje — `--data-1`, `--data-recessive`, `--data-gain` e `--data-loss` — estão ratificados em [`BRANDING.md`](./BRANDING.md) com medição. Os oito slots seguem em aberto até existir gráfico com múltiplas séries categóricas; nenhum dos três gráficos atuais é desse tipo.
+2. ~~Definir os *tokens* exatos de ganho e perda financeira~~ — **resolvido** em 12/09/2026. `--data-gain` `#157f52` claro / `#4fbf85` escuro e `--data-loss` `#b32d22` claro / `#dd5d50` escuro, distintos dos quatro semânticos como R-14 exige. Ratificados com o validador nos dois temas e no modo `--pairs all`: as cinco verificações passam, com pior ΔE sob daltonismo de 13.6 no claro e 12.2 no escuro — acima do alvo de 8. Em G-3 a cor nunca é o único canal: entradas ficam acima e saídas abaixo da linha zero, e todo valor traz sinal.
 3. Decidir se a densidade será configurável (confortável/compacto) já no MVP ou depois.
 4. Definir o período padrão do Saldo Livre de Risco na tela: mês civil, próximos 30 dias, ou escolha do usuário.
-5. Versionar o validador de paleta e ligá-lo ao CI.
+5. ~~Versionar o validador de paleta~~ — **resolvido**: [`scripts/validate-palette.mjs`](../scripts/validate-palette.mjs), com `tests/palette.test.mjs` travando a reprodução dos veredictos registrados neste documento. Ligá-lo ao CI segue pendente, porque o projeto ainda não tem CI.
 6. ~~Especificar os campos de `ScheduledObligation`~~ — **resolvido**: migration `mvp_scheduled_obligations`. Falta o CRUD e a tela de recorrências, que pertencem à Feature 3.
 7. ~~Acrescentar `periodStart` e `periodEnd` a `ImportBatch` (L-2)~~ — **resolvido**: migration `mvp_import_details`. Falta definir como a cobertura temporal é exibida e construir G-3.
 8. Acrescentar `source` a `BalanceSnapshot` (L-3), alinhado a `BANK_REPORTED` / `USER_DECLARED` de [`ONBOARDING.md`](./ONBOARDING.md).
 9. Resolver a decisão 8 de [`ONBOARDING.md`](./ONBOARDING.md) — múltiplas moedas no MVP — que hoje bloqueia a correção de L-4.
-10. Fixar a nomenclatura de `ScheduledObligation`/`RecurringObligation` e `PixIdentifier`/`PixKey` (L-6) e corrigir os documentos divergentes no mesmo change set.
+10. ~~Fixar a nomenclatura de `ScheduledObligation`/`RecurringObligation` e `PixIdentifier`/`PixKey` (L-6)~~ — **resolvido** em 12/09/2026: os nomes vencedores são `ScheduledObligation` e `PixIdentifier`, fixados pelas migrations correspondentes, e `ONBOARDING.md` foi corrigido.
 
 ---
 

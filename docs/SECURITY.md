@@ -73,6 +73,36 @@ Cobertura em `tests/import-inspect.test.mjs` (limites e recusas) e
 outra rota ou a outro método; binário disfarçado; conta inexistente; filtro
 inválido; `no-store`; ausência de stack trace na resposta).
 
+## Identificadores PIX próprios
+
+Uma chave PIX é CPF, CNPJ, telefone ou e-mail: identificador forte, e em três
+dos quatro casos com espaço de valores pequeno o bastante para força bruta —
+um CPF tem 10^11 combinações. Por isso os controles são específicos:
+
+- o valor é normalizado antes de qualquer coisa, para que a mesma chave escrita
+  de formas diferentes produza o mesmo índice;
+- a comparação usa **HMAC-SHA256 com subchave do dispositivo**, nunca hash
+  simples, que cairia por tabela pré-computada;
+- o valor recuperável usa **AES-256-GCM** com nonce próprio por operação e
+  cabeçalho versionado; conteúdo adulterado falha na tag de autenticação;
+- as subchaves de índice e de cifragem são derivadas por HKDF com `info`
+  distinto: comprometer uma não entrega a outra, e nenhuma é a chave mestra;
+- a chave mestra mora em arquivo separado do SQLite, com permissão restrita onde
+  o sistema de arquivos suporta;
+- a listagem devolve **apenas a forma mascarada**; o valor em claro exige pedido
+  explícito e o texto cifrado nunca sai da API;
+- o valor não entra em log, timeline, analytics, D1 nem mensagem de erro.
+
+Isto protege contra furto do banco isolado — um `.db` copiado, um backup
+esquecido. **Não protege** contra comprometimento do dispositivo inteiro: quem
+lê o banco também lê o arquivo da chave. O limite é declarado e não deve ser
+apresentado de outro modo na interface. A decisão completa, com as alternativas
+descartadas, está em
+[`decisions/0003-chave-local-do-dispositivo.md`](./decisions/0003-chave-local-do-dispositivo.md).
+
+Cobertura em `tests/pix.test.mjs` e `tests/accounts-e2e.test.mjs`, que verificam
+inclusive que a listagem não expõe valor, índice nem texto cifrado.
+
 ## Controles por ambiente
 
 | Controle | Web/Worker | Electron |

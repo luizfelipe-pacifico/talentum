@@ -257,3 +257,170 @@ export function endOfMonth(reference: Date): Date {
 }
 
 export { startOfDay };
+
+/* ── G-1: projeção de caixa do período ──────────────────────────── */
+
+export type ProjectionPoint = {
+  /** Dia civil projetado, em ISO `AAAA-MM-DD`. */
+  day: string;
+  /** Saldo projetado ao fim daquele dia. */
+  balanceCents: bigint;
+  /** Quanto venceu exatamente naquele dia. Cada degrau da linha. */
+  dueCents: bigint;
+};
+
+export type CashProjection = {
+  points: ProjectionPoint[];
+  /** Primeiro dia em que o saldo projetado fica negativo, se houver. */
+  shortfallDay: string | null;
+  endingBalanceCents: bigint;
+};
+
+/** Chave `AAAA-MM-DD` do dia civil local. */
+function dayKey(date: Date): string {
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/**
+ * Projeção de caixa: o único elemento do painel que olha para frente.
+ *
+ * Parte do saldo consolidado e desconta cada obrigação aberta no dia em que ela
+ * vence. Responde "o dinheiro dura até o fim do período?".
+ *
+ * **Renda futura prevista não entra, de propósito.** Incorporá-la deixaria de
+ * ser Saldo Livre de Risco e viraria previsão — que é outra coisa e exigiria
+ * outro nome na tela (docs/DASHBOARD.md, G-1).
+ */
+export function cashProjection(
+  balanceCents: bigint,
+  obligations: ObligationInput[],
+  from: Date,
+  to: Date,
+): CashProjection {
+  const due = new Map<string, bigint>();
+  for (const obligation of obligations) {
+    if (obligation.status !== 'open') continue;
+    if (obligation.dueDate > to) continue;
+    // Obrigação já vencida antes da janela pesa no primeiro dia: ela continua
+    // devendo, e escondê-la deixaria a projeção otimista.
+    const anchor = obligation.dueDate < from ? from : obligation.dueDate;
+    const key = dayKey(anchor);
+    due.set(key, (due.get(key) ?? 0n) + obligation.amountCents);
+  }
+
+  const points: ProjectionPoint[] = [];
+  let running = balanceCents;
+  let shortfallDay: string | null = null;
+
+  const cursor = startOfDay(from);
+  const last = startOfDay(to);
+
+  // Teto defensivo: um período absurdo não pode gerar uma série infinita.
+  for (let guard = 0; cursor <= last && guard < 400; guard += 1) {
+    const key = dayKey(cursor);
+    const dueCents = due.get(key) ?? 0n;
+    running -= dueCents;
+    if (shortfallDay === null && running < 0n) shortfallDay = key;
+    points.push({ day: key, balanceCents: running, dueCents });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return { points, shortfallDay, endingBalanceCents: running };
+}
+
+/* ── G-3: entradas e saídas por mês ─────────────────────────────── */
+
+export type CoverageRange = { start: Date; end: Date };
+
+export type MonthlyFlow = {
+  /** Mês civil em ISO `AAAA-MM`. */
+  month: string;
+  incomeCents: bigint;
+  expenseCents: bigint;
+  netCents: bigint;
+  /** `full` quando o mês inteiro tem extrato; `partial` quando só parte dele. */
+  coverage: 'full' | 'partial';
+};
+
+const monthKey = (date: Date) => `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}`;
+
+/**
+ * Classifica a cobertura de um mês pelos períodos de extrato importados.
+ *
+ * É o que distingue "mês sem movimento" de "mês sem extrato" — a distinção que
+ * `ImportBatch.periodStart`/`periodEnd` passaram a permitir (lacuna L-2).
+ */
+function coverageOf(year: number, month: number, ranges: CoverageRange[]): 'full' | 'partial' | 'none' {
+  const first = new Date(year, month, 1);
+  const last = endOfDay(new Date(year, month + 1, 0));
+
+  const overlapping = ranges.filter((range) => range.start <= last && range.end >= first);
+  if (overlapping.length === 0) return 'none';
+
+  // Cobertura completa exige que os intervalos, juntos, alcancem as duas pontas
+  // do mês. Um extrato que cobre só a primeira quinzena faria o mês parecer de
+  // gasto baixo, e é por isso que `partial` não pode virar `full`.
+  const earliest = overlapping.reduce((min, range) => (range.start < min ? range.start : min), overlapping[0].start);
+  const latest = overlapping.reduce((max, range) => (range.end > max ? range.end : max), overlapping[0].end);
+  return earliest <= first && latest >= last ? 'full' : 'partial';
+}
+
+/**
+ * Entradas e saídas por mês, apenas onde existe extrato.
+ *
+ * Um mês sem extrato **não é devolvido**. Renderizá-lo como barra vazia seria
+ * afirmar que a pessoa não movimentou dinheiro, quando a verdade é que não
+ * sabemos — a mesma mentira do defeito D-2, distribuída ao longo do eixo do
+ * tempo (docs/DASHBOARD.md, G-3).
+ */
+export function monthlyCashFlow(
+  transactions: TransactionInput[],
+  coverage: CoverageRange[],
+): MonthlyFlow[] {
+  const buckets = new Map<string, { income: bigint; expense: bigint; year: number; month: number }>();
+
+  for (const transaction of transactions) {
+    if (!isSettled(transaction) || isTransfer(transaction)) continue;
+    const key = monthKey(transaction.occurredOn);
+    const bucket = buckets.get(key) ?? {
+      income: 0n,
+      expense: 0n,
+      year: transaction.occurredOn.getFullYear(),
+      month: transaction.occurredOn.getMonth(),
+    };
+    if (transaction.amountCents > 0n) bucket.income += transaction.amountCents;
+    else bucket.expense += -transaction.amountCents;
+    buckets.set(key, bucket);
+  }
+
+  // Meses cobertos por extrato mas sem nenhum lançamento são legítimos e entram
+  // com zero: aí o zero é um fato, não uma lacuna.
+  for (const range of coverage) {
+    const cursor = new Date(range.start.getFullYear(), range.start.getMonth(), 1);
+    const limit = new Date(range.end.getFullYear(), range.end.getMonth(), 1);
+    for (let guard = 0; cursor <= limit && guard < 240; guard += 1) {
+      const key = monthKey(cursor);
+      if (!buckets.has(key)) {
+        buckets.set(key, { income: 0n, expense: 0n, year: cursor.getFullYear(), month: cursor.getMonth() });
+      }
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+  }
+
+  const months: MonthlyFlow[] = [];
+  for (const [key, bucket] of buckets) {
+    const status = coverageOf(bucket.year, bucket.month, coverage);
+    if (status === 'none') continue;
+    months.push({
+      month: key,
+      incomeCents: bucket.income,
+      expenseCents: bucket.expense,
+      netCents: bucket.income - bucket.expense,
+      coverage: status,
+    });
+  }
+
+  return months.sort((left, right) => (left.month < right.month ? -1 : left.month > right.month ? 1 : 0));
+}

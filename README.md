@@ -1,4 +1,4 @@
-intuma f<div align="center">
+<div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./icon-talentum-dark.svg">
     <source media="(prefers-color-scheme: light)" srcset="./icon-talentum-light.svg">

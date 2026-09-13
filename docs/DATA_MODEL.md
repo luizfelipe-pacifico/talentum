@@ -38,7 +38,7 @@ A migration `mvp_import_details` é **aditiva**: as colunas novas entram por
 | `Transaction.externalId` | identificador do lançamento no banco de origem (`FITID` no OFX, coluna de identificação no CSV) |
 | `ImportFile` | metadados do arquivo: nome sanitizado, tamanho, tipo, codificação e SHA-256 do texto normalizado |
 | `ImportIssue` | linha que não pôde ser convertida, com motivo |
-| `CsvMappingProfile` | mapeamento de colunas reutilizável por instituição |
+| `CsvMappingProfile` | mapeamento de colunas reutilizável, reconhecido por `headerSignature` |
 | `BalanceSnapshot.importBatchId` | lote que gravou o saldo, quando ele veio de uma importação |
 
 Invariantes acrescentadas:
@@ -49,8 +49,40 @@ Invariantes acrescentadas:
 4. Uma linha ilegível vira `ImportIssue` e é declarada. Ela não é importada nem omitida em silêncio.
 5. Lançamento vindo de extrato nasce com `status = 'posted'`: ele já aconteceu. `pending` continua reservado à fila de conciliação, que nasce na migration 6.
 6. `BalanceSnapshot.importBatchId` identifica a origem do saldo. Desfazer uma importação apaga somente o saldo que ela gravou; um saldo informado à mão depois não tem lote e permanece. Sem esse vínculo, a reversão só conseguiria identificar o saldo por aproximação — pelo instante de criação — e destruiria dado da pessoa usuária.
+7. `CsvMappingProfile.headerSignature` identifica o **layout**, não o arquivo: é o SHA-256 dos rótulos das colunas normalizados, na ordem em que aparecem. Ela é nula sem cabeçalho utilizável, porque reconhecer layout por posição de coluna seria adivinhação. A tabela não guarda valor, lançamento nem trecho do extrato — apenas dialeto e o papel de cada coluna.
 
 O schema atual é criado pelas migrations `init`, `mvp_financial_core`, `mvp_scheduled_obligations`, `mvp_import_details` e `balance_snapshot_source`, nessa ordem.
+
+### `PixIdentifier` — atual
+
+Chave PIX própria da pessoa, criada pela migration `mvp_pix_identifiers`. Serve
+a um propósito só: reconhecer transferência entre contas dela mesma, que não é
+receita nem despesa.
+
+**Nomenclatura fixada aqui**, resolvendo a lacuna L-6 de
+[`DASHBOARD.md`](./DASHBOARD.md): o nome é `PixIdentifier`, como já usavam este
+documento e [`ROUTING_MVP.md`](./ROUTING_MVP.md). `PixKey`, que aparecia em
+[`ONBOARDING.md`](./ONBOARDING.md), foi corrigido para o mesmo nome.
+
+| Campo | Papel |
+| --- | --- |
+| `id` | identificador opaco |
+| `profileId`, `accountId` | relações por chave estrangeira |
+| `type` | `cpf`, `cnpj`, `phone`, `email` ou `random` |
+| `label` | apelido seguro escolhido pela pessoa |
+| `valueIndex` | HMAC-SHA256 do valor normalizado, com subchave do dispositivo |
+| `valueCiphertext` | AES-256-GCM do valor normalizado, com versão, nonce e tag |
+| `maskedValue` | forma mascarada, a única que a interface exibe por padrão |
+| `isActive`, `validFrom`, `validUntil` | estado e período de validade conhecido |
+| `source` | `declared` ou `detected` |
+
+Invariantes:
+
+1. **O valor nunca é gravado em texto puro.** Não em coluna, log, timeline, analytics, D1 ou mensagem de erro.
+2. `valueIndex` é HMAC, **não hash simples**. CPF e telefone têm espaço de valores previsível — 10^11 combinações para um CPF —, e um hash puro cairia por força bruta. O segredo vem de `src/server/local-key.ts`; a decisão está em [`decisions/0003-chave-local-do-dispositivo.md`](./decisions/0003-chave-local-do-dispositivo.md).
+3. A normalização precede o índice: `(11) 98888-7777` e `+5511988887777` são a mesma chave e produzem o mesmo índice. Sem isso, a transferência própria deixaria de ser reconhecida e apareceria como despesa numa conta e receita na outra — a distorção que a lacuna L-5 descreve.
+4. `(profileId, valueIndex)` é único: a mesma chave não pertence a duas contas da mesma pessoa.
+5. O valor não é editável. Alterá-lo trocaria o índice e o histórico de pareamento perderia sentido; a chave antiga é desativada, não reescrita, porque continua explicando extratos passados.
 
 ### `ScheduledObligation` — atual
 

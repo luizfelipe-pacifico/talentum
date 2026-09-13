@@ -54,8 +54,34 @@ Chart marks therefore take their own tokens, and the brand accent stays in the c
 | --- | --- | --- | --- |
 | `--data-1` | `#2a78d6` | `#3987e5` | single-series and primary-series mark |
 | `--data-recessive` | `#898781` | `#898781` | de-emphasised groups such as "Outros" and "Sem categoria" |
+| `--data-gain` | `#157f52` | `#4fbf85` | financial gain — income bars above the zero line |
+| `--data-loss` | `#b32d22` | `#dd5d50` | financial loss — expense bars below the zero line |
 
-Both clear 3:1 against the light (`#FFFDF8`) and dark (`#2A2622`) chart surfaces. Classical Amber remains the **emphasis** colour — one highlighted series against grey — and is never a categorical slot.
+All four clear 3:1 against the light (`#FFFDF8`) and dark (`#2A2622`) chart surfaces. Classical Amber remains the **emphasis** colour — one highlighted series against grey — and is never a categorical slot.
+
+### Ratifying a data token
+
+Run the validator before adding any mark colour. It is versioned at
+[`scripts/validate-palette.mjs`](../scripts/validate-palette.mjs) and its
+verdicts are locked by `tests/palette.test.mjs`:
+
+```bash
+node scripts/validate-palette.mjs "#2a78d6,#157f52,#b32d22,#898781" \
+  --mode light --surface "#FFFDF8" --neutral "#898781" --pairs all
+```
+
+`--data-gain` and `--data-loss` were ratified on 2026-09-12 this way, in both
+themes and in the strictest pairing mode: all five checks pass, with a worst
+colour-vision-deficiency ΔE of 13.6 in light and 12.2 in dark — above the target
+of 8.
+
+They exist as their own tokens because [`DASHBOARD.md`](./DASHBOARD.md) R-14
+forbids reusing the semantic tokens as series fills: `--ok` and `--err` mean
+*state*, and measured against each other they collapse under deuteranopia.
+Gain and loss are **quantities**, not states.
+
+Colour is never the only channel for them: the divergent chart anchors income
+above and expense below the zero line, and every value carries a sign.
 
 The full eight-slot categorical palette is **not ratified**: it is still an open decision recorded in [`DASHBOARD.md`](./DASHBOARD.md), R-15. Introduce it only after validating it against these surfaces.
 

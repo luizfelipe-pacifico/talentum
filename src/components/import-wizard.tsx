@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { postJson } from '@/lib/api-client';
+import { getJson, postJson } from '@/lib/api-client';
 import { formatCents } from '@/lib/format';
 import { useImport, type ColumnRole, type InspectionPayload } from '@/hooks/use-import';
 
@@ -118,6 +118,91 @@ function FilePicker({ onPick, busy }: { onPick: (file: File) => void; busy: bool
   );
 }
 
+type BatchRow = {
+  id: string;
+  fileName: string | null;
+  format: string;
+  importedCount: number;
+  duplicateCount: number;
+  issueCount: number;
+  periodStart: string | null;
+  periodEnd: string | null;
+  importedAt: string;
+  account: { id: string; name: string } | null;
+};
+
+/**
+ * Importações já feitas.
+ *
+ * Sem esta lista o detalhe do lote — e com ele a reversão — não teria nenhum
+ * caminho de acesso na interface.
+ */
+function RecentImports() {
+  const [batches, setBatches] = useState<BatchRow[] | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    getJson<{ hasProfile: boolean; batches?: BatchRow[] }>('/api/imports', controller.signal)
+      .then((payload) => {
+        if (active) setBatches(payload.batches ?? []);
+      })
+      .catch(() => {
+        // A lista é contexto, não a tarefa: falhar aqui não pode impedir uma
+        // importação nova.
+        if (active) setBatches([]);
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, []);
+
+  if (!batches || batches.length === 0) return null;
+
+  return (
+    <section className="card">
+      <div className="card-header">
+        <h2 className="h-display">Importações anteriores</h2>
+        <span className="small muted">Abra um lote para ver os detalhes ou desfazê-lo.</span>
+      </div>
+      <table className="tbl tbl-data">
+        <caption className="sr-only">Lotes de importação já gravados, do mais recente para o mais antigo.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Arquivo</th>
+            <th scope="col">Conta</th>
+            <th scope="col">Período</th>
+            <th scope="col" className="right">
+              Gravados
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {batches.map((batch) => (
+            <tr key={batch.id}>
+              <td>
+                <Link href={`/extratos/importar/${batch.id}`}>{batch.fileName ?? 'Extrato'}</Link>
+                <span className="small muted"> · {batch.format.toUpperCase()}</span>
+              </td>
+              <td className="small muted">{batch.account?.name ?? '—'}</td>
+              <td className="small num">
+                {shortDate(batch.periodStart)} – {shortDate(batch.periodEnd)}
+              </td>
+              <td className="right num">
+                {batch.importedCount}
+                {batch.duplicateCount > 0 && (
+                  <span className="small muted"> (+{batch.duplicateCount} repetidos)</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
 /** Criação rápida da conta de destino, quando ainda não existe nenhuma. */
 function NewAccountForm({ onCreated }: { onCreated: (accountId: string) => void }) {
   const [name, setName] = useState('');
@@ -193,7 +278,7 @@ function Review({
   committing,
 }: {
   inspection: InspectionPayload;
-  onConfirm: (accountId: string, roles: ColumnRole[] | null) => void;
+  onConfirm: (accountId: string, roles: ColumnRole[] | null, remember: boolean) => void;
   onRemap: (roles: ColumnRole[]) => void;
   onCancel: () => void;
   committing: boolean;
@@ -201,6 +286,9 @@ function Review({
   const [roles, setRoles] = useState<ColumnRole[]>(inspection.mapping?.roles ?? []);
   const [accountId, setAccountId] = useState(inspection.accounts[0]?.id ?? '');
   const [creatingAccount, setCreatingAccount] = useState(inspection.accounts.length === 0);
+  // Já reconhecido significa já conferido antes: manter marcado atualiza o
+  // mapeamento salvo se a pessoa corrigir alguma coluna agora.
+  const [remember, setRemember] = useState(inspection.mappingSource === 'salvo');
 
   useEffect(() => {
     setRoles(inspection.mapping?.roles ?? []);
@@ -273,6 +361,18 @@ function Review({
             <h2 className="h-display">Colunas reconhecidas</h2>
             <span className="small muted">Ajuste se alguma coluna estiver com o papel errado.</span>
           </div>
+
+          {inspection.mappingSource === 'salvo' && inspection.savedMapping && (
+            <p className="callout callout-ok">
+              <i className="bi bi-bookmark-check" aria-hidden="true" />
+              <span className="small">
+                Este layout já era conhecido: o mapeamento{' '}
+                <strong>{inspection.savedMapping.name}</strong> foi reaplicado. Confira mesmo assim —
+                bancos mudam o formato do extrato sem avisar.
+              </span>
+            </p>
+          )}
+
           <div className="mapping-grid">
             {inspection.headers.map((header, column) => (
               <label key={`${header}-${column}`} className="field">
@@ -290,6 +390,19 @@ function Review({
               </label>
             ))}
           </div>
+
+          {inspection.canRememberMapping && (
+            <label className="check-field">
+              <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} />
+              <span>
+                Lembrar este mapeamento para os próximos extratos com o mesmo formato
+                <span className="small muted">
+                  {' '}
+                  — guarda apenas o papel de cada coluna, nunca valores ou lançamentos.
+                </span>
+              </span>
+            </label>
+          )}
         </section>
       )}
 
@@ -387,7 +500,7 @@ function Review({
           type="button"
           className="btn btn-primary"
           disabled={committing || blocked || accountId === '' || inspection.rowCount === 0}
-          onClick={() => onConfirm(accountId, roles.length > 0 ? roles : null)}
+          onClick={() => onConfirm(accountId, roles.length > 0 ? roles : null, remember)}
         >
           {committing ? 'Gravando…' : `Importar ${inspection.rowCount} lançamentos`}
         </button>
@@ -489,12 +602,17 @@ export function ImportWizard() {
       <Review
         inspection={stage.inspection}
         committing={stage.status === 'committing'}
-        onConfirm={(accountId, roles) => void commit(accountId, roles)}
+        onConfirm={(accountId, roles, remember) => void commit(accountId, roles, remember)}
         onRemap={remap}
         onCancel={reset}
       />
     );
   }
 
-  return <FilePicker busy={stage.status === 'inspecting'} onPick={(chosen) => void inspect(chosen)} />;
+  return (
+    <div className="stack-lg">
+      <FilePicker busy={stage.status === 'inspecting'} onPick={(chosen) => void inspect(chosen)} />
+      <RecentImports />
+    </div>
+  );
 }

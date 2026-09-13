@@ -202,6 +202,65 @@ test('importação ponta a ponta', options, async (t) => {
     await call('DELETE', `/api/imports/${committed.payload.importBatchId}`);
   });
 
+  await t.test('o mapeamento conferido é salvo e reaplicado no layout seguinte', async () => {
+    // Layout próprio, para não colidir com mapeamentos de outros testes.
+    const header = 'Quando;Detalhe;Chave;Natureza;Montante;Acumulado';
+    const linha = (dia, id, tipo, valor, saldo) =>
+      `${dia}/05/2026;LANCAMENTO SINTETICO ${id};MAP-${id};${tipo};${valor};${saldo}`;
+    const maio = [header, linha('12', 'A', 'DEBITO', '- R$ 30,00', 'R$ 70,00'), linha('11', 'B', 'CREDITO', '+ R$ 100,00', 'R$ 100,00')].join('\n');
+
+    const primeira = await call('POST', '/api/imports/inspect', { form: upload(maio, 'maio.csv') });
+    assert.equal(primeira.status, 200);
+    assert.equal(primeira.payload.mappingSource, 'inferido', 'na primeira vez não há nada salvo');
+    assert.equal(primeira.payload.canRememberMapping, true);
+
+    // Confirma corrigindo uma coluna: "Chave" vira identificador, não documento.
+    const roles = ['date', 'description', 'externalId', 'direction', 'amount', 'balance'];
+    const form = upload(maio, 'maio.csv', {
+      accountId,
+      mapping: JSON.stringify({ roles }),
+      rememberMapping: 'true',
+    });
+    const gravada = await call('POST', '/api/imports', { form });
+    assert.equal(gravada.status, 201, JSON.stringify(gravada.payload));
+    assert.ok(gravada.payload.savedMapping, 'o mapeamento deveria ter sido salvo');
+
+    // Outro mês, mesmo layout: o mapeamento volta sozinho.
+    const junho = [header, linha('12', 'C', 'DEBITO', '- R$ 45,00', 'R$ 55,00'), linha('11', 'D', 'CREDITO', '+ R$ 100,00', 'R$ 100,00')]
+      .join('\n')
+      .replace(/\/05\/2026/g, '/06/2026');
+
+    const segunda = await call('POST', '/api/imports/inspect', { form: upload(junho, 'junho.csv') });
+    assert.equal(segunda.status, 200);
+    assert.equal(segunda.payload.mappingSource, 'salvo', 'o layout deveria ter sido reconhecido');
+    assert.deepEqual(segunda.payload.mapping.roles, roles, 'os papéis conferidos foram reaplicados');
+    assert.ok(segunda.payload.savedMapping.name, 'a tela precisa poder nomear o mapeamento reaplicado');
+
+    const mappings = await call('GET', '/api/csv-mappings');
+    assert.equal(mappings.status, 200);
+    const salvo = mappings.payload.mappings.find((m) => m.id === gravada.payload.savedMapping.id);
+    assert.ok(salvo, 'o mapeamento aparece na listagem');
+
+    await call('DELETE', `/api/imports/${gravada.payload.importBatchId}`);
+    await call('DELETE', `/api/csv-mappings/${gravada.payload.savedMapping.id}`);
+
+    // Removido o mapeamento, o reconhecimento deixa de acontecer.
+    const depois = await call('POST', '/api/imports/inspect', { form: upload(junho, 'junho.csv') });
+    assert.equal(depois.payload.mappingSource, 'inferido');
+  });
+
+  await t.test('sem pedir para lembrar, nada é salvo', async () => {
+    const texto = ['Dia;Texto;Sinal;Cifra', '12/05/2026;LANCAMENTO SINTETICO E;DEBITO;- R$ 10,00'].join('\n');
+    const gravada = await call('POST', '/api/imports', { form: upload(texto, 'sem-lembrar.csv', { accountId }) });
+    assert.equal(gravada.status, 201, JSON.stringify(gravada.payload));
+    assert.equal(gravada.payload.savedMapping, null, 'salvar exige pedido explícito');
+
+    const conferindo = await call('POST', '/api/imports/inspect', { form: upload(texto, 'sem-lembrar.csv') });
+    assert.equal(conferindo.payload.mappingSource, 'inferido');
+
+    await call('DELETE', `/api/imports/${gravada.payload.importBatchId}`);
+  });
+
   await t.test('o painel reflete a importação', async () => {
     const result = await call('GET', '/api/dashboard');
     assert.equal(result.status, 200);
@@ -354,5 +413,70 @@ test('controles de segurança da importação', options, async (t) => {
     const result = await call('POST', '/api/imports/inspect', { form: upload('') });
     const serialized = JSON.stringify(result.payload);
     assert.doesNotMatch(serialized, /at \w+|node_modules|[A-Za-z]:\\\\|\/app\/|prisma/i);
+  });
+});
+
+/* Rotas de tendência do painel — elementos G-1 e G-3 de docs/DASHBOARD.md. */
+test('rotas de tendência do painel', options, async (t) => {
+  await t.test('a projeção de caixa nunca incorpora renda futura', async () => {
+    const result = await call('GET', '/api/dashboard/risk-free-balance');
+    assert.equal(result.status, 200);
+    if (!result.payload.hasProfile) return;
+
+    assert.match(result.payload.balanceCents, /^-?\d+$/, 'centavos inteiros, não texto');
+    assert.match(result.payload.riskFreeBalanceCents, /^-?\d+$/);
+
+    // O saldo livre é exatamente saldo menos comprometido: nenhuma entrada
+    // prevista pode aparecer no meio.
+    const esperado = BigInt(result.payload.balanceCents) - BigInt(result.payload.committedCents);
+    assert.equal(result.payload.riskFreeBalanceCents, esperado.toString());
+
+    const serialized = JSON.stringify(result.payload);
+    assert.doesNotMatch(serialized, /R\$/, 'o backend não devolve texto monetário formatado');
+  });
+
+  await t.test('a projeção começa no saldo e só cai nos vencimentos', async () => {
+    const result = await call('GET', '/api/dashboard/risk-free-balance');
+    if (!result.payload.hasProfile) return;
+    const { points } = result.payload.projection;
+    if (points.length === 0) return;
+
+    for (const point of points) {
+      assert.match(point.balanceCents, /^-?\d+$/);
+      assert.match(point.dueCents, /^-?\d+$/);
+      assert.match(point.day, /^\d{4}-\d{2}-\d{2}$/);
+    }
+    // O último ponto é o saldo final declarado.
+    assert.equal(points[points.length - 1].balanceCents, result.payload.projection.endingBalanceCents);
+  });
+
+  await t.test('o fluxo mensal só devolve mês com cobertura de extrato', async () => {
+    const result = await call('GET', '/api/dashboard/cash-flow');
+    assert.equal(result.status, 200);
+    if (!result.payload.hasProfile) return;
+
+    for (const month of result.payload.months) {
+      assert.match(month.month, /^\d{4}-\d{2}$/);
+      assert.ok(['full', 'partial'].includes(month.coverage), 'mês sem cobertura não pode ser devolvido');
+      // O resultado é sempre entradas menos saídas: nada é inventado no meio.
+      const esperado = BigInt(month.incomeCents) - BigInt(month.expenseCents);
+      assert.equal(month.netCents, esperado.toString());
+    }
+  });
+
+  await t.test('sem nenhum extrato, a série vem vazia em vez de zerada', async () => {
+    const result = await call('GET', '/api/dashboard/cash-flow');
+    if (!result.payload.hasProfile) return;
+    if (result.payload.coverageRanges === 0) {
+      assert.deepEqual(result.payload.months, [], 'série vazia é diferente de série de zeros');
+    }
+  });
+
+  await t.test('as rotas de tendência exigem código de ação', async () => {
+    for (const path of ['/api/dashboard/cash-flow', '/api/dashboard/risk-free-balance']) {
+      const response = await fetch(`${BASE}${path}`);
+      assert.equal(response.status, 403, path);
+      assert.equal(response.headers.get('cache-control'), 'no-store', path);
+    }
   });
 });

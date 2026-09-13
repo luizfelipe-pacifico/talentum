@@ -30,6 +30,8 @@ backend e persiste antes/depois na mesma transação SQLite.
 | `GET` | `/api/system/status` | `X-Action-Code` de uso único | verificar comunicação frontend/API |
 | `GET` | `/api/dashboard` | `X-Action-Code` de uso único | indicadores do painel calculados no SQLite local |
 | `GET` | `/api/dashboard/categories` | `X-Action-Code` de uso único | gastos por categoria no período |
+| `GET` | `/api/dashboard/cash-flow` | `X-Action-Code` de uso único | entradas e saídas por mês, só onde há extrato |
+| `GET` | `/api/dashboard/risk-free-balance` | `X-Action-Code` de uso único | decomposição do saldo livre e projeção diária |
 | `GET`/`POST` | `/api/profile` | `X-Action-Code` de uso único | consultar e criar o perfil local |
 | `GET`/`POST` | `/api/institutions` | `X-Action-Code` de uso único | listar e cadastrar instituições |
 | `GET`/`POST` | `/api/accounts` | `X-Action-Code` de uso único | listar e cadastrar contas e saldo informado |
@@ -37,6 +39,13 @@ backend e persiste antes/depois na mesma transação SQLite.
 | `GET`/`POST` | `/api/imports` | `X-Action-Code` de uso único | listar lotes e gravar um lote inteiro |
 | `GET`/`DELETE` | `/api/imports/:importBatchId` | `X-Action-Code` de uso único | detalhar e desfazer um lote |
 | `GET` | `/api/transactions` | `X-Action-Code` de uso único | listar lançamentos com filtro e cursor |
+| `GET` | `/api/csv-mappings` | `X-Action-Code` de uso único | listar mapeamentos de coluna salvos |
+| `DELETE` | `/api/csv-mappings/:mappingId` | `X-Action-Code` de uso único | esquecer um mapeamento salvo |
+| `GET`/`PATCH`/`DELETE` | `/api/institutions/:institutionId` | `X-Action-Code` de uso único | detalhar, renomear e excluir instituição |
+| `GET`/`PATCH`/`DELETE` | `/api/accounts/:accountId` | `X-Action-Code` de uso único | detalhar, editar, desativar e excluir conta |
+| `GET`/`POST` | `/api/accounts/:accountId/balance-snapshots` | `X-Action-Code` de uso único | histórico e registro de saldo informado |
+| `GET`/`POST` | `/api/accounts/:accountId/pix-identifiers` | `X-Action-Code` de uso único | listar e cadastrar chaves PIX próprias |
+| `GET`/`PATCH`/`DELETE` | `/api/accounts/:accountId/pix-identifiers/:pixIdentifierId` | `X-Action-Code` de uso único | detalhar, editar e remover uma chave |
 | `GET` | `/api/health/live` | somente infraestrutura | healthcheck sem dados de aplicação |
 
 Toda consulta do painel é escopada por `profileId`, resolvido no servidor por `getLocalProfileId()`. Sem perfil local, a resposta é `{ "hasProfile": false }` e a interface leva ao onboarding; nenhum zero é devolvido no lugar de um valor desconhecido.
@@ -48,6 +57,32 @@ Toda consulta do painel é escopada por `profileId`, resolvido no servidor por `
 **Valores monetários trafegam como centavos inteiros em `string`** — `BigInt` não é serializável em JSON — e são formatados apenas na renderização. O backend não devolve texto monetário formatado. Nenhum dos dois endpoints devolve transações individuais, descrições de lançamento ou conteúdo de arquivo.
 
 As fórmulas e os critérios de cada indicador estão em [`DASHBOARD.md`](./DASHBOARD.md), Parte 5.
+
+### Rotas de tendência
+
+`GET /api/dashboard/risk-free-balance` devolve a decomposição do veredito —
+saldo, comprometido e a diferença — mais a projeção diária até o fim do período
+e as obrigações que a compõem. `shortfallDay` é o primeiro dia em que o saldo
+projetado fica negativo, ou `null`.
+
+**Renda futura prevista não entra na projeção.** Incorporá-la deixaria de ser
+Saldo Livre de Risco e viraria previsão. Obrigação já vencida antes da janela é
+ancorada no primeiro dia, em vez de omitida: ela continua devendo, e escondê-la
+deixaria a projeção otimista.
+
+`GET /api/dashboard/cash-flow` devolve entradas e saídas por mês civil. A regra
+que governa a rota é de honestidade, não de estética:
+
+| Situação do mês | Resposta |
+| --- | --- |
+| sem extrato importado | **não é devolvido** |
+| com extrato cobrindo o mês inteiro | devolvido com `coverage: "full"` |
+| com extrato cobrindo parte do mês | devolvido com `coverage: "partial"` |
+| coberto, sem nenhum lançamento | devolvido com zeros — aí o zero é fato |
+
+Sem nenhum lote com período conhecido, a resposta traz `months: []` e
+`coverageRanges: 0`. **Série vazia é diferente de série de zeros**: a primeira
+diz "não sei", a segunda afirmaria que não houve movimento.
 
 ### Importação de extrato
 
@@ -83,6 +118,66 @@ legítimos no mesmo dia continuam sendo dois.
 
 `DELETE /api/imports/:importBatchId` desfaz o lote: remove os lançamentos que
 nasceram dele e o saldo que ele registrou, sem afetar outros lotes.
+
+#### Mapeamento de colunas reutilizável
+
+A inspeção devolve `headerSignature`, calculada sobre os rótulos das colunas
+normalizados. Ela identifica o **formato**, não o conteúdo: dois extratos do
+mesmo banco em meses diferentes têm impressões digitais distintas e a mesma
+assinatura.
+
+Quando a assinatura casa com um `CsvMappingProfile` do perfil, a inspeção
+reaplica o mapeamento salvo e responde `mappingSource: "salvo"` junto do nome
+do mapeamento, para que a tela declare o reaproveitamento em vez de aplicá-lo
+em silêncio. Os valores possíveis são `inferido`, `salvo` e `informado`.
+
+`POST /api/imports` aceita `rememberMapping=true` no multipart e então grava ou
+atualiza o mapeamento para aquele layout. A gravação acontece **fora** da
+transação do lote: guardar o mapeamento é conveniência, e falhar nisso não pode
+desfazer uma importação que já está correta.
+
+O mapeamento guarda apenas separador, cabeçalho, separador decimal e o papel de
+cada coluna. Nenhum valor, lançamento ou trecho do extrato é retido.
+
+### Contas, saldos e chaves PIX
+
+Duas exclusões são **recusadas** em vez de executadas, porque a chave estrangeira
+faria estrago silencioso:
+
+| Situação | Chave estrangeira | Resposta |
+| --- | --- | --- |
+| conta com lançamentos ou lotes | `Transaction` é `CASCADE` | `409 ACCOUNT_HAS_HISTORY` — desative em vez de excluir |
+| instituição com contas | `Account.institutionId` é `SET NULL` | `409 INSTITUTION_HAS_ACCOUNTS` — as contas ficariam órfãs |
+
+Desativar (`PATCH` com `isActive: false`) tira a conta dos totais do painel e
+preserva todo o histórico. É a operação que substitui a exclusão quando existe
+passado.
+
+Trocar a moeda de uma conta que já tem lançamentos responde
+`409 ACCOUNT_CURRENCY_LOCKED`: os centavos gravados continuariam iguais e
+passariam a significar outra coisa.
+
+Cada saldo é um **fato datado**, nunca uma sobrescrita: `POST` em
+`balance-snapshots` acrescenta um registro, e o painel soma o mais recente com
+os lançamentos posteriores a ele. A resposta distingue saldo informado à mão de
+saldo vindo de extrato, por `fromImport`.
+
+#### Chaves PIX
+
+Existem só para reconhecer transferência entre contas da própria pessoa. O
+contrato nunca devolve o valor em claro nem o texto cifrado numa listagem —
+apenas `maskedValue`. O valor só sai em `GET` do item com `?reveal=1`, que é
+pedido explícito e responde `no-store` como todas as rotas privadas.
+
+A unicidade é por perfil e usa o índice HMAC do valor normalizado, então a mesma
+chave escrita de formas diferentes — `111.444.777-35` e `11144477735` — é
+reconhecida como repetida e responde `409 PIX_KEY_ALREADY_REGISTERED`. O valor
+da chave não é editável: mudá-lo trocaria o índice e o histórico de pareamento
+deixaria de fazer sentido; para outra chave, cadastre outra e desative a antiga,
+que continua explicando extratos antigos.
+
+A construção criptográfica e seus limites estão em
+[`decisions/0003-chave-local-do-dispositivo.md`](./decisions/0003-chave-local-do-dispositivo.md).
 
 ### Vinculação do código de ação e query string
 
