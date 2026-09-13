@@ -2,7 +2,7 @@
 
 ## Estado do repositório
 
-O projeto está em pré-alpha. Já existe uma base Next.js full-stack, API REST local inicial, shell Electron, Prisma/SQLite, execução do servidor local por Docker e scaffold do Worker/D1. Os módulos financeiros e as rotas cloud de negócio ainda não foram implementados.
+O projeto está em pré-alpha. Já existe uma base Next.js full-stack, API REST local, shell Electron, Prisma/SQLite, execução do servidor local por Docker e Worker/D1. As features financeiras locais 1–8 do roteiro possuem implementação vertical; a trilha cloud possui contratos e implementação local, mas a configuração de segredos/OAuth, os artefatos assinados e a validação publicada continuam operacionais e obrigatórios.
 
 Painel, importação de extrato (CSV e OFX), listagem de lançamentos e cadastro de perfil, instituições e contas estão implementados sobre o SQLite local. As demais rotas sob `src/app/` continuam sendo telas de estado vazio à espera de implementação; `src/lib/demo-data.ts` guarda apenas configuração de navegação e rótulos, nunca dado financeiro.
 

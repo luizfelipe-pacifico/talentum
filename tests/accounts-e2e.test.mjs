@@ -116,8 +116,7 @@ test('contas, saldos e chaves PIX', options, async (t) => {
 
     // Sem lançamentos ainda, trocar a moeda é permitido.
     const currency = await call('PATCH', `/api/accounts/${accountId}`, { currency: 'USD' });
-    assert.equal(currency.status, 200);
-    await call('PATCH', `/api/accounts/${accountId}`, { currency: 'BRL' });
+    assert.equal(currency.status, 400);
   });
 
   await t.test('desativar tira a conta dos ativos sem apagar nada', async () => {

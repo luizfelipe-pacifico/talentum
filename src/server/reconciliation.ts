@@ -34,9 +34,9 @@ export async function decide(profileId:string, itemId:string, input:DecisionInpu
     }
 
     if(input.kind==='transfer') {
-      const counterpart=await tx.transaction.findFirst({where:{id:input.counterpartTransactionId,profileId},select:{id:true,categoryId:true,amountCents:true,status:true}});
+      const counterpart=await tx.transaction.findFirst({where:{id:input.counterpartTransactionId,profileId},select:{id:true,accountId:true,categoryId:true,amountCents:true,status:true}});
       if(!counterpart) throw new ReconciliationError('COUNTERPART_NOT_FOUND');
-      if(counterpart.id===item.transactionId || (counterpart.amountCents < 0n)===(item.transaction.amountCents < 0n) || counterpart.amountCents+item.transaction.amountCents!==0n) throw new ReconciliationError('INVALID_TRANSFER');
+      if(counterpart.id===item.transactionId || counterpart.accountId===item.transaction.accountId || (counterpart.amountCents < 0n)===(item.transaction.amountCents < 0n) || counterpart.amountCents+item.transaction.amountCents!==0n) throw new ReconciliationError('INVALID_TRANSFER');
       before.push(snapshot(counterpart));
       const [outgoing,incoming]=item.transaction.amountCents<0n?[item.transaction.id,counterpart.id]:[counterpart.id,item.transaction.id];
       await tx.transaction.updateMany({where:{id:{in:[item.transaction.id,counterpart.id]},profileId},data:{categoryId:input.categoryId,status:'posted'}});

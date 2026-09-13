@@ -17,7 +17,9 @@ const createSchema = z.object({
   type: z.enum(ACCOUNT_TYPES),
   institutionId: z.string().trim().min(1).max(64).optional(),
   institutionName: z.string().trim().min(1).max(120).optional(),
-  currency: z.string().trim().length(3).toUpperCase().default('BRL'),
+  // O MVP consolida somente BRL. Aceitar outra moeda e somar centavos sem
+  // cotação produziria um saldo matematicamente falso.
+  currency: z.literal('BRL').default('BRL'),
   /** Saldo conhecido em centavos inteiros, como string. Pode ser negativo. */
   balanceCents: z.string().regex(/^-?\d{1,18}$/).optional(),
   balanceCapturedAt: z.string().datetime().optional(),

@@ -154,7 +154,7 @@ Já funcionam de ponta a ponta, sobre o banco local:
 - cadastro de perfil local, instituições e contas com saldo informado;
 - painel com Saldo Livre de Risco, saldo consolidado, gastos do mês, média diária, comprometido no período e gastos por categoria.
 
-Ainda não implementados: importação de PDF, conciliação, cartões e faturas, patrimônio e ARCA, metas, notícias, gamificação, backup cifrado e os serviços Cloudflare de cadastro e download.
+Ainda não implementados por pertencerem a etapas posteriores: importação de PDF, cartões e faturas, patrimônio e ARCA, metas, notícias, gamificação e backup cloud cifrado. A conciliação e a timeline local do MVP estão implementadas. A trilha Cloudflare de cadastro e download está preparada no código, mas ainda depende de segredos, OAuth, artefatos assinados e validação no ambiente publicado.
 
 ### Roadmap inicial
 
