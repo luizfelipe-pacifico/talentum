@@ -6,6 +6,7 @@ declare global {
       minimize: () => void;
       toggleMaximize: () => void;
       close: () => void;
+      bootstrapSecret: () => string | null;
     };
   }
 }

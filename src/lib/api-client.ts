@@ -47,9 +47,10 @@ export function actionCodePath(path: string): string {
  * não serve para `POST /api/imports`.
  */
 async function issueActionCode(method: HttpMethod, path: string, signal?: AbortSignal): Promise<string> {
+  const bootstrapSecret = typeof window !== 'undefined' ? window.talentumWindow?.bootstrapSecret?.() : null;
   const response = await fetch('/api/action-codes', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(bootstrapSecret ? { 'X-Talentum-Bootstrap': bootstrapSecret } : {}) },
     body: JSON.stringify({ method, path: actionCodePath(path) }),
     cache: 'no-store',
     signal,
