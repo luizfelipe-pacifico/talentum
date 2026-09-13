@@ -11,6 +11,9 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:all": "node scripts/dev-all.mjs",
+    "desktop:prepare": "node scripts/desktop-prepare.mjs",
+    "desktop:build:win": "pnpm desktop:prepare && electron-builder --win nsis --x64",
+    "desktop:build:linux": "pnpm desktop:prepare && electron-builder --linux AppImage --x64",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up --build",
     "docker:up:detached": "docker compose up --build --detach --wait",
@@ -58,9 +61,29 @@
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
     "electron": "^37.3.1",
+    "electron-builder": "^26.15.3",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.12",
     "typescript": "^5.9.2",
     "wrangler": "^4.33.1"
+  }
+  ,
+  "build": {
+    "appId": "org.talentum.app",
+    "productName": "Talentum",
+    "asar": false,
+    "directories": { "output": "release" },
+    "files": [
+      "electron/**/*",
+      ".next/standalone/**/*",
+      "node_modules/prisma/**/*",
+      "prisma/**/*",
+      "package.json",
+      "icon-badge.ico",
+      "icon-badge.png"
+    ],
+    "win": { "target": "nsis", "icon": "icon-badge.ico", "artifactName": "Talentum-${version}-Windows-${arch}.${ext}" },
+    "linux": { "target": "AppImage", "icon": "icon-badge.png", "category": "Office;Finance", "artifactName": "Talentum-${version}-Linux-${arch}.${ext}" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "deleteAppDataOnUninstall": false }
   }
 }
