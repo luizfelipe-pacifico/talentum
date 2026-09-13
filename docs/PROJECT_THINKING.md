@@ -1,4 +1,4 @@
- pogucoalidar ppor favconss# Documentação de Visão de Produto e Arquitetura: Piloto Automático Financeiro
+# Documentação de Visão de Produto e Arquitetura: Piloto Automático Financeiro
 
 ## 1. Resumo do Produto & Proposta de Valor
 O aplicativo é uma solução de gestão financeira **Local-First** e **Open-Source** voltada para pessoas com rotinas intensas. Ele elimina a fricção da digitação manual através da leitura automatizada de extratos (PDF/OFX), combina a gestão do fluxo de caixa diário com o rebalanceamento de patrimônio e utiliza elementos de gamificação para incentivar a disciplina financeira sem tornar o uso cansativo.

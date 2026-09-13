@@ -199,12 +199,15 @@ Representa os locais onde a pessoa possui dinheiro. Não exige agência ou núme
 
 ### APIs locais
 
+Todas **atuais**:
+
 - `GET|POST /api/institutions`
 - `GET|PATCH|DELETE /api/institutions/[institutionId]`
 - `GET|POST /api/accounts`
 - `GET|PATCH|DELETE /api/accounts/[accountId]`
-- `POST /api/accounts/[accountId]/balance-snapshots`
+- `GET|POST /api/accounts/[accountId]/balance-snapshots`
 - `GET|POST /api/accounts/[accountId]/pix-identifiers`
+- `GET|PATCH|DELETE /api/accounts/[accountId]/pix-identifiers/[pixIdentifierId]`
 
 ### Tabelas
 
@@ -218,11 +221,27 @@ Representa os locais onde a pessoa possui dinheiro. Não exige agência ou núme
 ### Migration
 
 - `mvp_financial_core` já cria `Institution`, `Account` e `BalanceSnapshot`.
-- Migration posterior cria `PixIdentifier` e seus índices.
+- `mvp_pix_identifiers` cria `PixIdentifier` e seus índices, inclusive a unicidade `(profileId, valueIndex)`.
 
 ### Concluída quando
 
 - Criar, editar ou desativar uma conta atualiza o seletor e o saldo consolidado por consulta ao backend.
+
+**Atendido.** Estado verificável:
+
+- `/contas`, `/contas/nova` e `/contas/[accountId]` consomem o backend e têm os quatro estados;
+- o seletor de contas da barra lateral deixou de ser um diálogo vazio: lista as contas ativas com o saldo conhecido de cada uma, e reflete criação, edição e desativação;
+- saldo é **fato datado**, não sobrescrita: registrar um novo preserva o anterior, e a origem — informado à mão ou vindo de extrato — fica distinguível;
+- ausência de saldo é declarada, nunca convertida em zero;
+- exclusão que destruiria histórico é **recusada** e aponta a desativação, porque a chave estrangeira de `Transaction` é `CASCADE`; excluir instituição com contas também é recusado, porque `SET NULL` as deixaria órfãs em silêncio;
+- trocar a moeda de conta com lançamentos é recusado: os centavos gravados passariam a significar outra coisa;
+- chaves PIX próprias são cifradas no dispositivo, indexadas por HMAC e exibidas mascaradas, com o valor em claro só sob pedido explícito;
+- cobertura em `tests/pix.test.mjs` (unitário, valores sintéticos) e `tests/accounts-e2e.test.mjs` (fluxo HTTP real, isolamento e validação).
+
+Pendente e fora do escopo desta feature: o pareamento automático de
+transferência entre contas próprias durante a importação. Ele depende de
+`OwnAccountTransfer`, que nasce na migration 6, e pertence à Feature 6 — os
+identificadores cadastrados aqui são o insumo que faltava para isso.
 
 ## Feature 3 — Categorias, rendas e obrigações
 
@@ -350,7 +369,34 @@ com teto de tamanho, sem custo de rede.
 - `DELETE` desfaz o lote sem tocar em outros;
 - cobertura em `tests/import-values`, `import-csv`, `import-ofx`, `import-inspect` (unitários, fixtures sintéticas) e `tests/import-e2e` (ponta a ponta contra o backend em execução, incluindo os controles de segurança).
 
-Fora do escopo da feature e ainda pendentes: PDF (Etapa 7 do [`ROADMAP.md`](./ROADMAP.md)) e a reutilização automática de `CsvMappingProfile`, cuja tabela já existe mas ainda não é gravada pelo fluxo.
+O mapeamento de colunas conferido pode ser **guardado e reaproveitado**: a
+inspeção calcula uma assinatura do cabeçalho — os rótulos normalizados, sem
+acento, caixa ou pontuação — e, quando ela coincide com um `CsvMappingProfile`
+do perfil, o mapeamento salvo é reaplicado e a tela declara que reaproveitou.
+
+Três decisões que a implementação fixa:
+
+1. **Guardar exige pedido explícito.** Um mapeamento salvo sem consentimento
+   seria reaplicado em silêncio na importação seguinte.
+2. **Reconhecimento só com cabeçalho.** Sem ele, identificar o layout pela
+   posição das colunas seria adivinhação, e um mapeamento errado aplicado em
+   silêncio inverteria o sinal dos lançamentos.
+3. **Mapeamento informado vence o salvo.** A escolha da pessoa na tela sempre
+   prevalece, e um layout que mudou desde o último extrato faz o sistema voltar
+   à inferência em vez de recusar o arquivo.
+
+Contratos: `GET /api/csv-mappings` lista os mapeamentos do perfil e
+`DELETE /api/csv-mappings/:mappingId` remove um. Apagar um mapeamento não afeta
+importação já gravada — ele só influencia a próxima leitura de arquivo.
+
+A rota `/extratos/importar` lista as importações anteriores, que é o caminho de
+acesso ao detalhe do lote e à reversão.
+
+Fora do escopo da feature: PDF, que é a Etapa 7 do
+[`ROADMAP.md`](./ROADMAP.md), e o passo 8 do fluxo acima — enviar itens incertos
+para conciliação —, que depende da migration 6 e pertence à Feature 6. Hoje o
+lançamento importado entra sem categoria e aparece no painel na fatia "Sem
+categoria".
 
 ## Feature 5 — Extratos e transações
 
@@ -446,7 +492,7 @@ O conjunto, a forma e a fórmula de cada elemento estão em [`DASHBOARD.md`](./D
 - fila de conciliação como faixa de atenção;
 - gastos por categoria.
 
-Fluxo mensal de entradas e saídas continua **bloqueado**: `ImportBatch` não registra o período coberto, então um mês sem extrato seria renderizado como um mês sem movimento (lacuna L-2).
+Fluxo mensal de entradas e saídas e projeção de caixa estão **implementados**. A cobertura temporal é exibida no próprio gráfico: mês com extrato parcial aparece esmaecido e rotulado, e mês sem extrato não é renderizado.
 
 ### Rotas de interface
 
@@ -455,6 +501,8 @@ Fluxo mensal de entradas e saídas continua **bloqueado**: `ImportBatch` não re
 A raiz `/` é o Início: apresenta o produto, o aviso de privacidade local, a ação de importar ou cadastrar a posição e os atalhos para as áreas. Ela não exibe valor financeiro — um zero sem confirmação do backend é uma afirmação falsa. O Início não possui item próprio na navegação lateral: chega-se a ele pela marca no topo da sidebar.
 
 ### APIs locais
+
+Todas **atuais**:
 
 - `GET /api/dashboard`
 - `GET /api/dashboard/categories`
@@ -474,7 +522,18 @@ A interface possui os quatro estados: esqueleto no carregamento, faixa de erro c
 
 ### Concluída quando
 
-- Nenhum indicador vem de constante do frontend; alterar uma transação ou obrigação altera o Dashboard; fórmulas possuem testes unitários. **Atendido**, exceto o teste ponta a ponta automatizado, que depende do fluxo de importação da Feature 4.
+- Nenhum indicador vem de constante do frontend; alterar uma transação ou obrigação altera o Dashboard; fórmulas possuem testes unitários.
+
+**Atendido, incluindo o teste ponta a ponta** — a ressalva anterior dependia do fluxo de importação da Feature 4, que está concluído. Estado verificável:
+
+- os nove elementos de [`DASHBOARD.md`](./DASHBOARD.md), Parte 5, estão no ar;
+- as quatro rotas existem, exigem `X-Action-Code`, são escopadas por `profileId` e devolvem centavos inteiros, nunca texto formatado;
+- as fórmulas de G-1 e G-3 vivem no módulo puro `src/server/dashboard-metrics.ts`, com testes unitários em `tests/dashboard-charts.test.mjs`;
+- o saldo consolidado é lido por `src/server/dashboard-queries.ts`, compartilhado entre as rotas, para que veredito e projeção nunca divirjam;
+- a validação de paleta exigida por R-20 deixou de ser pendência: [`scripts/validate-palette.mjs`](../scripts/validate-palette.mjs) está versionado e `tests/palette.test.mjs` trava a reprodução dos veredictos registrados na auditoria;
+- os tokens de ganho e perda foram ratificados com medição nos dois temas, fechando a decisão 2 de `DASHBOARD.md`.
+
+Fora do escopo da Feature 7 e ainda pendentes: a fila de atenção usa `ReconciliationItem`, que pertence à Feature 6; a comparação da média diária contra orçamento depende de `Budget`, que é a Etapa 9 do [`ROADMAP.md`](./ROADMAP.md); e a consolidação entre moedas (lacuna L-4) segue em aberto.
 
 ## Feature 8 — Histórico, reversão e segurança local
 
@@ -512,7 +571,7 @@ Importações, edições de lançamento e decisões de conciliação criam event
 | 3 | `mvp_onboarding` | `OnboardingSession`, `OnboardingAnswer` | criada |
 | 4 | `mvp_scheduled_obligations` | `ScheduledObligation` | criada |
 | 4b | `mvp_income_merchant_rules` | `IncomeSource`, `MerchantRule` | criada |
-| 4c | `mvp_pix_identifier` | `PixIdentifier` | planejada na Feature 2 |
+| 4c | `mvp_pix_identifiers` | `PixIdentifier`, com unicidade `(profileId, valueIndex)` | criada |
 | 5 | `mvp_import_details` | `ImportFile`, `CsvMappingProfile`, `ImportIssue`, colunas de período em `ImportBatch` e `Transaction.externalId` | criada |
 | 5b | `balance_snapshot_source` | `BalanceSnapshot.importBatchId`, para que desfazer a importação não apague saldo informado à mão | criada |
 | 5c | `transaction_revisions` | `TransactionRevision` | criada |
@@ -523,14 +582,14 @@ Importações, edições de lançamento e decisões de conciliação criam event
 
 1. Concluir a trilha cloud de cadastro, sessão e autorização de downloads.
 2. ~~Implementar onboarding persistente.~~ — **concluída**
-3. Concluir instituições, contas e snapshots. — *parcial: criação e listagem existem; edição e desativação continuam planejadas.*
+3. ~~Concluir instituições, contas e snapshots.~~ — **concluída**, incluindo edição, desativação, histórico de saldos e chaves PIX próprias.
 4. ~~Implementar categorias, rendas e obrigações.~~ — **concluída**
 5. ~~Implementar inspeção e mapeamento de CSV.~~ — **concluída**
 6. ~~Implementar parser e importação transacional de CSV/OFX.~~ — **concluída**
 7. ~~Implementar listagem real de extratos.~~ — **concluída**
-8. Implementar conciliação e reversão. — *a reversão de lote existe; a fila de conciliação depende da migration 6.*
-9. Concluir Dashboard e Saldo Livre de Risco.
-10. Implementar histórico, backup de migrations e testes ponta a ponta. — *os testes ponta a ponta da importação existem em `tests/import-e2e.test.mjs`.*
+8. ~~Implementar conciliação e reversão.~~ — **concluída**, com fila persistente, decisões auditáveis e reversão atômica.
+9. ~~Concluir Dashboard e Saldo Livre de Risco.~~ — **concluída**: os nove elementos de `DASHBOARD.md` estão no ar, incluindo a projeção de caixa e o fluxo mensal.
+10. ~~Implementar histórico, gate de backup para migrations e testes ponta a ponta.~~ — **concluída no escopo local do MVP**, com timeline, reversão por caso de uso, preflight e cobertura automatizada. Backup cloud E2EE permanece fora do MVP.
 11. Empacotar, assinar, publicar e validar Windows e Linux.
 
 ## Definition of Done do MVP

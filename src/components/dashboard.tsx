@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { useApp } from '@/components/app-state';
+import { CashFlowChart, CashProjectionChart } from '@/components/dashboard-charts';
 import { useCategoryBreakdown } from '@/hooks/use-category-breakdown';
 import { useDashboardData, type DashboardMetrics } from '@/hooks/use-dashboard-data';
 import { formatCents, formatPercent, formatPeriod } from '@/lib/format';
@@ -267,7 +268,13 @@ function Metrics({ data }: { data: DashboardMetrics }) {
         </section>
       )}
 
+      {/* Faixa de tendência, na ordem narrativa de docs/DASHBOARD.md, Parte 4:
+          primeiro o futuro que o veredito promete (G-1), depois para onde o
+          dinheiro foi (G-2) e por fim a evolução mensal (G-3). Cada um se
+          esconde sozinho quando não há dado que sustente a afirmação. */}
+      <CashProjectionChart />
       <CategoryChart />
+      <CashFlowChart />
     </div>
   );
 }

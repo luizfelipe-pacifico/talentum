@@ -58,3 +58,4 @@ Mudanças gerais de arquitetura atualizam `ARCHITECTURE.md` e a arquitetura espe
 | --- | --- |
 | [`0001-web-hosting.md`](./decisions/0001-web-hosting.md) | Hospedagem da LP na Vercel e do backend em Cloudflare Workers |
 | [`0002-leitor-ofx-proprio.md`](./decisions/0002-leitor-ofx-proprio.md) | Leitor OFX próprio em vez de `ofx-data-extractor` |
+| [`0003-chave-local-do-dispositivo.md`](./decisions/0003-chave-local-do-dispositivo.md) | Onde mora o segredo que protege os identificadores PIX |

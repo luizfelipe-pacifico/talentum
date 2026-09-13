@@ -58,6 +58,8 @@ export type StatementUpload = {
   dialect?: Partial<CsvDialect>;
   /** Conta de destino, presente apenas na gravação do lote. */
   accountId: string | null;
+  /** Pedido explícito para guardar o mapeamento de colunas conferido. */
+  rememberMapping: boolean;
 };
 
 /**
@@ -112,6 +114,10 @@ export async function readStatementUpload(request: Request): Promise<StatementUp
       ? accountRaw.trim()
       : null;
 
+  // Guardar o mapeamento é escolha explícita: um layout salvo sem consentimento
+  // seria reaplicado em silêncio na importação seguinte.
+  const rememberMapping = form.get('rememberMapping') === 'true';
+
   return {
     bytes,
     originalName: file.name || 'extrato',
@@ -120,6 +126,7 @@ export async function readStatementUpload(request: Request): Promise<StatementUp
     mapping,
     dialect,
     accountId,
+    rememberMapping,
   };
 }
 

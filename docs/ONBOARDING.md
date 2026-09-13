@@ -397,11 +397,11 @@ Todas as tabelas possuem `id`; relações usam IDs.
 | `IncomeSource` | `profileId`, `accountId?` | renda, frequência e faixa de data |
 | `Institution` | — | instituição cadastrada localmente |
 | `Account` | `profileId`, `institutionId` | conta, carteira ou corretora |
-| `PixKey` | `accountId` | chave própria cifrada, índice HMAC, tipo e validade |
+| `PixIdentifier` | `profileId`, `accountId` | chave própria cifrada, índice HMAC, tipo e validade |
 | `BalanceSnapshot` | `accountId`, `baselineId?` | saldo, data, origem e confiança |
 | `CreditCard` | `profileId`, `institutionId`, `paymentAccountId?` | cartão e vencimentos |
 | `Statement` | `creditCardId` | fatura aberta/fechada |
-| `RecurringObligation` | `profileId`, `accountId?` | conta recorrente ou parcela |
+| `ScheduledObligation` | `profileId`, `accountId?` | conta recorrente ou parcela |
 | `Liability` | `profileId`, `institutionId?` | dívida, saldo e custo informado |
 | `Asset` | — | identidade local do ativo/fundo |
 | `Holding` | `accountId`, `assetId` | posição mantida na conta de investimento |

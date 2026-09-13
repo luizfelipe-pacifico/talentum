@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useApp } from '@/components/app-state';
+import { AccountBalance } from '@/components/accounts';
+import { useAccounts } from '@/hooks/use-accounts';
 
 export function Overlays() {
   const app = useApp();
@@ -10,7 +12,7 @@ export function Overlays() {
     {app.overlay === 'express' && <UnavailableDialog title="Lançamento manual" text="Cadastre uma conta e as categorias pelo backend antes de criar um lançamento."/>}
     {app.overlay === 'import' && <ImportDialog/>}
     {app.overlay === 'onboarding' && <OnboardingDialog/>}
-    {app.overlay === 'conta' && <UnavailableDialog title="Contas" text="Nenhuma conta foi retornada pelo backend local."/>}
+    {app.overlay === 'conta' && <AccountsDialog/>}
   </>;
 }
 
@@ -22,6 +24,65 @@ function NotificationsDrawer() {
       <div className="drawer-head"><h2 className="h-display">Notificações</h2><button type="button" className="close-button" onClick={app.close} aria-label="Fechar"><i className="bi bi-x-lg"/></button></div>
       <div className="drawer-body"><div className="callout callout-ok"><i className="bi bi-inbox"/><div><p className="callout-title">Nenhuma notificação</p><p className="small">Alertas aparecerão somente quando forem gerados a partir de dados persistidos.</p></div></div></div>
     </aside>
+  </div>;
+}
+
+/* Seletor de contas.
+
+   Critério de conclusão da Feature 2 em docs/ROUTING_MVP.md: criar, editar ou
+   desativar uma conta atualiza este seletor e o saldo consolidado por consulta
+   ao backend. Só contas ativas aparecem, porque são elas que compõem o total. */
+function AccountsDialog() {
+  const app = useApp();
+  const state = useAccounts();
+
+  const body = () => {
+    if (state.status === 'loading') {
+      return <span className="skeleton skeleton-line" />;
+    }
+    if (state.status === 'error') {
+      return (
+        <div className="callout callout-warn" role="alert">
+          <i className="bi bi-exclamation-triangle"/>
+          <p className="small">Não foi possível consultar as contas. Nenhum saldo é exibido sem resposta do backend.</p>
+        </div>
+      );
+    }
+    if (!state.payload.hasProfile || state.payload.accounts.length === 0) {
+      return <p className="muted">Nenhuma conta cadastrada ainda.</p>;
+    }
+
+    const active = state.payload.accounts.filter((account) => account.isActive);
+    if (active.length === 0) return <p className="muted">Todas as contas estão desativadas.</p>;
+
+    return (
+      <table className="tbl tbl-data">
+        <caption className="sr-only">Contas ativas e o saldo conhecido de cada uma.</caption>
+        <tbody>
+          {active.map((account) => (
+            <tr key={account.id}>
+              <td>
+                <Link href={`/contas/${account.id}`} onClick={app.close}>{account.name}</Link>
+                {account.institution && <span className="small muted"> · {account.institution.name}</span>}
+              </td>
+              <td className="right"><AccountBalance account={account}/></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  };
+
+  return <div className="overlay">
+    <button type="button" className="overlay-scrim" aria-label="Fechar" onClick={app.close}/>
+    <div role="dialog" aria-modal="true" aria-label="Contas" className="dialog dialog-md">
+      <div className="row-between"><div><h2 className="dialog-title">Contas</h2><p className="small muted">Saldos conhecidos, consultados no banco local.</p></div><button type="button" className="close-button" onClick={app.close} aria-label="Fechar"><i className="bi bi-x-lg"/></button></div>
+      {body()}
+      <div className="row-tight">
+        <Link className="btn btn-primary" href="/contas" onClick={app.close}>Gerenciar contas</Link>
+        <Link className="btn btn-neutral" href="/contas/nova" onClick={app.close}>Cadastrar conta</Link>
+      </div>
+    </div>
   </div>;
 }
 

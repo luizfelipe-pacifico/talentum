@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { formatCents } from '@/lib/format';
 import { useTransactions } from '@/hooks/use-transactions';
 
@@ -26,7 +27,10 @@ function Skeleton() {
 }
 
 export function StatementsPage() {
-  const state = useTransactions();
+  // `?conta=` chega do detalhe da conta. O filtro é aplicado pelo backend; aqui
+  // ele só é repassado.
+  const accountId = useSearchParams().get('conta') ?? undefined;
+  const state = useTransactions(accountId);
 
   if (state.status === 'loading') return <Skeleton />;
 

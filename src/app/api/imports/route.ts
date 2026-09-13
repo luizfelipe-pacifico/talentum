@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { db } from '@/server/db';
 import { fail, guardWithProfile, isDenied, ok } from '@/server/http';
 import { inspectStatement } from '@/server/import/inspect';
+import { findSavedMapping, rememberMapping } from '@/server/import/mapping-profiles';
 import { ImportPersistError, isUniqueViolation, persistImport } from '@/server/import/persist';
 import {
   CLIENT_ERROR_STATUS,
@@ -84,12 +85,40 @@ export async function POST(request: Request) {
     return fail(code, IMPORT_ERROR_MESSAGES[code] ?? 'O arquivo não pôde ser lido.', CLIENT_ERROR_STATUS[code] ?? 400);
   }
 
+  // Sem mapeamento informado, reaplica o salvo — a gravação precisa usar
+  // exatamente o mesmo mapeamento que a prévia mostrou.
+  if (!upload.mapping) {
+    const saved = await findSavedMapping(guarded.profileId, inspection.headerSignature);
+    if (saved) {
+      try {
+        inspection = inspectStatement(upload.bytes, {
+          mapping: saved.mapping,
+          dialect: { ...saved.dialect, ...upload.dialect },
+        });
+      } catch {
+        // Layout mudou: segue com a inferência já calculada.
+      }
+    }
+  }
+
   try {
     const result = await persistImport(guarded.profileId, accountId, inspection, {
       originalName: upload.originalName,
       byteSize: upload.byteSize,
       mediaType: upload.mediaType,
     });
+
+    /* Guardar o mapeamento acontece depois do lote, e fora da transação: é
+       conveniência, não parte do dado financeiro. Falhar aqui não pode
+       desfazer uma importação que já está correta. */
+    let savedMapping = null;
+    if (upload.rememberMapping) {
+      try {
+        savedMapping = await rememberMapping(guarded.profileId, inspection, accountId);
+      } catch {
+        savedMapping = null;
+      }
+    }
 
     return ok(
       {
@@ -101,6 +130,7 @@ export async function POST(request: Request) {
         periodStart: result.periodStart?.toISOString() ?? null,
         periodEnd: result.periodEnd?.toISOString() ?? null,
         balanceRecorded: result.balanceRecorded,
+        savedMapping: savedMapping ? { id: savedMapping.id, name: savedMapping.name } : null,
       },
       201,
     );

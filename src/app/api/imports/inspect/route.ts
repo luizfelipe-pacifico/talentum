@@ -1,6 +1,7 @@
 import { db } from '@/server/db';
 import { fail, guardWithProfile, isDenied, ok } from '@/server/http';
 import { inspectStatement, previewOf } from '@/server/import/inspect';
+import { findSavedMapping } from '@/server/import/mapping-profiles';
 import {
   CLIENT_ERROR_STATUS,
   IMPORT_ERROR_MESSAGES,
@@ -34,6 +35,30 @@ export async function POST(request: Request) {
     return fail(code, IMPORT_ERROR_MESSAGES[code] ?? 'O arquivo não pôde ser lido.', CLIENT_ERROR_STATUS[code] ?? 400);
   }
 
+  /* Mapeamento salvo para este layout.
+
+     A busca só acontece quando a pessoa ainda não informou um mapeamento: uma
+     escolha explícita na tela sempre vence o que está guardado. A segunda
+     leitura é o preço de manter `inspectStatement` puro, sem acesso ao banco —
+     e o arquivo é pequeno e limitado por teto. */
+  let appliedMapping: Awaited<ReturnType<typeof findSavedMapping>> = null;
+  if (!upload.mapping) {
+    appliedMapping = await findSavedMapping(guarded.profileId, inspection.headerSignature);
+    if (appliedMapping) {
+      try {
+        inspection = inspectStatement(upload.bytes, {
+          mapping: appliedMapping.mapping,
+          dialect: { ...appliedMapping.dialect, ...upload.dialect },
+        });
+      } catch {
+        // Layout mudou desde que o mapeamento foi salvo: volta para a
+        // inferência em vez de recusar o arquivo.
+        appliedMapping = null;
+        inspection = inspectStatement(upload.bytes, { dialect: upload.dialect });
+      }
+    }
+  }
+
   // Arquivo já importado antes: dizer isso agora evita que a pessoa chegue ao
   // fim do fluxo para receber uma recusa.
   const duplicate = await db.importBatch.findFirst({
@@ -56,6 +81,13 @@ export async function POST(request: Request) {
     dialect: inspection.dialect,
     headers: inspection.headers,
     mapping: inspection.mapping,
+    // De onde veio o mapeamento mostrado: um layout reconhecido não pode ser
+    // aplicado em silêncio, a tela precisa dizer que reaproveitou.
+    mappingSource: upload.mapping ? 'informado' : appliedMapping ? 'salvo' : 'inferido',
+    savedMapping: appliedMapping
+      ? { id: appliedMapping.id, name: appliedMapping.name, institutionName: appliedMapping.institutionName }
+      : null,
+    canRememberMapping: inspection.format === 'csv' && inspection.headerSignature !== null,
     rowCount: inspection.entries.length,
     issueCount: inspection.issues.length,
     duplicateExternalIds: inspection.duplicateExternalIds,

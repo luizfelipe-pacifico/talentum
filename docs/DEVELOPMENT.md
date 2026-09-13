@@ -119,6 +119,20 @@ O importador de extrato é testado em três camadas:
 | `import-inspect.test.mjs` | inspeção completa e limites de segurança | não |
 | `import-e2e.test.mjs` | fluxo HTTP real e controles de segurança | **sim** |
 
+O painel e a validação de cor têm suítes próprias:
+
+| Arquivo | Camada | Depende de servidor? |
+| --- | --- | --- |
+| `dashboard-metrics.test.mjs` | fórmulas dos indicadores | não |
+| `dashboard-charts.test.mjs` | projeção de caixa e fluxo mensal | não |
+| `palette.test.mjs` | validador de paleta | não |
+| `accounts-e2e.test.mjs` | contas, saldos e chaves PIX | **sim** |
+
+`tests/palette.test.mjs` não verifica apenas que o validador roda: ele exige que
+os **veredictos reproduzam** os registrados em [`DASHBOARD.md`](./DASHBOARD.md) —
+as reprovações da auditoria D-5 e as aprovações de R-15 nos dois temas. Se o
+validador discordar do documento, um dos dois está errado e o teste falha.
+
 O teste ponta a ponta roda contra o backend em execução — `pnpm dev` ou
 `pnpm docker:up` — e é **pulado automaticamente** quando não há servidor,
 para que `pnpm test` continue verde offline. Ele cria seu próprio perfil e

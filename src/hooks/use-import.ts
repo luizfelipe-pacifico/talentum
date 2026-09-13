@@ -51,6 +51,10 @@ export type InspectionPayload = {
   issues: { lineNumber: number; severity: string; code: string; message: string }[];
   alreadyImported: { importBatchId: string; fileName: string | null; importedAt: string } | null;
   accounts: { id: string; name: string; currency: string; institutionName: string | null }[];
+  /** De onde veio o mapeamento exibido. Um layout reconhecido é declarado. */
+  mappingSource: 'inferido' | 'salvo' | 'informado';
+  savedMapping: { id: string; name: string; institutionName: string | null } | null;
+  canRememberMapping: boolean;
 };
 
 export type CommitPayload = {
@@ -62,6 +66,7 @@ export type CommitPayload = {
   periodStart: string | null;
   periodEnd: string | null;
   balanceRecorded: boolean;
+  savedMapping: { id: string; name: string } | null;
 };
 
 export type ImportStage =
@@ -123,7 +128,7 @@ export function useImport() {
   );
 
   const commit = useCallback(
-    async (accountId: string, roles: ColumnRole[] | null) => {
+    async (accountId: string, roles: ColumnRole[] | null, remember = false) => {
       if (!file || stage.status !== 'review') return;
       const inspection = stage.inspection;
       setStage({ status: 'committing', inspection });
@@ -131,6 +136,7 @@ export function useImport() {
       const form = new FormData();
       form.set('file', file);
       form.set('accountId', accountId);
+      if (remember) form.set('rememberMapping', 'true');
       if (roles && roles.length > 0) form.set('mapping', JSON.stringify({ roles }));
       if (inspection.dialect) {
         form.set(

@@ -19,7 +19,7 @@ import {
 } from './csv.ts';
 import { MAX_FILE_BYTES, MAX_ROWS, PREVIEW_ROWS } from './limits.ts';
 import { looksLikeOfx, parseOfx } from './ofx.ts';
-import { decodeStatement } from './text.ts';
+import { decodeStatement, normalizeLabel } from './text.ts';
 import { endOfCivilDay } from './values.ts';
 
 export type StatementFormat = 'csv' | 'ofx';
@@ -63,6 +63,12 @@ export type StatementInspection = {
   dialect: CsvDialect | null;
   headers: string[] | null;
   mapping: CsvMapping | null;
+  /**
+   * Assinatura do cabeçalho, usada para reconhecer o mesmo layout de banco em
+   * importações seguintes. `null` quando o arquivo não tem cabeçalho — sem ele
+   * não há o que reconhecer com segurança.
+   */
+  headerSignature: string | null;
   entries: RawEntry[];
   issues: ImportIssueDraft[];
   periodStart: Date | null;
@@ -84,6 +90,28 @@ export type StatementInspection = {
 export function fingerprintOf(text: string): string {
   const normalized = text.replace(/\r\n|\r/g, '\n').trim();
   return createHash('sha256').update(normalized, 'utf8').digest('hex');
+}
+
+/**
+ * Assinatura do layout do arquivo.
+ *
+ * Calculada sobre os rótulos das colunas já normalizados — sem acento, sem
+ * caixa, sem pontuação —, na ordem em que aparecem. Dois extratos do mesmo
+ * banco produzem a mesma assinatura mesmo em meses diferentes, o que permite
+ * reaplicar o mapeamento que a pessoa já conferiu uma vez.
+ *
+ * Diferente da impressão digital do arquivo, que muda a cada extrato: esta
+ * identifica o **formato**, não o conteúdo.
+ *
+ * Devolve `null` sem cabeçalho utilizável: reconhecer layout por posição de
+ * coluna seria adivinhação, e um mapeamento errado aplicado em silêncio
+ * inverteria sinais de lançamento.
+ */
+export function headerSignatureOf(headers: string[] | null): string | null {
+  if (!headers) return null;
+  const normalized = headers.map((header) => normalizeLabel(header));
+  if (normalized.filter((label) => label.length > 0).length < 2) return null;
+  return createHash('sha256').update(normalized.join('|'), 'utf8').digest('hex');
 }
 
 /**
@@ -235,6 +263,8 @@ export function inspectStatement(bytes: Uint8Array, options: InspectOptions = {}
       dialect: null,
       headers: null,
       mapping: null,
+      // OFX não tem colunas: não há layout de cabeçalho a reconhecer.
+      headerSignature: null,
       entries: statement.entries,
       issues,
       periodStart: statement.periodStart ?? period.periodStart,
@@ -292,6 +322,7 @@ export function inspectStatement(bytes: Uint8Array, options: InspectOptions = {}
     dialect: table.dialect,
     headers: table.headers,
     mapping,
+    headerSignature: headerSignatureOf(table.headers),
     entries,
     issues,
     periodStart: period.periodStart,

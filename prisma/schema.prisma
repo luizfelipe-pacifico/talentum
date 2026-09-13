@@ -25,6 +25,7 @@ model LocalProfile {
   incomes       IncomeSource[]
   merchantRules MerchantRule[]
   transactionRevisions TransactionRevision[]
+  pixIdentifiers PixIdentifier[]
   reconciliationItems ReconciliationItem[]
   reconciliationDecisions ReconciliationDecision[]
   financialAdjustments FinancialAdjustment[]
@@ -106,9 +107,48 @@ model Account {
   obligations      ScheduledObligation[]
   importBatches    ImportBatch[]
   incomes          IncomeSource[]
+  pixIdentifiers   PixIdentifier[]
 
   @@index([profileId])
   @@index([institutionId])
+}
+
+/// Chave PIX própria da pessoa, usada só para reconhecer transferência entre
+/// contas dela mesma — que não é receita nem despesa (docs/ONBOARDING.md).
+///
+/// O valor nunca é gravado em texto puro. `valueIndex` é um HMAC com segredo do
+/// dispositivo, e não um hash simples: CPF, telefone e e-mail têm espaço de
+/// valores previsível e um hash puro cairia por força bruta. `valueCiphertext`
+/// guarda o valor sob AES-256-GCM para quando a pessoa pedir para vê-lo.
+model PixIdentifier {
+  id              String        @id @default(uuid())
+  profileId       String
+  accountId       String
+  /// cpf | cnpj | phone | email | random
+  type            String
+  /// Apelido seguro escolhido pela pessoa, para reconhecer a chave na lista.
+  label           String?
+  /// HMAC-SHA256 do valor normalizado, com subchave do dispositivo.
+  valueIndex      String
+  /// AES-256-GCM do valor normalizado, com versão, nonce e tag.
+  valueCiphertext String
+  /// Forma mascarada, a única que a interface exibe por padrão.
+  maskedValue     String
+  isActive        Boolean       @default(true)
+  /// Período de validade conhecido, que ajuda a interpretar extrato antigo.
+  validFrom       DateTime?
+  validUntil      DateTime?
+  /// declared | detected
+  source          String        @default("declared")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  profile         LocalProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  account         Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  /// A mesma chave não pertence a duas contas da mesma pessoa.
+  @@unique([profileId, valueIndex])
+  @@index([accountId])
+  @@index([profileId, isActive])
 }
 
 model BalanceSnapshot {

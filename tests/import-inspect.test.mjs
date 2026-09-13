@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   deriveClosingBalance,
   fingerprintOf,
+  headerSignatureOf,
   inspectStatement,
   previewOf,
 } from '../src/server/import/inspect.ts';
@@ -90,6 +91,47 @@ test('a impressão digital ignora quebra de linha, mas não o conteúdo', () => 
   // O mesmo extrato reexportado com CRLF continua sendo o mesmo extrato.
   assert.equal(fingerprintOf(DESCENDING), fingerprintOf(DESCENDING.replace(/\n/g, '\r\n')));
   assert.notEqual(fingerprintOf(DESCENDING), fingerprintOf(DESCENDING.replace('100,00', '101,00')));
+});
+
+test('a assinatura do layout identifica o formato, não o conteúdo', () => {
+  // Dois extratos do mesmo banco em meses diferentes têm conteúdo distinto,
+  // mas o mesmo layout — é isso que permite reaplicar o mapeamento conferido.
+  const outroMes = DESCENDING.replace('04/09/2026', '04/10/2026').replace('100,00', '200,00');
+  const a = inspectStatement(encode(DESCENDING));
+  const b = inspectStatement(encode(outroMes));
+
+  assert.equal(a.headerSignature, b.headerSignature, 'mesmo layout, mesma assinatura');
+  assert.notEqual(a.fingerprint, b.fingerprint, 'conteúdo diferente, impressão digital diferente');
+});
+
+test('a assinatura ignora acento, caixa e pontuação do cabeçalho', () => {
+  const acentuado = DESCENDING.replace('Data;Descricao;', 'DATA;Descrição;');
+  assert.equal(
+    inspectStatement(encode(DESCENDING)).headerSignature,
+    inspectStatement(encode(acentuado)).headerSignature,
+  );
+});
+
+test('cabeçalho diferente produz assinatura diferente', () => {
+  const outroBanco = DESCENDING.replace('Data;Descricao;Identificador;Tipo;Valor;Saldo', 'Data;Historico;Doc;DC;Montante;Acumulado');
+  assert.notEqual(
+    inspectStatement(encode(DESCENDING)).headerSignature,
+    inspectStatement(encode(outroBanco)).headerSignature,
+  );
+});
+
+test('sem cabeçalho não há layout a reconhecer', () => {
+  // Reconhecer por posição de coluna seria adivinhação, e um mapeamento errado
+  // aplicado em silêncio inverteria o sinal dos lançamentos.
+  const semCabecalho = ['04/09/2026;COMPRA SINTETICA LONGA;-100,00', '03/09/2026;OUTRA COMPRA;-50,00'].join('\n');
+  assert.equal(inspectStatement(encode(semCabecalho)).headerSignature, null);
+  assert.equal(headerSignatureOf(null), null);
+  assert.equal(headerSignatureOf(['Data']), null, 'uma coluna só não é layout');
+});
+
+test('OFX não tem assinatura de cabeçalho', () => {
+  const ofx = 'OFXHEADER:100\n\n<OFX><BANKTRANLIST><STMTTRN><DTPOSTED>20260902<TRNAMT>-10.00<FITID>S1<MEMO>X</STMTTRN></BANKTRANLIST></OFX>';
+  assert.equal(inspectStatement(encode(ofx)).headerSignature, null);
 });
 
 test('conta identificadores repetidos dentro do próprio arquivo', () => {
