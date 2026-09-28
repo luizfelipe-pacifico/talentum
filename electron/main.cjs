@@ -1,7 +1,10 @@
 const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage } = require('electron');
 const path = require('node:path');
 
-const url = process.env.TALENTUM_URL || 'http://127.0.0.1:3000';
+/* `localhost` é o endereço documentado do backend local e o publicado pelo
+   Compose. `scripts/dev-all.mjs` sobrescreve TALENTUM_URL quando confirma que
+   outro endereço responde. */
+const url = process.env.TALENTUM_URL || 'http://localhost:3000';
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
 if (!hasSingleInstanceLock) {
