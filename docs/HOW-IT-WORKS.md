@@ -30,7 +30,7 @@ A rota que emite códigos é a única exceção. O código não substitui access
 
 ## Estado atual
 
-`pnpm dev` encerra um processo anterior na porta 3000, aguarda a liberação, remove `.next` e inicia o Next.js em `http://127.0.0.1:3000`. `pnpm dev:all` aguarda uma resposta HTTP válida, abre essa URL no Electron e encerra os dois processos em conjunto. A interface atual é um protótipo navegável com dados exclusivamente sintéticos; importação, conciliação, cálculos financeiros e persistência exibidos nas telas ainda são demonstrações locais, não casos de uso implementados.
+`pnpm dev` encerra um processo anterior na porta 3000, aguarda a liberação, remove `.next` e inicia o Next.js em `http://127.0.0.1:3000`. `pnpm dev:all` consulta `GET /api/health/live` e só então abre a janela em `http://localhost:3000`. Quando o backend local já responde — pelo Docker ou por um `pnpm dev` em outro terminal — a janela é anexada a esse servidor, que não é encerrado ao fechar a janela; quando nada responde, o script sobe o servidor e encerra os dois processos em conjunto. O servidor escuta somente no loopback IPv4; `localhost` chega a ele por fallback de família de endereço. A interface atual é um protótipo navegável com dados exclusivamente sintéticos; importação, conciliação, cálculos financeiros e persistência exibidos nas telas ainda são demonstrações locais, não casos de uso implementados.
 
 ## Inicialização planejada
 

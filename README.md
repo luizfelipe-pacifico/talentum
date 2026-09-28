@@ -175,7 +175,7 @@ pnpm prisma:migrate
 | Comando | Ação |
 | --- | --- |
 | `pnpm dev` | Limpa o cache do Next.js, libera a porta 3000 e inicia o servidor local |
-| `pnpm dev:all` | Inicia o Next.js e abre a aplicação no Electron |
+| `pnpm dev:all` | Abre o Electron em `http://localhost:3000`; reaproveita um servidor já no ar, seja do Docker ou de um `pnpm dev` em outro terminal |
 | `pnpm docker:up` | Constrói e inicia o app local em `localhost:3000` e a LP em `localhost:3100` |
 | `pnpm docker:up:detached` | Inicia os dois serviços em segundo plano e aguarda os healthchecks |
 | `pnpm docker:down` | Encerra os dois serviços sem remover o volume SQLite |
