@@ -25,12 +25,23 @@ pnpm prisma:migrate
 
 Não copie valores reais para `.env.example`. O arquivo `.env` local não deve ser versionado.
 
+### O que cada arquivo de configuração responde
+
+| Arquivo | Responsabilidade | Versionado |
+| --- | --- | --- |
+| `.env` | banco local SQLite, caminho do SQLite no Docker e acesso da LP/BFF ao Worker | não |
+| `.env.example` | os mesmos nomes com placeholders sintéticos | sim |
+| `cloudflare/.dev.vars` | segredos do próprio Worker em desenvolvimento | não |
+| `cloudflare/wrangler.jsonc` | binding `DB`, `database_id` do D1 e variáveis públicas | sim |
+
+`DATABASE_URL` é o SQLite do host, resolvido a partir de `prisma/`. `DOCKER_DATABASE_URL` é o caminho dentro do container `talentum-local` e precisa apontar para o volume `talentum-data`; os dois existem porque `temp/` do host não existe dentro da imagem. `CLOUDFLARE_API_BASE_URL` e `CLOUDFLARE_BFF_SHARED_SECRET` são o único acesso da LP à borda, e o segundo precisa ser idêntico ao `BFF_SHARED_SECRET` do Worker. Nenhum dado financeiro é configurado ou trafega pela borda: o D1 é acessado somente pelo Worker.
+
 ## Comandos existentes
 
 | Comando | Comportamento atual |
 | --- | --- |
 | `pnpm dev` | libera a porta 3000, remove `.next` e inicia `next dev` |
-| `pnpm dev:all` | inicia o servidor, aguarda a porta e abre o Electron |
+| `pnpm dev:all` | abre o Electron em `http://localhost:3000`; anexa-se a um servidor já no ar ou sobe um próprio |
 | `pnpm docker:build` | constrói as imagens isoladas do app local e da LP |
 | `pnpm docker:up` | constrói e inicia o app em `127.0.0.1:3000` e a LP em `127.0.0.1:3100` |
 | `pnpm docker:up:detached` | inicia os dois serviços em segundo plano e aguarda os healthchecks |
@@ -57,7 +68,7 @@ Não copie valores reais para `.env.example`. O arquivo `.env` local não deve s
 
 No fluxo Docker atual, `talentum-local` contém o backend e a interface desktop local; `talentum-web` contém somente a LP/BFF de `apps/web`. A URL padrão do Worker vista pela LP em container é `http://host.docker.internal:8787` e pode ser substituída por `CLOUDFLARE_API_BASE_URL`. Valores locais de integração devem ficar em `.env` ignorado, nunca no Compose versionado.
 
-O Electron roda no host e pode apontar tanto para `pnpm dev` quanto para o servidor iniciado pelo Compose. Ao iniciar, o container executa `prisma migrate deploy`, cria ou atualiza `/data/talentum-local.db` e só então sobe o servidor. O volume nomeado `talentum-data` preserva o SQLite entre recriações do container.
+O Electron roda no host e aponta para `http://localhost:3000`, tanto o de `pnpm dev` quanto o iniciado pelo Compose. `pnpm dev:all` consulta `GET /api/health/live` antes de agir: quando o backend local já responde, a janela é anexada a ele e nenhum servidor novo é iniciado; fechar a janela nesse modo não encerra o container nem o terminal alheio. Quando nada responde, o script sobe o servidor e o encerra junto da janela. `TALENTUM_URL` sobrescreve o endereço quando necessário. Ao iniciar, o container executa `prisma migrate deploy`, cria ou atualiza `/data/talentum-local.db` e só então sobe o servidor. O volume nomeado `talentum-data` preserva o SQLite entre recriações do container.
 
 O SQLite local já possui `LocalProfile`, `UserPreference` e o núcleo financeiro inicial. O D1 possui migration própria para identidade mínima, sessão, releases e feedback. Consulte [`CLOUDFLARE_SETUP.md`](./CLOUDFLARE_SETUP.md) antes de criar ou aplicar migrations cloud.
 

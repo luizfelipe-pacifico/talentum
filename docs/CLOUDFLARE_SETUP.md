@@ -53,6 +53,8 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'
 
 `.dev.vars` é local, está no `.gitignore` e nunca deve ser commitado.
 
+Em desenvolvimento, a LP lê `CLOUDFLARE_BFF_SHARED_SECRET` do `.env` da raiz, e o Worker lê `BFF_SHARED_SECRET` do `.dev.vars`. **Os dois precisam ter o mesmo valor**, senão toda rota do Worker responde `BFF_REQUIRED`. Ao rodar a LP em container, aponte `CLOUDFLARE_API_BASE_URL` para `http://host.docker.internal:8787`; o Compose já declara o `extra_hosts` que faz esse nome resolver no Docker para Linux.
+
 ## 5. Aplicar e verificar a migration localmente
 
 ```powershell

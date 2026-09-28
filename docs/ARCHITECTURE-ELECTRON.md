@@ -6,7 +6,7 @@ O desktop é local-first: processa e guarda dados financeiros no dispositivo. O 
 
 ## Estado atual
 
-O Next.js App Router fornece a interface e três Route Handlers iniciais. Prisma está configurado para SQLite com `LocalProfile` e `UserPreference`. No Compose, o SQLite fica em `/data/talentum-local.db`, dentro do volume persistente `talentum-data`; o container aplica as migrações antes de iniciar o backend. Docker executa somente o servidor local; o Electron gráfico continua no host e abre `http://localhost:3000`.
+O Next.js App Router fornece a interface e três Route Handlers iniciais. Prisma está configurado para SQLite com `LocalProfile` e `UserPreference`. No Compose, o SQLite fica em `/data/talentum-local.db`, dentro do volume persistente `talentum-data`; o container aplica as migrações antes de iniciar o backend. Docker executa somente o servidor local; o Electron gráfico continua no host e abre `http://localhost:3000`. `pnpm dev:all` detecta um backend local já no ar e anexa a janela a ele, em vez de disputar a porta.
 
 As tabelas financeiras e o importador de CSV ainda não estão implementados. A interface não deve apresentar fixtures como se fossem dados da pessoa usuária: o Dashboard inicia zerado até que o onboarding ou uma importação real grave dados pelo backend local.
 
