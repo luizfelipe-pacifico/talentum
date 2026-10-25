@@ -2,13 +2,19 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 function contentSecurityPolicy(nonce: string) {
+  // Em desenvolvimento o React avalia código com eval para os stack traces,
+  // sem o que a página não hidrata, e o recarregamento do Next usa WebSocket.
+  // Produção continua sem 'unsafe-eval' e sem ws:.
+  const dev = process.env.NODE_ENV === 'development';
+  const devEval = dev ? " 'unsafe-eval'" : '';
+  const devSocket = dev ? ' ws:' : '';
   return [
     "default-src 'self'",
     "img-src 'self' data:",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
-    "connect-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${devEval}`,
+    `connect-src 'self'${devSocket}`,
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

@@ -81,6 +81,10 @@ A imagem usa Ubuntu 24.04, Node.js 22 copiado da imagem oficial, execução por 
 
 Para que `http://localhost:3000` use o banco dentro do Docker, suba o app pelo Compose (`pnpm docker:up:detached`). O SQLite fica em `/data/talentum-local.db`, no volume nomeado `talentum-data`, e não no host. Depois, `pnpm dev:all` detecta o container pelo healthcheck e só abre a janela Electron sobre ele. Não rode `pnpm dev` com o container no ar: o script libera a porta 3000 encerrando o processo que a ocupa, o que inclui o encaminhamento de porta do Docker, e passaria a usar o `temp/talentum-local.db` do host. O banco continua SQLite; trocá-lo por um servidor de banco contrariaria o modelo local-first de `ARCHITECTURE-ELECTRON.md`.
 
+### Portas compartilhadas com outros projetos
+
+Os servidores do Talentum escutam somente no loopback IPv4 (`127.0.0.1`). Outro servidor local iniciado com `--hostname localhost` pode ocupar a mesma porta no IPv6 (`[::1]`), e o navegador, que tenta o IPv6 primeiro ao resolver `localhost`, abre esse outro projeto. Quando `http://localhost:<porta>` mostrar uma página que não é do Talentum, use `http://127.0.0.1:<porta>` ou encerre o outro servidor. Para conferir quem escuta, use `Get-NetTCPConnection -LocalPort 3000,3001,3100 -State Listen` no Windows ou `lsof -iTCP -sTCP:LISTEN` no Linux.
+
 ## Skills de agente
 
 `.claude/skills/` e `.claude/agents/` versionam skills de design de terceiros, usadas pelo Claude Code neste repositório. Elas são ferramentas de apoio e não fontes normativas: em qualquer conflito, `BRANDING.md`, `DASHBOARD.md` e as demais regras deste diretório prevalecem. São uma exceção deliberada à regra de manter Markdown somente em `docs/`, porque o Claude Code só as descobre nesse caminho.
