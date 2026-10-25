@@ -186,6 +186,8 @@ pnpm prisma:migrate
 | `pnpm prisma:validate` | Valida o schema Prisma |
 | `pnpm prisma:migrate` | Cria e aplica migrações SQLite locais |
 
+Para que `localhost:3000` use o banco SQLite dentro do Docker, suba o app com `pnpm docker:up:detached` e abra a janela com `pnpm dev:all`, que se anexa ao container. Skills de design para o Claude Code ficam em `.claude/skills/`; origem, licença e revisão estão em [`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md#skills-de-agente).
+
 Os containers executam os servidores Next.js como usuários não-root; a janela Electron é iniciada no host. O app local usa um volume nomeado para o SQLite, que não entra na imagem. A LP é servida separadamente em `http://localhost:3100`, preservando o limite arquitetural entre o site público e o produto local.
 
 ## Documentação
