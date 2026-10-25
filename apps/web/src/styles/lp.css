@@ -687,7 +687,10 @@ html:has(.lp-root) {
 
 /* ── Movimento ────────────────────────────────────────────────── */
 
-.lp-reveal {
+/* O bloco só esconde depois que o componente hidratou e o armou
+   (`.lp-armed`): sem JavaScript, ou se a hidratação falhar, o conteúdo
+   continua visível como veio do servidor. */
+.lp-reveal.lp-armed {
   opacity: 0;
   transition:
     opacity 560ms var(--lp-ease-out) var(--lp-delay, 0ms),
@@ -695,35 +698,25 @@ html:has(.lp-root) {
     filter 560ms var(--lp-ease-out) var(--lp-delay, 0ms);
 }
 
-.lp-reveal-up {
+.lp-armed.lp-reveal-up {
   transform: translate3d(0, 20px, 0);
 }
 
-.lp-reveal-left {
+.lp-armed.lp-reveal-left {
   transform: translate3d(-26px, 0, 0);
 }
 
-.lp-reveal-right {
+.lp-armed.lp-reveal-right {
   transform: translate3d(26px, 0, 0);
 }
 
-.lp-reveal-scale {
+.lp-armed.lp-reveal-scale {
   transform: scale(0.965);
 }
 
-.lp-reveal.lp-in {
+.lp-reveal.lp-armed.lp-in {
   opacity: 1;
   transform: none;
-}
-
-/* Sem JavaScript, o observador nunca dispara: o conteúdo não pode ficar
-   escondido esperando por ele. */
-@media (scripting: none) {
-  .lp-reveal {
-    opacity: 1;
-    transform: none;
-    filter: none;
-  }
 }
 
 .lp-parallax {
@@ -1595,12 +1588,13 @@ html:has(.lp-root) {
 /* ── Acréscimos: galeria, retorno ao topo e refinos de movimento ─ */
 
 /* Variante de revelação com desfoque, para blocos de imagem. */
-.lp-reveal-blur {
+.lp-armed.lp-reveal-blur {
   transform: translate3d(0, 16px, 0) scale(0.99);
   filter: blur(6px);
 }
 
-.lp-reveal-blur.lp-in {
+.lp-armed.lp-reveal-blur.lp-in {
+  transform: none;
   filter: blur(0);
 }
 

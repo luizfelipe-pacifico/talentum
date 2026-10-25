@@ -77,6 +77,12 @@ A versão lapidada foi medida em `next start` local, sem a CDN da Vercel; a publ
 
 O que mudou o resultado: metadados sempre no `<head>` (`htmlLimitedBots`), CSS embutido no HTML (`experimental.inlineCss`), ícones do Bootstrap Icons em SVG inline em vez da fonte de 131 KB, fontes de fallback com métricas ajustadas (CLS zero), variantes de 640 px das capturas no `srcset` e sublinhado no link dentro de frase.
 
+### Correção posterior: conteúdo invisível em desenvolvimento
+
+No `next dev`, a CSP bloqueava o `eval` que o React usa em desenvolvimento, a página não hidratava e os 78 blocos com animação de entrada ficavam invisíveis. A política passou a liberar `'unsafe-eval'` e `ws:` somente em desenvolvimento, e a animação foi invertida: o HTML nasce visível e só blocos fora da tela são escondidos depois da hidratação. Verificado no Chrome por CDP: zero blocos escondidos e nenhum erro de console após rolar a página; com o HTML do servidor, nenhum bloco sai escondido.
+
+Na mesma investigação, `http://localhost:3001` abria outro projeto local que ocupava a porta no IPv6. Ver "Portas compartilhadas com outros projetos" em `DEVELOPMENT.md`.
+
 ### Pendências aceitas
 
 - O título do herói ocupa quatro linhas a 390 px. É o lema da marca e não foi encurtado.

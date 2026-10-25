@@ -43,6 +43,21 @@ test('os ícones da LP são SVG do Bootstrap Icons, sem a fonte de ícones',asyn
   for(const nome of usados)assert.ok(mapa.includes(`'${nome}':`),`ícone ausente do mapa: ${nome}`);
 });
 
+test('o conteúdo da LP não depende de JavaScript para aparecer',async()=>{
+  // Só o bloco armado depois da hidratação esconde; o HTML do servidor nasce visível.
+  const css=(await read('apps/web/src/styles/lp.css')).replace(/\s+/g,' ');
+  assert.doesNotMatch(css,/\.lp-reveal \{ opacity: 0/);
+  assert.match(css,/\.lp-reveal\.lp-armed \{ opacity: 0/);
+  assert.match(await read('apps/web/src/components/lp/motion.tsx'),/useState<RevealPhase>\('static'\)/);
+});
+
+test('a CSP só libera eval e WebSocket em desenvolvimento',async()=>{
+  const middleware=await read('apps/web/src/middleware.ts');
+  assert.match(middleware,/const dev = process\.env\.NODE_ENV === 'development'/);
+  assert.match(middleware,/const devEval = dev \? " 'unsafe-eval'" : ''/);
+  assert.doesNotMatch(middleware,/script-src[^`]*'unsafe-eval'[^$]/);
+});
+
 test('sitemap e robots não importam o sistema desktop',async()=>{
   for(const path of ['apps/web/src/app/robots.ts','apps/web/src/app/sitemap.ts','apps/web/src/site.ts'])
     assert.doesNotMatch(await read(path),/electron|@prisma|src\/server\/db|sqlite/i,path);
