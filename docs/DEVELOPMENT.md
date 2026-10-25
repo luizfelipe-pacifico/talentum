@@ -74,6 +74,28 @@ O SQLite local já possui `LocalProfile`, `UserPreference` e o núcleo financeir
 
 A imagem usa Ubuntu 24.04, Node.js 22 copiado da imagem oficial, execução por usuário não-root e somente os pacotes de sistema necessários para TLS/Prisma. Electron não roda dentro da imagem.
 
+### Banco local dentro do Docker
+
+Para que `http://localhost:3000` use o banco dentro do Docker, suba o app pelo Compose (`pnpm docker:up:detached`). O SQLite fica em `/data/talentum-local.db`, no volume nomeado `talentum-data`, e não no host. Depois, `pnpm dev:all` detecta o container pelo healthcheck e só abre a janela Electron sobre ele. Não rode `pnpm dev` com o container no ar: o script libera a porta 3000 encerrando o processo que a ocupa, o que inclui o encaminhamento de porta do Docker, e passaria a usar o `temp/talentum-local.db` do host. O banco continua SQLite; trocá-lo por um servidor de banco contrariaria o modelo local-first de `ARCHITECTURE-ELECTRON.md`.
+
+## Skills de agente
+
+`.claude/skills/` e `.claude/agents/` versionam skills de design de terceiros, usadas pelo Claude Code neste repositório. Elas são ferramentas de apoio e não fontes normativas: em qualquer conflito, `BRANDING.md`, `DASHBOARD.md` e as demais regras deste diretório prevalecem. São uma exceção deliberada à regra de manter Markdown somente em `docs/`, porque o Claude Code só as descobre nesse caminho.
+
+| Origem | Licença | Revisão | Conteúdo instalado |
+| --- | --- | --- | --- |
+| [`emilkowalski/skills`](https://github.com/emilkowalski/skills) | MIT | `2d22863` | as 15 skills de `skills/` (animação, design engineering, UI) |
+| [`pbakaus/impeccable`](https://github.com/pbakaus/impeccable) | Apache-2.0 | `658b4ce` | `.claude/skills/impeccable` e os quatro agents `impeccable-*` |
+| [`Leonxlnx/taste-skill`](https://github.com/Leonxlnx/taste-skill) | MIT | `12af471` | `skills/taste-skill` |
+
+Cada skill traz o `LICENSE` da origem. Decisões da instalação:
+
+- os hooks do Impeccable (`.claude/settings.json` do repositório de origem) **não** foram instalados. Eles executariam um binário baixado a cada edição e ao fim de cada sessão. Para ativá-los, registre a decisão antes;
+- `scripts/impeccable` baixa seu binário do GitHub Releases na primeira execução e só o roda depois de conferir o SHA-256 publicado;
+- os scripts da taste-skill consultam APIs públicas de imagens (Openverse, Wikimedia, Met, AIC, Internet Archive, NASA) e gravam histórico em `~/.taste-skill`. Nenhum dado financeiro ou do repositório é enviado.
+
+Para atualizar, clone a origem em diretório temporário, revise o diff (sobretudo scripts, hooks e acesso à rede), substitua a pasta e atualize a revisão nesta tabela.
+
 ## Dependências confirmadas no documento-fonte
 
 - Next.js App Router, React, Tailwind CSS, Electron, Prisma/SQLite e PDF.js estão instalados.
