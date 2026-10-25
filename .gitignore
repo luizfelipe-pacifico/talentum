@@ -58,3 +58,6 @@ coverage/
 .history/
 .DS_Store
 Thumbs.db
+
+# Capturas e relatórios de trabalho das skills de design (taste-skill)
+.taste-skill/

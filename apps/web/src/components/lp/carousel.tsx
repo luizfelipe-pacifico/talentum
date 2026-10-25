@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useReducedMotion } from './motion';
+import { Icon } from './icon';
 
 export type Plate = {
   id: string;
@@ -68,7 +69,7 @@ export function PlateCarousel({ plates }: { plates: Plate[] }) {
 
       <div className="lp-carousel-controls">
         <button type="button" className="lp-round" onClick={() => go(index - 1)} aria-label="Prancha anterior">
-          <i className="bi bi-arrow-left" aria-hidden="true" />
+          <Icon name="bi-arrow-left" />
         </button>
 
         <ol className="lp-dots">
@@ -86,7 +87,7 @@ export function PlateCarousel({ plates }: { plates: Plate[] }) {
         </ol>
 
         <button type="button" className="lp-round" onClick={() => go(index + 1)} aria-label="Próxima prancha">
-          <i className="bi bi-arrow-right" aria-hidden="true" />
+          <Icon name="bi-arrow-right" />
         </button>
       </div>
 
@@ -163,7 +164,7 @@ export function ShotCarousel({ shots }: { shots: Shot[] }) {
             className={position === index ? 'lp-shots-tab lp-shots-tab-on' : 'lp-shots-tab'}
             onClick={() => go(position)}
           >
-            <i className={`bi ${shot.icon}`} aria-hidden="true" />
+            <Icon name={shot.icon} />
             {shot.title}
           </button>
         ))}
@@ -185,6 +186,9 @@ export function ShotCarousel({ shots }: { shots: Shot[] }) {
               <img
                 className="lp-lut-suave"
                 src={shot.src}
+                // Variante de 640 px gerada por scripts/redimensionar-telas-lp.mjs.
+                srcSet={`${shot.src.replace(/\.webp$/, '-640.webp')} 640w, ${shot.src} 1120w`}
+                sizes="(max-width: 999px) calc(100vw - 64px), 760px"
                 alt={shot.alt}
                 width={1120}
                 height={700}
@@ -193,7 +197,7 @@ export function ShotCarousel({ shots }: { shots: Shot[] }) {
               />
               <figcaption>
                 <span className="lp-shot-icon" aria-hidden="true">
-                  <i className={`bi ${shot.icon}`} />
+                  <Icon name={shot.icon} />
                 </span>
                 <span>
                   <h3>{shot.title}</h3>
@@ -207,7 +211,7 @@ export function ShotCarousel({ shots }: { shots: Shot[] }) {
 
       <div className="lp-shots-nav">
         <button type="button" className="lp-round" onClick={() => go(index - 1)} aria-label="Tela anterior">
-          <i className="bi bi-arrow-left" aria-hidden="true" />
+          <Icon name="bi-arrow-left" />
         </button>
 
         <button
@@ -216,7 +220,7 @@ export function ShotCarousel({ shots }: { shots: Shot[] }) {
           onClick={() => setPausado((atual) => !atual)}
           aria-label={pausado ? 'Retomar a troca automática' : 'Pausar a troca automática'}
         >
-          <i className={`bi ${pausado ? 'bi-play-fill' : 'bi-pause-fill'}`} aria-hidden="true" />
+          <Icon name={pausado ? 'bi-play-fill' : 'bi-pause-fill'} />
         </button>
 
         {/* Só anuncia quando a troca é decisão de quem lê: no modo automático
@@ -226,7 +230,7 @@ export function ShotCarousel({ shots }: { shots: Shot[] }) {
         </p>
 
         <button type="button" className="lp-round" onClick={() => go(index + 1)} aria-label="Próxima tela">
-          <i className="bi bi-arrow-right" aria-hidden="true" />
+          <Icon name="bi-arrow-right" />
         </button>
       </div>
     </div>

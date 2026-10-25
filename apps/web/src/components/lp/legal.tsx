@@ -9,6 +9,7 @@
    Nenhuma cláusula aqui pode descrever como pronto algo que ainda é planejado. */
 
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { Icon } from './icon';
 
 const VERSAO = 'Versão 0.1 · 5 de setembro de 2026';
 const REPO = 'https://github.com/luizfelipe-pacifico/talentum';
@@ -475,7 +476,7 @@ export function LegalNotices() {
                 </h2>
               </div>
               <button type="button" className="lp-round" onClick={fechar} aria-label="Fechar">
-                <i className="bi bi-x-lg" aria-hidden="true" />
+                <Icon name="bi-x-lg" />
               </button>
             </header>
 
@@ -495,7 +496,7 @@ export function LegalNotices() {
 
             <div className="lp-modal-body lp-legal-doc">
               <p className="lp-legal-aviso">
-                <i className="bi bi-exclamation-triangle" aria-hidden="true" />
+                <Icon name="bi-exclamation-triangle" />
                 <span>
                   Minuta em revisão. O projeto está em fase pré-alpha e este texto ainda será submetido a análise
                   jurídica antes de qualquer lançamento público.

@@ -12,6 +12,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react';
+import { Icon } from './icon';
 
 export function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
@@ -34,18 +35,19 @@ type RevealProps = {
   variant?: 'up' | 'left' | 'right' | 'scale' | 'blur';
   className?: string;
   as?: 'div' | 'section' | 'li' | 'article' | 'header' | 'figure';
-  /** Quando verdadeiro, revela uma vez e não volta ao estado inicial. */
+  /** Quando falso, recolhe ao sair da viewport e revela de novo ao voltar. */
   once?: boolean;
 };
 
-/** Revela ao entrar na viewport e recolhe ao sair: o gatilho vai e volta. */
+/** Revela uma vez ao entrar na viewport. Repetir a entrada a cada rolagem
+    transforma um gesto de chegada em ruído. */
 export function Reveal({
   children,
   delay = 0,
   variant = 'up',
   className = '',
   as = 'div',
-  once = false,
+  once = true,
 }: RevealProps) {
   const ref = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(false);
@@ -221,13 +223,20 @@ export function ReadingProgress() {
   return <div ref={ref} className="lp-progress" aria-hidden="true" />;
 }
 
-/** Navegação com marcação da seção em leitura. */
+/** Navegação com marcação da seção em leitura.
+
+    No desktop é uma lista em linha. Abaixo de 1000px vira um menu recolhível
+    em `<details>`: seis links em duas linhas fixas ocupavam um quinto da tela
+    do celular. O menu abre e fecha sem JavaScript; o script só o fecha depois
+    que um link é escolhido. */
 export function SectionNav({ items }: { items: { id: string; label: string }[] }) {
-  const [ativo, setAtivo] = useState(items[0]?.id ?? '');
+  // Nenhum item ativo no herói: ele não está na lista.
+  const [ativo, setAtivo] = useState('');
+  const menuRef = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
-    const alvos = items
-      .map((item) => document.getElementById(item.id))
+    const alvos = ['topo', ...items.map((item) => item.id)]
+      .map((id) => document.getElementById(id))
       .filter((node): node is HTMLElement => Boolean(node));
     if (!alvos.length) return;
 
@@ -237,7 +246,8 @@ export function SectionNav({ items }: { items: { id: string; label: string }[] }
         const visiveis = entries
           .filter((entry) => entry.isIntersecting)
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visiveis[0]?.target.id) setAtivo(visiveis[0].target.id);
+        const id = visiveis[0]?.target.id;
+        if (id) setAtivo(id === 'topo' ? '' : id);
       },
       { rootMargin: '-45% 0px -45% 0px', threshold: 0 },
     );
@@ -246,16 +256,30 @@ export function SectionNav({ items }: { items: { id: string; label: string }[] }
     return () => observer.disconnect();
   }, [items]);
 
+  const fecharMenu = () => {
+    if (menuRef.current) menuRef.current.open = false;
+  };
+
+  const links = (aoEscolher?: () => void) =>
+    items.map((item) => (
+      <li key={item.id}>
+        <a href={`#${item.id}`} aria-current={ativo === item.id ? 'true' : undefined} onClick={aoEscolher}>
+          {item.label}
+        </a>
+      </li>
+    ));
+
   return (
-    <ul className="lp-nav">
-      {items.map((item) => (
-        <li key={item.id}>
-          <a href={`#${item.id}`} aria-current={ativo === item.id ? 'true' : undefined}>
-            {item.label}
-          </a>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="lp-nav">{links()}</ul>
+      <details className="lp-nav-menu" ref={menuRef}>
+        <summary>
+          <Icon name="bi-list" />
+          Seções
+        </summary>
+        <ul className="lp-nav-menu-list">{links(fecharMenu)}</ul>
+      </details>
+    </>
   );
 }
 
@@ -292,7 +316,7 @@ export function BackToTop() {
       tabIndex={visivel ? 0 : -1}
       aria-hidden={!visivel}
     >
-      <i className="bi bi-arrow-up" aria-hidden="true" />
+      <Icon name="bi-arrow-up" />
     </button>
   );
 }

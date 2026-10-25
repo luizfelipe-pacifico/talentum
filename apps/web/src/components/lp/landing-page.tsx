@@ -24,6 +24,7 @@ import {
 import { PlateCarousel, ShotCarousel, type Plate, type Shot } from './carousel';
 import { LegalNotices } from './legal';
 import { BackToTop, Parallax, PointerScene, ReadingProgress, Reveal, SectionNav } from './motion';
+import { Icon } from './icon';
 
 const REPO = 'https://github.com/luizfelipe-pacifico/talentum';
 
@@ -293,7 +294,6 @@ export function LandingPage() {
     <div className="lp-root">
       <ArtDefs />
       <ReadingProgress />
-      <div className="lp-grain" aria-hidden="true" />
 
       <a className="lp-skip" href="#conteudo">
         Ir para o conteúdo
@@ -308,9 +308,15 @@ export function LandingPage() {
           <nav aria-label="Seções da página">
             <SectionNav items={NAV} />
           </nav>
-          <a className="lp-btn lp-btn-sm" href={REPO} target="_blank" rel="noreferrer noopener">
-            <i className="bi bi-github" aria-hidden="true" />
-            Repositório
+          <a
+            className="lp-btn lp-btn-sm lp-header-repo"
+            href={REPO}
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label="Repositório no GitHub"
+          >
+            <Icon name="bi-github" />
+            <span className="lp-header-repo-label">Repositório</span>
           </a>
         </div>
       </header>
@@ -319,56 +325,44 @@ export function LandingPage() {
         {/* ── Herói ────────────────────────────────────────────── */}
         <section className="lp-hero" id="topo">
           <PointerScene className="lp-hero-scene">
-            <div className="lp-spotlight" aria-hidden="true" />
             <div className="lp-wrap lp-hero-grid">
+              {/* O título ocupa a largura inteira: cada frase cabe em uma linha
+                  no desktop e vira o elemento dominante da primeira tela. */}
+              <h1 className="lp-h-display-xl lp-hero-title">
+                Clareza para o presente.
+                <span className="lp-amber-line">Disciplina para o futuro.</span>
+              </h1>
               <div className="lp-hero-copy">
-                <Reveal>
-                  <p className="lp-eyebrow">Pré-alpha · local-first · código aberto</p>
-                </Reveal>
-                <Reveal delay={90}>
-                  <h1 className="lp-h-display-xl">
-                    Clareza para o presente.
-                    <span className="lp-amber-line">Disciplina para o futuro.</span>
-                  </h1>
-                </Reveal>
-                <Reveal delay={180}>
-                  <p className="lp-lede">
-                    O Talentum lê seus extratos, organiza o que você gasta e mostra quanto realmente sobra depois de
-                    tudo o que já está prometido. Sem planilha, sem digitação diária e sem entregar sua vida
-                    financeira para a nuvem.
-                  </p>
-                </Reveal>
-                <Reveal delay={260}>
-                  <div className="lp-cta-row">
-                    <a className="lp-btn lp-btn-primary" href="/api/auth/start">
-                      Entrar e baixar
-                      <i className="bi bi-download" aria-hidden="true" />
-                    </a>
-                    <a className="lp-btn" href={REPO} target="_blank" rel="noreferrer noopener">
-                      Ler o código
-                      <i className="bi bi-box-arrow-up-right" aria-hidden="true" />
-                    </a>
-                  </div>
-                </Reveal>
-                <Reveal delay={340}>
-                  <p className="lp-chip lp-chip-warn">
-                    <i className="bi bi-cone-striped" aria-hidden="true" />
-                    Em construção: ainda não existe instalador público
-                  </p>
-                </Reveal>
-                <Reveal delay={400}>
-                  <ul className="lp-hero-meta">
-                    <li>
-                      <i className="bi bi-windows" aria-hidden="true" /> Windows e Linux
-                    </li>
-                    <li>
-                      <i className="bi bi-hdd" aria-hidden="true" /> SQLite no seu dispositivo
-                    </li>
-                    <li>
-                      <i className="bi bi-git" aria-hidden="true" /> Auditável por qualquer pessoa
-                    </li>
-                  </ul>
-                </Reveal>
+                <p className="lp-lede">
+                  O Talentum lê seus extratos, organiza o que você gasta e mostra quanto realmente sobra depois de
+                  tudo o que já está prometido. Sem planilha, sem digitação diária e sem entregar sua vida
+                  financeira para a nuvem.
+                </p>
+                <div className="lp-cta-row">
+                  <a className="lp-btn lp-btn-primary" href="/api/auth/start">
+                    Entrar e baixar
+                    <Icon name="bi-download" />
+                  </a>
+                  <a className="lp-btn" href={REPO} target="_blank" rel="noreferrer noopener">
+                    Ler o código
+                    <Icon name="bi-box-arrow-up-right" />
+                  </a>
+                </div>
+                <p className="lp-chip lp-chip-warn">
+                  <Icon name="bi-cone-striped" />
+                  Em construção: ainda não existe instalador público
+                </p>
+                <ul className="lp-hero-meta">
+                  <li>
+                    <Icon name="bi-windows" /> Windows e Linux
+                  </li>
+                  <li>
+                    <Icon name="bi-hdd" /> SQLite no seu dispositivo
+                  </li>
+                  <li>
+                    <Icon name="bi-git" /> Auditável por qualquer pessoa
+                  </li>
+                </ul>
               </div>
 
               <div className="lp-hero-art">
@@ -380,13 +374,6 @@ export function LandingPage() {
               </div>
             </div>
           </PointerScene>
-
-          <div className="lp-wrap">
-            <p className="lp-scroll-hint">
-              <i className="bi bi-chevron-double-down" aria-hidden="true" />
-              <span>Role para ler</span>
-            </p>
-          </div>
         </section>
 
         {/* ── A dor ────────────────────────────────────────────── */}
@@ -394,9 +381,6 @@ export function LandingPage() {
           <div className="lp-wrap">
             <div className="lp-two">
               <div>
-                <Reveal>
-                  <p className="lp-eyebrow">O problema</p>
-                </Reveal>
                 <Reveal delay={80}>
                   <h2 className="lp-h-display-lg">O saldo do banco raramente conta a história inteira</h2>
                 </Reveal>
@@ -425,8 +409,8 @@ export function LandingPage() {
 
             <div className="lp-grid lp-grid-2 lp-problem-list">
               {DORES.map((dor, index) => (
-                <Reveal key={dor.title} as="article" delay={(index % 2) * 110} className="lp-card lp-card-hover">
-                  <i className={`bi ${dor.icon}`} aria-hidden="true" />
+                <Reveal key={dor.title} as="article" delay={(index % 2) * 110} className="lp-card">
+                  <Icon name={dor.icon} />
                   <h3 className="lp-h-display">{dor.title}</h3>
                   <p>{dor.text}</p>
                 </Reveal>
@@ -439,9 +423,6 @@ export function LandingPage() {
         <section className="lp-section lp-section-sunken" id="metodo">
           <div className="lp-wrap">
             <div className="lp-section-head">
-              <Reveal>
-                <p className="lp-eyebrow">A solução</p>
-              </Reveal>
               <Reveal delay={80}>
                 <h2 className="lp-h-display-lg">Cinco passos, e só um deles é seu</h2>
               </Reveal>
@@ -456,8 +437,7 @@ export function LandingPage() {
             <ol className="lp-steps">
               {STEPS.map((step, index) => (
                 <Reveal key={step.title} as="li" delay={index * 90} className="lp-step">
-                  <span className="lp-step-index">{String(index + 1).padStart(2, '0')}</span>
-                  <i className={`bi ${step.icon}`} aria-hidden="true" />
+                  <Icon name={step.icon} />
                   <h3>{step.title}</h3>
                   <p>{step.text}</p>
                 </Reveal>
@@ -513,9 +493,6 @@ export function LandingPage() {
               </Reveal>
 
               <div>
-                <Reveal>
-                  <p className="lp-eyebrow">A métrica central</p>
-                </Reveal>
                 <Reveal delay={80}>
                   <h2 className="lp-h-display-lg">Saldo Livre de Risco</h2>
                 </Reveal>
@@ -529,17 +506,17 @@ export function LandingPage() {
                 <Reveal delay={200}>
                   <ul className="lp-checks">
                     <li>
-                      <i className="bi bi-check2" aria-hidden="true" />
+                      <Icon name="bi-check2" />
                       A fórmula e o período ficam abertos na própria tela, porque um número sem explicação seria um
                       oráculo.
                     </li>
                     <li>
-                      <i className="bi bi-check2" aria-hidden="true" />
+                      <Icon name="bi-check2" />
                       Havendo dívida cara ou saldo negativo, o produto entra em modo de sobrevivência e pausa as
                       sugestões de aporte.
                     </li>
                     <li>
-                      <i className="bi bi-check2" aria-hidden="true" />
+                      <Icon name="bi-check2" />
                       Cada correção sua fica registrada com antes, depois e motivo, e pode ser revertida quando você
                       quiser.
                     </li>
@@ -554,9 +531,6 @@ export function LandingPage() {
         <section className="lp-section lp-section-sunken" id="sistema">
           <div className="lp-wrap">
             <div className="lp-section-head">
-              <Reveal>
-                <p className="lp-eyebrow">O sistema hoje</p>
-              </Reveal>
               <Reveal delay={80}>
                 <h2 className="lp-h-display-lg">Telas reais, banco vazio, nenhum número inventado</h2>
               </Reveal>
@@ -579,9 +553,6 @@ export function LandingPage() {
         <section className="lp-section" id="salas">
           <div className="lp-wrap">
             <div className="lp-section-head">
-              <Reveal>
-                <p className="lp-eyebrow">O que vai existir</p>
-              </Reveal>
               <Reveal delay={80}>
                 <h2 className="lp-h-display-lg">Seis salas, uma casa</h2>
               </Reveal>
@@ -595,8 +566,8 @@ export function LandingPage() {
 
             <div className="lp-grid lp-grid-3">
               {AREAS.map((area, index) => (
-                <Reveal key={area.title} as="article" delay={(index % 3) * 100} className="lp-card lp-card-hover">
-                  <i className={`bi ${area.icon}`} aria-hidden="true" />
+                <Reveal key={area.title} as="article" delay={(index % 3) * 100} className="lp-card">
+                  <Icon name={area.icon} />
                   <h3 className="lp-h-display">{area.title}</h3>
                   <p>{area.text}</p>
                 </Reveal>
@@ -610,9 +581,6 @@ export function LandingPage() {
           <div className="lp-wrap">
             <div className="lp-two">
               <div>
-                <Reveal>
-                  <p className="lp-eyebrow">Patrimônio</p>
-                </Reveal>
                 <Reveal delay={80}>
                   <h2 className="lp-h-display-lg">Quatro colunas sustentam melhor que uma</h2>
                 </Reveal>
@@ -643,7 +611,7 @@ export function LandingPage() {
 
             <Reveal delay={120}>
               <p className="lp-band">
-                <i className="bi bi-rulers" aria-hidden="true" />
+                <Icon name="bi-rulers" />
                 <span>
                   Um pilar é considerado equilibrado entre <strong>22,5% e 27,5%</strong>. A banda existe para que
                   oscilação de mercado não vire alarme, e o motor prioriza o aporte novo no pilar mais defasado,{' '}
@@ -654,7 +622,7 @@ export function LandingPage() {
 
             <Reveal delay={160}>
               <p className="lp-callout lp-callout-info">
-                <i className="bi bi-info-circle" aria-hidden="true" />
+                <Icon name="bi-info-circle" />
                 <span>
                   O Talentum é uma ferramenta de organização e educação financeira. Ele não oferece recomendação
                   individual de investimento. ARCA e Primo Rico são referências creditadas aos seus respectivos
@@ -674,9 +642,6 @@ export function LandingPage() {
               </Parallax>
             </Reveal>
             <div>
-              <Reveal>
-                <p className="lp-eyebrow">Quando o mês aperta</p>
-              </Reveal>
               <Reveal delay={80}>
                 <h2 className="lp-h-display-lg">Modo de sobrevivência</h2>
               </Reveal>
@@ -704,9 +669,6 @@ export function LandingPage() {
           </Parallax>
 
           <div className="lp-wrap lp-slab-inner">
-            <Reveal>
-              <p className="lp-eyebrow">Privacidade por princípio</p>
-            </Reveal>
             <Reveal delay={80}>
               <h2 className="lp-h-display-lg">A nuvem não precisa saber quanto você tem</h2>
             </Reveal>
@@ -730,7 +692,7 @@ export function LandingPage() {
                     'O banco SQLite inteiro',
                   ].map((item) => (
                     <li key={item} className="local">
-                      <i className="bi bi-hdd-fill" aria-hidden="true" />
+                      <Icon name="bi-hdd-fill" />
                       <span>{item}</span>
                     </li>
                   ))}
@@ -748,7 +710,7 @@ export function LandingPage() {
                     'Um snapshot já cifrado, quando você habilitar',
                   ].map((item) => (
                     <li key={item} className="cloud">
-                      <i className="bi bi-cloud" aria-hidden="true" />
+                      <Icon name="bi-cloud" />
                       <span>{item}</span>
                     </li>
                   ))}
@@ -758,7 +720,7 @@ export function LandingPage() {
 
             <Reveal delay={160}>
               <p className="lp-callout lp-callout-warn">
-                <i className="bi bi-cone-striped" aria-hidden="true" />
+                <Icon name="bi-cone-striped" />
                 <span>
                   O backup cifrado com AES-256-GCM e a exportação em JSON e CSV são <strong>planejados</strong>. Não
                   serão anunciados como prontos, nem descritos como conhecimento zero, antes de existirem, terem
@@ -791,9 +753,6 @@ export function LandingPage() {
           </Parallax>
 
           <div className="lp-wrap lp-slab-inner">
-            <Reveal>
-              <p className="lp-eyebrow">O nome</p>
-            </Reveal>
             <Reveal delay={80}>
               <blockquote className="lp-quote">
                 <p>
@@ -829,7 +788,7 @@ export function LandingPage() {
                 },
               ].map((item, index) => (
                 <Reveal key={item.title} delay={index * 110} as="article" className="lp-panel">
-                  <i className={`bi ${item.icon}`} aria-hidden="true" />
+                  <Icon name={item.icon} />
                   <h3>{item.title}</h3>
                   <p>{item.text}</p>
                 </Reveal>
@@ -842,9 +801,6 @@ export function LandingPage() {
         <section className="lp-section" id="pranchas">
           <div className="lp-wrap">
             <div className="lp-section-head">
-              <Reveal>
-                <p className="lp-eyebrow">O gabinete de gravuras</p>
-              </Reveal>
               <Reveal delay={80}>
                 <h2 className="lp-h-display-lg">Oito pranchas para explicar um produto</h2>
               </Reveal>
@@ -865,9 +821,6 @@ export function LandingPage() {
         <section className="lp-section lp-section-sunken" id="colecao">
           <div className="lp-wrap">
             <div className="lp-section-head">
-              <Reveal>
-                <p className="lp-eyebrow">A coleção</p>
-              </Reveal>
               <Reveal delay={80}>
                 <h2 className="lp-h-display-lg">Um vocabulário de imagens</h2>
               </Reveal>
@@ -901,13 +854,10 @@ export function LandingPage() {
         </section>
 
         {/* ── Estado do projeto ────────────────────────────────── */}
-        <section className="lp-section lp-section-sunken" id="projeto">
+        <section className="lp-section" id="projeto">
           <div className="lp-wrap">
             <div className="lp-two">
               <div>
-                <Reveal>
-                  <p className="lp-eyebrow">Onde estamos</p>
-                </Reveal>
                 <Reveal delay={80}>
                   <h2 className="lp-h-display-lg">Pré-alpha, e dizendo isso em voz alta</h2>
                 </Reveal>
@@ -931,7 +881,7 @@ export function LandingPage() {
                     ].map((item, index) => (
                       <li key={item.title}>
                         <span className="lp-timeline-dot" aria-hidden="true">
-                          {index === 0 ? <i className="bi bi-record-circle" /> : <i className="bi bi-circle" />}
+                          {index === 0 ? <Icon name="bi-record-circle" /> : <Icon name="bi-circle" />}
                         </span>
                         <span>
                           <strong>{item.title}</strong>
@@ -952,7 +902,7 @@ export function LandingPage() {
 
             <div className="lp-grid lp-grid-2 lp-download">
               <Reveal as="article" className="lp-platform">
-                <i className="bi bi-windows" aria-hidden="true" />
+                <Icon name="bi-windows" />
                 <div>
                   <h3>Windows</h3>
                   <p>Instalador assinado, publicado em GitHub Releases e liberado depois do login.</p>
@@ -960,7 +910,7 @@ export function LandingPage() {
                 <span className="lp-chip">Planejado</span>
               </Reveal>
               <Reveal as="article" delay={110} className="lp-platform">
-                <i className="bi bi-ubuntu" aria-hidden="true" />
+                <Icon name="bi-ubuntu" />
                 <div>
                   <h3>Linux</h3>
                   <p>Mesmo pipeline, mesmo checksum verificável e a mesma exigência de conta.</p>
@@ -972,7 +922,7 @@ export function LandingPage() {
         </section>
 
         {/* ── Contribuir ───────────────────────────────────────── */}
-        <section className="lp-section" id="contribuir">
+        <section className="lp-section lp-section-sunken" id="contribuir">
           <div className="lp-wrap lp-center">
             <Reveal variant="scale">
               <PlateCompass className="lp-art lp-art-small" />
@@ -990,7 +940,7 @@ export function LandingPage() {
             <Reveal delay={220}>
               <div className="lp-cta-row lp-center-row">
                 <a className="lp-btn lp-btn-primary" href={REPO} target="_blank" rel="noreferrer noopener">
-                  <i className="bi bi-github" aria-hidden="true" />
+                  <Icon name="bi-github" />
                   Ver o repositório
                 </a>
                 <a className="lp-btn" href={`${REPO}/issues`} target="_blank" rel="noreferrer noopener">
