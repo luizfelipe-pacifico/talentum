@@ -50,7 +50,13 @@ Todos podem ler conteúdo com estado `PUBLISHED`. Criar post, comentar, curtir e
 
 Em desenvolvimento local, a LP possui imagem Docker própria e é publicada apenas em `127.0.0.1:3100`. Ela não reutiliza a imagem do app local nem inclui Prisma, SQLite, Electron ou domínio financeiro. A Content Security Policy usa nonce novo por resposta, propagado pelo middleware ao renderizador do Next.js, para permitir somente os scripts emitidos pela própria renderização sem liberar scripts inline indiscriminadamente.
 
+## Indexação — atual
+
+`apps/web/src/app/robots.ts` e `apps/web/src/app/sitemap.ts` são rotas de metadados do Next.js servidas em `/robots.txt` e `/sitemap.xml`. O sitemap lista somente a LP (`/`). O robots libera o site e bloqueia `/api/` (BFF) e `/downloads` (exige sessão), além de apontar o sitemap. O domínio anunciado vem de `apps/web/src/site.ts` e é `https://talentum-tech.vercel.app`, onde a LP está publicada. O teste `tests/web-seo.test.mjs` impede que rotas privadas entrem no sitemap.
+
 ## Implantação
+
+> **Em aberto.** Em 25 de outubro de 2026, `https://talentum.vercel.app` respondia com o login de outro projeto, enquanto a LP estava em `https://talentum-tech.vercel.app`. Este documento, `CLOUDFLARE_SETUP.md` e `ALLOWED_ORIGIN`/`PUBLIC_WEB_URL` em `cloudflare/wrangler.jsonc` ainda citam o primeiro domínio. O redirect OAuth e a allowlist de origem dependem dessa decisão, então corrija os três no mesmo change set, junto com o cliente OAuth.
 
 A interface web será publicada em `https://talentum.vercel.app`. O backend permanece em Cloudflare Workers; o D1 nunca é acessado diretamente pelo navegador.
 
