@@ -63,6 +63,9 @@ Não copie valores reais para `.env.example`. O arquivo `.env` local não deve s
 | `pnpm cloudflare:test` | testa contratos, migration de runtime e isolamento da LP |
 | `pnpm web:typecheck` | verifica os tipos da LP/BFF isolada |
 | `pnpm web:build` | gera a build isolada destinada à Vercel |
+| `pnpm lp:imagens` | gera os derivados WebP da marca usados pela LP |
+| `pnpm lp:icones` | gera o mapa de ícones SVG da LP a partir de `bootstrap-icons` |
+| `pnpm lp:telas` | gera as variantes de 640 px das capturas exibidas na LP |
 
 `pnpm dev` e `pnpm dev:all` executam `prisma migrate deploy` antes de abrir o servidor. A URL local padrão aponta para `temp/talentum-local.db`, que é ignorado pelo Git. Crie migrations com `pnpm prisma:migrate --name <nome>`; não use `prisma db push` como fluxo do projeto.
 

@@ -3,6 +3,15 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   output: process.env.TALENTUM_STANDALONE_BUILD === '1' ? 'standalone' : undefined,
   poweredByHeader: false,
+  /* O layout é dinâmico (lê o nonce da CSP), e o Next 15 então transmite os
+     metadados no corpo para quem não está na sua lista de robôs. A LP é
+     pública e indexável: título, descrição e canonical vão sempre no <head>. */
+  htmlLimitedBots: /.*/,
+  experimental: {
+    /* Embute o CSS no HTML: a página é uma só, e as folhas externas bloqueavam
+       a primeira pintura. A CSP já permite estilo inline. */
+    inlineCss: true,
+  },
   async headers() {
     return [
       {
