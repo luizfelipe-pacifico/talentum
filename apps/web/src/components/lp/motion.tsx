@@ -39,8 +39,14 @@ type RevealProps = {
   once?: boolean;
 };
 
+type RevealPhase = 'static' | 'armed' | 'in';
+
 /** Revela uma vez ao entrar na viewport. Repetir a entrada a cada rolagem
-    transforma um gesto de chegada em ruído. */
+    transforma um gesto de chegada em ruído.
+
+    O HTML do servidor nasce visível (fase `static`). Só depois de hidratar o
+    componente arma a animação, e apenas para blocos ainda fora da tela: se o
+    JavaScript falhar, nada fica escondido, e o que já está à vista não pisca. */
 export function Reveal({
   children,
   delay = 0,
@@ -50,25 +56,25 @@ export function Reveal({
   once = true,
 }: RevealProps) {
   const ref = useRef<HTMLElement>(null);
-  const [visible, setVisible] = useState(false);
+  const [phase, setPhase] = useState<RevealPhase>('static');
   const reduced = useReducedMotion();
 
   useEffect(() => {
-    if (reduced) {
-      setVisible(true);
-      return;
-    }
     const node = ref.current;
-    if (!node) return;
+    if (reduced || !node) return;
+
+    const rect = node.getBoundingClientRect();
+    if (rect.top < window.innerHeight && rect.bottom > 0) return;
+    setPhase('armed');
 
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
-            setVisible(true);
+            setPhase('in');
             if (once) observer.disconnect();
           } else if (!once) {
-            setVisible(false);
+            setPhase('armed');
           }
         }
       },
@@ -80,11 +86,12 @@ export function Reveal({
     return () => observer.disconnect();
   }, [reduced, once]);
 
+  const phaseClass = phase === 'armed' ? 'lp-armed' : phase === 'in' ? 'lp-armed lp-in' : '';
   const Tag = as as 'div';
   return (
     <Tag
       ref={ref as never}
-      className={`lp-reveal lp-reveal-${variant} ${visible ? 'lp-in' : ''} ${className}`.trim()}
+      className={`lp-reveal lp-reveal-${variant} ${phaseClass} ${className}`.trim()}
       style={{ '--lp-delay': `${delay}ms` } as CSSProperties}
     >
       {children}
