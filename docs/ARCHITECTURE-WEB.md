@@ -54,6 +54,8 @@ Em desenvolvimento local, a LP possui imagem Docker própria e é publicada apen
 
 `apps/web/src/app/robots.ts` e `apps/web/src/app/sitemap.ts` são rotas de metadados do Next.js servidas em `/robots.txt` e `/sitemap.xml`. O sitemap lista somente a LP (`/`). O robots libera o site e bloqueia `/api/` (BFF) e `/downloads` (exige sessão), além de apontar o sitemap. O domínio anunciado vem de `apps/web/src/site.ts` e é `https://talentum-tech.vercel.app`, onde a LP está publicada. O teste `tests/web-seo.test.mjs` impede que rotas privadas entrem no sitemap.
 
+O layout declara `robots` com `index` e `follow`, canonical, Open Graph e cartão do X a partir de `metadataBase`. Como o layout é dinâmico (lê o nonce da CSP), o Next 15 transmitiria os metadados no corpo da página para quem não estivesse na sua lista de robôs; `htmlLimitedBots: /.*/` em `apps/web/next.config.ts` mantém título, descrição e canonical sempre no `<head>`. O CSS da LP é embutido no HTML (`experimental.inlineCss`), o que a CSP já permite com `style-src 'unsafe-inline'`. Medições e decisões estão em `DESIGN-QA.md`.
+
 ## Implantação
 
 > **Em aberto.** Em 25 de outubro de 2026, `https://talentum.vercel.app` respondia com o login de outro projeto, enquanto a LP estava em `https://talentum-tech.vercel.app`. Este documento, `CLOUDFLARE_SETUP.md` e `ALLOWED_ORIGIN`/`PUBLIC_WEB_URL` em `cloudflare/wrangler.jsonc` ainda citam o primeiro domínio. O redirect OAuth e a allowlist de origem dependem dessa decisão, então corrija os três no mesmo change set, junto com o cliente OAuth.

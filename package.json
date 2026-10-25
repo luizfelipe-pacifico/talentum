@@ -25,6 +25,8 @@
     "prisma:migrate": "prisma migrate dev",
     "lp:imagens": "node scripts/preparar-imagens-lp.mjs",
     "lp:lut": "node scripts/gerar-lut.mjs",
+    "lp:icones": "node scripts/gerar-icones-lp.mjs",
+    "lp:telas": "node scripts/redimensionar-telas-lp.mjs",
     "cloudflare:dev": "wrangler dev --config cloudflare/wrangler.jsonc",
     "cloudflare:build": "wrangler deploy --dry-run --config cloudflare/wrangler.jsonc",
     "cloudflare:types": "wrangler types --config cloudflare/wrangler.jsonc",

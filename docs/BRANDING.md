@@ -281,6 +281,18 @@ Do not assign status colors ad hoc in individual screens.
 - Use illustrations or textures only when they add meaning; avoid decorative stock imagery.
 - If a logo is introduced, preserve clear space and never distort, recolor, or add effects without updating this guide.
 
+### Icon delivery on the landing page
+
+The landing page in `apps/web` renders Bootstrap Icons as inline SVG instead of the icon font. `scripts/gerar-icones-lp.mjs` (`pnpm lp:icones`) copies only the icons the page uses from the official `bootstrap-icons` package into `components/lp/icons.tsx`, and `components/lp/icon.tsx` wraps each one in `<i class="bi">`, so size and colour still follow `font-size` and `color`. The family is unchanged; only the delivery is lighter (about 40 icons instead of a 131 KB font and a stylesheet with over two thousand classes). Run the script after using a new icon; `tests/web-seo.test.mjs` fails when one is missing. The desktop application keeps the icon font.
+
+### Font fallbacks on the landing page
+
+`apps/web/src/styles/lp.css` declares `Playfair Display Fallback` and `Montserrat Fallback`, local fonts with `size-adjust` and metric overrides computed by Next's `calculateSizeAdjustValues`. While the brand fonts load, text occupies the same space, so the swap causes no layout shift.
+
+### Landing page surfaces
+
+The landing page separates sections and surfaces by a step in tone, not by 1 px rules or outlined boxes. Headings carry no label above them, ordered lists carry no decorative numbering, and informative cards that are not links do not lift on hover.
+
 ### Image asset formats
 
 - Convert every photographic or illustrative image intended for the initial landing page to WebP before adding it to the production bundle.
