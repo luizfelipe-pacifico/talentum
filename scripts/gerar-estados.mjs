@@ -16,7 +16,7 @@
 
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MESTRES = join(raiz, 'design', 'estados-vetor');
@@ -53,20 +53,25 @@ function paraHex([L, a, bb]) {
   return '#' + [r, g, b].map((c) => gam(c).toString(16).padStart(2, '0')).join('');
 }
 
-/* Tema escuro: tinta quase neutra inverte a luminosidade (o ébano do contorno
-   vira o tom claro do texto); cores com matiz mantêm o matiz e sobem de
-   luminosidade quando estariam escuras demais sobre #2A2622. */
-function corEscura(hex) {
+/* Tema escuro: tinta quase neutra e escura inverte a luminosidade (o ébano do
+   contorno vira o tom claro do texto); neutros claros, como folhas e páginas,
+   viram um creme apagado e continuam visíveis em vez de sumir no fundo; cores
+   com matiz mantêm o matiz e sobem de luminosidade quando estariam escuras
+   demais sobre #2A2622. */
+export function corEscura(hex) {
   const [L, a, b] = paraLab(hex);
   const croma = Math.hypot(a, b);
-  // Neutros invertidos ganham a matiz quente do texto claro da marca (#F1ECE3),
-  // sem o tom rosado que a inversão pura deixava nos marrons quase neutros.
-  if (croma < 14) return paraHex([Math.min(86, Math.max(24, 90 - L * 0.85)), 1.5, 6]);
+  if (croma < 14) {
+    // Matiz quente do texto claro da marca (#F1ECE3), sem o tom rosado que a
+    // inversão pura deixava nos marrons quase neutros.
+    if (L > 75) return paraHex([66, 1.5, 8]);
+    return paraHex([Math.min(86, Math.max(24, 90 - L * 0.85)), 1.5, 6]);
+  }
   if (L < 58) return paraHex([Math.min(78, L + 26), a, b]);
   return hex;
 }
 
-function variante(svg, { papel, escuro }) {
+export function variante(svg, { papel, escuro }) {
   return svg
     .replace(/<rect [^>]*\/>/, '')
     .replace(/(fill|stroke)="(#[0-9a-fA-F]{6})"/g, (_, atributo, cor) => {
@@ -81,12 +86,17 @@ const escrever = (caminho, conteudo) => {
   writeFileSync(caminho, conteudo);
 };
 
-const chaves = readdirSync(MESTRES).filter((nome) => nome.endsWith('.svg')).map((nome) => nome.slice(0, -4));
-for (const chave of chaves) {
-  const mestre = readFileSync(join(MESTRES, `${chave}.svg`), 'utf8');
-  for (const [tema, opcoes] of Object.entries(TEMAS))
-    escrever(join(raiz, 'public', 'estados', tema, `${chave}.svg`), variante(mestre, opcoes));
-  if (LP.includes(chave))
-    escrever(join(raiz, 'apps', 'web', 'public', 'estados', `${chave}.svg`), variante(mestre, { papel: PAPEL, escuro: false }));
+function gerar() {
+  const chaves = readdirSync(MESTRES).filter((nome) => nome.endsWith('.svg')).map((nome) => nome.slice(0, -4));
+  for (const chave of chaves) {
+    const mestre = readFileSync(join(MESTRES, `${chave}.svg`), 'utf8');
+    for (const [tema, opcoes] of Object.entries(TEMAS))
+      escrever(join(raiz, 'public', 'estados', tema, `${chave}.svg`), variante(mestre, opcoes));
+    if (LP.includes(chave))
+      escrever(join(raiz, 'apps', 'web', 'public', 'estados', `${chave}.svg`), variante(mestre, { papel: PAPEL, escuro: false }));
+  }
+  console.log(`${chaves.length} ilustrações geradas para os temas claro e escuro`);
 }
-console.log(`${chaves.length} ilustrações geradas para os temas claro e escuro`);
+
+// Gera só quando executado (pnpm estados:gerar); importar para testar não escreve arquivos.
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) gerar();
