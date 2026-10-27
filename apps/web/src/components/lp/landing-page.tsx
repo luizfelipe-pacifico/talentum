@@ -273,14 +273,13 @@ const COLECAO = [
   },
 ];
 
-/* Marca em WebP: o SVG original é um PNG embutido de quase 200 KB.
-   Os derivados são gerados por scripts/preparar-imagens-lp.mjs. */
+/* Marca vetorial gerada por scripts/gerar-marca.mjs: nítida em qualquer
+   densidade e com cerca de 1 KB. */
 function BrandMark({ fundo = 'claro' }: { fundo?: 'claro' | 'escuro' }) {
   const arquivo = fundo === 'escuro' ? 'talentum-escura' : 'talentum-clara';
   return (
     <img
-      src={`/marca/${arquivo}-64.webp`}
-      srcSet={`/marca/${arquivo}-64.webp 1x, /marca/${arquivo}-128.webp 2x`}
+      src={`/marca/${arquivo}.svg`}
       alt=""
       width={39}
       height={34}
@@ -289,7 +288,7 @@ function BrandMark({ fundo = 'claro' }: { fundo?: 'claro' | 'escuro' }) {
   );
 }
 
-export function LandingPage() {
+export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}) {
   return (
     <div className="lp-root">
       <ArtDefs />
@@ -338,6 +337,7 @@ export function LandingPage() {
                   tudo o que já está prometido. Sem planilha, sem digitação diária e sem entregar sua vida
                   financeira para a nuvem.
                 </p>
+                {notice}
                 <div className="lp-cta-row">
                   <a className="lp-btn lp-btn-primary" href="/api/auth/start">
                     Entrar e baixar

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { siteUrl } from './server/site-url';
 
 function contentSecurityPolicy(nonce: string) {
   // Em desenvolvimento o React avalia código com eval para os stack traces,
@@ -31,7 +32,7 @@ export function middleware(request: NextRequest) {
   let response: NextResponse;
   if (request.nextUrl.pathname.startsWith('/downloads') && !request.cookies.has('__Host-talentum-access')) {
     const target = request.cookies.has('__Host-talentum-refresh') ? '/api/auth/refresh' : '/api/auth/start';
-    response = NextResponse.redirect(new URL(target, request.url));
+    response = NextResponse.redirect(siteUrl(target, request));
   } else {
     response = NextResponse.next({ request: { headers: requestHeaders } });
   }
@@ -43,7 +44,7 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     {
-      source: '/((?!api|_next/static|_next/image|favicon.ico|marca|telas|lut).*)',
+      source: '/((?!api|_next/static|_next/image|favicon.ico|marca|telas|lut|estados).*)',
       missing: [
         { type: 'header', key: 'next-router-prefetch' },
         { type: 'header', key: 'purpose', value: 'prefetch' },

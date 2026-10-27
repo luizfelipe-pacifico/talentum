@@ -50,6 +50,8 @@ Todos podem ler conteúdo com estado `PUBLISHED`. Criar post, comentar, curtir e
 
 Em desenvolvimento local, a LP possui imagem Docker própria e é publicada apenas em `127.0.0.1:3100`. Ela não reutiliza a imagem do app local nem inclui Prisma, SQLite, Electron ou domínio financeiro. A Content Security Policy usa nonce novo por resposta, propagado pelo middleware ao renderizador do Next.js, para permitir somente os scripts emitidos pela própria renderização sem liberar scripts inline indiscriminadamente. Somente com `NODE_ENV=development` a política acrescenta `'unsafe-eval'` em `script-src` e `ws:` em `connect-src`, exigidos pelo React e pelo recarregamento do `next dev`; sem eles a página de desenvolvimento não hidrata. A build de produção continua sem os dois.
 
+Com o Worker inacessível ou sem configuração, o BFF responde 503 controlado (`apps/web/src/server/worker-fetch.ts`) e a LP mostra o aviso de login com erro (`?auth=erro`) ou cancelado (`?auth=cancelado`) em `components/lp/auth-notice.tsx`, em vez de uma página 500.
+
 O conteúdo da LP não depende de JavaScript para existir: o HTML do servidor nasce visível, e a animação de entrada só esconde um bloco depois que o componente hidratou e confirmou que ele está fora da tela.
 
 ## Indexação — atual

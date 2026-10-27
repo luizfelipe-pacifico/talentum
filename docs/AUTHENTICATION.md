@@ -8,6 +8,8 @@ Web e Electron usam Authorization Code com PKCE S256. Implicit Grant e fluxo por
 
 O fluxo Google da LP está implementado entre BFF e Worker: PKCE S256, `state`, `nonce`, assinatura RS256 via JWKS, access token opaco de 15 minutos e refresh token opaco rotativo de 30 dias. O BFF guarda ambos em cookies `HttpOnly`; reutilização de refresh revoga a família e a sessão. A operação em produção depende dos Worker Secrets e redirects cadastrados no provedor.
 
+O `state` fica vinculado ao navegador que iniciou o login: `/api/auth/start` grava o hash do `state` no cookie `__Host-talentum-oauth-state` (10 minutos) e o callback só segue quando o `state` recebido corresponde a ele, o que impede CSRF de login. O refresh reivindica o token com `UPDATE … WHERE consumed_at IS NULL` antes de emitir o sucessor; numa corrida, a segunda tentativa é tratada como reúso e revoga a família. Cookies de sessão saem sempre com `Secure`, que o prefixo `__Host-` exige e que os navegadores aceitam em `http://localhost`. O logout apaga os cookies mesmo quando o Worker está indisponível. Origem de mutações e destino de redirecionamentos usam o `Host` acessado (`apps/web/src/server/site-url.ts`), não `request.url`.
+
 ## Credenciais
 
 | Credencial | Duração | Web | Electron | Servidor |

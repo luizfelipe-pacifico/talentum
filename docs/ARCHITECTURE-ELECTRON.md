@@ -35,6 +35,10 @@ flowchart LR
 
 O Electron é cliente público: nenhum client secret embutido é confidencial. Usa navegador do sistema, Authorization Code com PKCE S256, `state`, `nonce` e redirect registrado. Access token fica em memória; refresh token rotativo fica no cofre do sistema operacional quando disponível.
 
+## Controles atuais do shell
+
+`electron/main.cjs` nega `window.open` e toda navegação para fora da origem do backend local (links para hosts permitidos abrem no navegador do sistema), recusa qualquer pedido de permissão do navegador e só aceita IPC de janelas cuja origem é a do backend local. Os demais controles abaixo seguem planejados.
+
 ## Controles obrigatórios
 
 1. Não carregar conteúdo remoto em janela privilegiada.

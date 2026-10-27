@@ -2256,3 +2256,42 @@ html:has(.lp-root) {
     display: none;
   }
 }
+
+/* Retorno do login (auth-notice.tsx): fica acima dos botões e não empurra o herói. */
+.lp-auth-notice {
+  margin-bottom: 16px;
+}
+
+/* Páginas de estado (not-found.tsx e error.tsx): uma coluna centrada na
+   primeira dobra, com a mesma tipografia do herói. */
+.lp-status-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+.lp-status {
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  text-align: center;
+  padding-block: 64px;
+}
+
+.lp-status > .bi {
+  font-size: 34px;
+  color: var(--lp-amber, #b8773d);
+}
+
+/* Ilustração das páginas de estado: decorativa, sem arrastar e sem seleção. */
+.state-art {
+  display: block;
+  width: min(200px, 50vw);
+  height: auto;
+  aspect-ratio: 1;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  pointer-events: none;
+}

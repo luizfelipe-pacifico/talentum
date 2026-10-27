@@ -29,6 +29,7 @@ export type ObligationInput = {
   amountCents: bigint;
   dueDate: Date;
   status: string;
+  isEstimated?: boolean;
 };
 
 /** Lançamento pendente ainda não aconteceu: não entra em saldo nem em gasto. */
@@ -57,6 +58,8 @@ export type ConsolidatedBalance = {
   knownAccounts: number;
   /** Contas sem nenhum snapshot: o saldo é desconhecido, e desconhecido não é zero. */
   unknownAccounts: number;
+  /** Data do saldo informado mais antigo que entrou na soma (R-26), ou `null` sem nenhum. */
+  referenceDate: Date | null;
 };
 
 /**
@@ -74,6 +77,7 @@ export function consolidatedBalance(
   let cents = 0n;
   let knownAccounts = 0;
   let unknownAccounts = 0;
+  let referenceDate: Date | null = null;
 
   for (const account of accounts) {
     if (!account.snapshot) {
@@ -83,6 +87,7 @@ export function consolidatedBalance(
 
     knownAccounts += 1;
     cents += account.snapshot.balanceCents;
+    if (!referenceDate || account.snapshot.capturedAt < referenceDate) referenceDate = account.snapshot.capturedAt;
 
     for (const transaction of transactions) {
       if (transaction.accountId !== account.accountId) continue;
@@ -92,7 +97,7 @@ export function consolidatedBalance(
     }
   }
 
-  return { cents, knownAccounts, unknownAccounts };
+  return { cents, knownAccounts, unknownAccounts, referenceDate };
 }
 
 /** Despesa do período, como magnitude positiva. Exclui pendentes e transferências. */
@@ -155,6 +160,23 @@ export function committedCents(obligations: ObligationInput[], periodEnd: Date):
   return total;
 }
 
+export type CommittedSummary = { cents: bigint; count: number; estimatedCount: number };
+
+/**
+ * Total comprometido com a contagem de obrigações e de estimativas.
+ *
+ * O veredito precisa dizer quando parte do valor descontado é aproximada
+ * (docs/DASHBOARD.md, L-1): o número continua certo, mas a pessoa sabe o quanto confiar.
+ */
+export function committedSummary(obligations: ObligationInput[], periodEnd: Date): CommittedSummary {
+  const counted = obligations.filter((obligation) => obligation.status === 'open' && obligation.dueDate <= periodEnd);
+  return {
+    cents: committedCents(counted, periodEnd),
+    count: counted.length,
+    estimatedCount: counted.filter((obligation) => obligation.isEstimated).length,
+  };
+}
+
 /**
  * Saldo Livre de Risco: o que sobra depois de tudo que já tem dono no período.
  *
@@ -191,14 +213,17 @@ export function categoryBreakdown(
     if (!isSettled(transaction) || isTransfer(transaction)) continue;
     if (transaction.amountCents >= 0n) continue;
     const magnitude = -transaction.amountCents;
-    totals.set(transaction.categoryId, (totals.get(transaction.categoryId) ?? 0n) + magnitude);
+    // Categoria que não existe mais conta como "sem categoria": tratá-la à
+    // parte criava uma segunda fatia com o mesmo nome.
+    const key = transaction.categoryId !== null && categoryNames.has(transaction.categoryId) ? transaction.categoryId : null;
+    totals.set(key, (totals.get(key) ?? 0n) + magnitude);
     totalCents += magnitude;
   }
 
   const ordered = [...totals.entries()]
     .map(([categoryId, cents]) => ({
       categoryId,
-      name: categoryId === null ? 'Sem categoria' : categoryNames.get(categoryId) ?? 'Sem categoria',
+      name: categoryId === null ? 'Sem categoria' : (categoryNames.get(categoryId) as string),
       cents,
     }))
     .sort((left, right) => (right.cents > left.cents ? 1 : right.cents < left.cents ? -1 : 0));
@@ -208,7 +233,7 @@ export function categoryBreakdown(
   // O grupo sem categoria nunca é dobrado em "Outros": ele é o convite à
   // conciliação e some da vista justamente quando é pequeno demais para
   // aparecer sozinho no ranking.
-  const uncategorized = ordered.find((slice) => slice.categoryId === null && slice.name === 'Sem categoria');
+  const uncategorized = ordered.find((slice) => slice.categoryId === null);
   const rankable = ordered.filter((slice) => slice !== uncategorized);
 
   const head = rankable.slice(0, uncategorized ? limit - 1 : limit);

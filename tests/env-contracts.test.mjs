@@ -23,7 +23,8 @@ test('o exemplo só contém placeholder sintético',async()=>{
   const example=await read('.env.example');
   // Um valor real de segredo ou de infraestrutura nunca pode chegar ao Git.
   assert.match(example,/CLOUDFLARE_BFF_SHARED_SECRET="segredo-sintetico[^"]*"/);
-  assert.match(example,/CLOUDFLARE_API_BASE_URL="https:\/\/worker-exemplo\.workers\.dev"/);
+  // O endereço de exemplo é o Worker local documentado, que não é segredo.
+  assert.match(example,/^CLOUDFLARE_API_BASE_URL="http:\/\/127\.0\.0\.1:8787"$/m);
   for(const [,value] of example.matchAll(/^[A-Z][A-Z0-9_]*="([^"]*)"$/gm))
     assert.ok(!/^[A-Za-z0-9_-]{32,}$/.test(value),`valor longo e opaco parece segredo real: ${value.slice(0,6)}…`);
 });
