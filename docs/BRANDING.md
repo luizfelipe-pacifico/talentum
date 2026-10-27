@@ -108,7 +108,9 @@ Semantic status colors are lightened in dark mode only enough to remain legible 
 
 Theme is user-selectable (Light / Dark / System) through a dropdown in the header and settings. The local UI state persists the preference and adds or removes the `dark` class on `<html>`, which the tokens above key off.
 
-The application keeps the high-contrast `icon-talentum-dark.svg` lockup in the sidebar because that structural surface remains Ebony in both themes. `icon-talentum-light.svg` is reserved for light surfaces. The frameless Electron window uses the multiresolution `icon-badge.ico`, derived from `icon-badge.svg`, as its native Windows window/taskbar icon. Window controls are intentionally compact, live beside the profile in the shared header, and communicate with the Electron main process only through the isolated preload bridge. The same controls remain visible in browser development previews so their proportions can be reviewed, but only the Electron preload bridge makes them operational.
+The application keeps the high-contrast `icon-talentum-dark.svg` lockup in the sidebar because that structural surface remains Ebony in both themes. `icon-talentum-light.svg` is reserved for light surfaces. The frameless Electron window uses the multiresolution `icon-badge.ico`, derived from `icon-badge.svg`, as its native Windows window/taskbar icon. Window controls are intentionally compact, live beside the profile in the shared header, and communicate with the Electron main process only through the isolated preload bridge. The same controls remain visible in browser development previews wider than 900 px so their proportions can be reviewed, but only the Electron preload bridge makes them operational.
+
+The marks are true vectors (about 1.2 KB each) drawn once in `scripts/gerar-marca.mjs`; the previous files were PNGs wrapped in SVG. The same script writes `public/marca/talentum-clara.svg` and `talentum-escura.svg` for the app and the landing page, and the `.ico` files (16 to 256 px) for the window, the app favicon and the landing page favicon. Run `pnpm marca:gerar` after any change to the mark.
 
 ## Typography
 
@@ -170,6 +172,19 @@ Recommended layout constraints:
 - Desktop gutters: `32px` to `48px`.
 - Tablet gutters: `24px`.
 - Mobile gutters: `16px`.
+
+### Breakpoints of the local app — current
+
+The Electron window opens at 1024 px or wider, but the layout serves any width:
+
+| Width | Behavior |
+| --- | --- |
+| above 900 px | fixed sidebar (248 px, or 76 px collapsed) and one-row header |
+| 900 px and below | the sidebar becomes a drawer opened by a menu button; the closed drawer is `inert`; Esc, the scrim and navigation close it; window controls are hidden outside Electron; the quick-cash button keeps only its icon |
+| 600 px and below | 16 px side gutters, header title truncates, the theme selector moves to Settings only, tabs scroll horizontally, dialogs take the full width |
+| touch pointers | interactive targets are at least 44 px |
+
+Rules and their regression tests live in `src/app/globals.css` ("Responsividade") and `tests/regression/responsive.test.mjs`.
 
 ### Spacing scale
 
