@@ -89,3 +89,23 @@ Na mesma investigação, `http://localhost:3001` abria outro projeto local que o
 - Não há fotografia nem vídeo: o `BRANDING.md` rejeita imagem de banco, e as gravuras foram desenhadas para o projeto.
 - A legenda da captura do Início diz que os indicadores mostram zero. A imagem é anterior ao painel atual, que mostra estado vazio. Trocar a captura e a legenda depende de decisão do mantenedor.
 - Restam 43 KB de JavaScript não usado e 12 KB de JavaScript legado, vindos do framework.
+
+## Responsividade do app local em 26 de outubro de 2026
+
+Medida no Chrome por iframes em 390, 768, 1280, 1440 e 1920 px, em nove rotas, contando elementos fora da área visível, altura do cabeçalho, largura do conteúdo e textos abaixo de 12 px. A primeira medição revelou que `.content` usava `overflow-x: hidden`, o que escondia vazamentos da varredura anterior, feita só em 1440 px.
+
+| Largura | Antes | Depois |
+| --- | --- | --- |
+| 390 px | barra lateral de 248 px, 89 px de conteúdo, cabeçalho de até 442 px, controles fora da tela | gaveta fechada, 339 a 358 px de conteúdo, cabeçalho de 84 px, nada fora da tela |
+| 768 px | barra lateral ocupando um terço, cabeçalho em três linhas (171 px) | gaveta, conteúdo de 705 a 724 px, cabeçalho de 84 px |
+| 1280, 1440 e 1920 px | sem defeitos; conteúdo limitado a 1440 px | inalterado |
+
+Também corrigido: o rótulo "Conta ativa" tinha 9 px em todas as larguras e passou a 12 px. A gaveta foi verificada abrindo pelo botão de menu, com foco preso dentro dela, e fechando pelo véu, pelo Esc e ao navegar.
+
+### Medição completa
+
+Segunda rodada: as 22 rotas do app e os quatro diálogos e gavetas abertos a partir do Início, em 390, 768, 1024, 1280, 1440 e 1920 px (156 medições). Nada vaza da área visível. O único defeito novo foi o cabeçalho em 1024 px, mínimo do Electron, que quebrava em duas linhas (132 px) com a barra lateral fixa; abaixo de 1180 px ele passou a caber em uma linha. A gaveta de notificações apareceu como vazando em 390 e 768 px, mas a medição repetida depois da animação de entrada mostrou que ela ocupa exatamente a largura da tela.
+
+## Ilustrações de estado nos dois temas — 26 de outubro de 2026
+
+Verificadas no Chrome em `/patrimonio/metas`, `/rota-inexistente` e na gaveta de notificações, nos temas claro e escuro. Sem placa e com o papel na cor da superfície, as ilustrações se apoiam no cartão sem formar um quadrado em nenhum dos temas. A imagem não inicia arraste (`dragstart` cancelado), não entra em seleção e não intercepta o clique.

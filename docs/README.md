@@ -22,6 +22,8 @@ Este diretório separa as fontes de verdade técnicas dos materiais de produto e
 | [`CLOUDFLARE_SETUP.md`](./CLOUDFLARE_SETUP.md) | Configuração ordenada do Worker, D1, migrations, segredos e integração com a Vercel |
 | [`BEST_PRACTICES.md`](./BEST_PRACTICES.md) | Práticas gerais de engenharia e contribuição |
 | [`BRANDING.md`](./BRANDING.md) | Identidade visual e regras de interface |
+| [`ESTADOS_VAZIOS.md`](./ESTADOS_VAZIOS.md) | Mapa de estados vazios, de erro e de ausência, ilustrações flat e suas variantes por tema |
+| [`ATUALIZACOES.md`](./ATUALIZACOES.md) | Aviso de nova versão e instalação consentida da atualização (planejado, antes do MVP) |
 | [`DASHBOARD.md`](./DASHBOARD.md) | Padrões de dashboard e visualização de dados: referências, base teórica, auditoria e regras normativas |
 
 ## Produto e referências
