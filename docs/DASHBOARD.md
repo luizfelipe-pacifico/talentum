@@ -737,7 +737,9 @@ Atualizada em 11 de setembro de 2026, após a implementação.
 | — | Média diária vs. orçamento | **Bloqueado** | `Budget` é Etapa 9 |
 | — | ARCA, XP, notícias, cartões | Fora de escopo | Etapas 8, 14, 15, 16, 17 |
 
-Sete dos nove elementos estão no ar. G-1 aguarda o CRUD de obrigações da Feature 3; G-3 aguarda L-2.
+Sete dos nove elementos estão no ar.
+
+**Atualização de 26 de outubro de 2026.** O saldo em conta exibe a data-base do saldo informado mais antigo usado na soma (R-26). O veredito avisa quando obrigações entram com valor estimado (L-1). As barras de gastos por categoria medem a fatia do total, a mesma grandeza do rótulo, e não mais a proporção do maior grupo. O gráfico mostra faixa de erro com repetição em vez de sumir (R-28). As telas de área consultam `GET /api/local-summary` antes de afirmar que estão vazias (R-29). G-1 aguarda o CRUD de obrigações da Feature 3; G-3 aguarda L-2.
 
 ## Lacunas de modelo a resolver
 

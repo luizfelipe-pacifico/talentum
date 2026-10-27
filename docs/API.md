@@ -12,11 +12,14 @@ Este documento mistura contratos atuais e planejados. As rotas marcadas como atu
 | `GET` | `/api/system/status` | `X-Action-Code` de uso único | verificar comunicação frontend/API |
 | `GET` | `/api/dashboard` | `X-Action-Code` de uso único | indicadores do painel calculados no SQLite local |
 | `GET` | `/api/dashboard/categories` | `X-Action-Code` de uso único | gastos por categoria no período |
+| `GET` | `/api/local-summary` | `X-Action-Code` de uso único | contagens por área do banco local: contas, lançamentos, pendentes, obrigações abertas e importações |
 | `GET` | `/api/health/live` | somente infraestrutura | healthcheck sem dados de aplicação |
+
+Toda rota sob `/api` do app local recusa com `403 HOST_NOT_ALLOWED` requisições cujo `Host` não seja `localhost`, `127.0.0.1` ou `[::1]` (`src/middleware.ts`), contra DNS rebinding. `GET /api/local-summary` existe para que nenhuma tela afirme "nenhum" sem confirmação do backend; devolve só contagens, nunca registros, valores ou descrições.
 
 Toda consulta do painel é escopada por `profileId`, resolvido no servidor por `getLocalProfileId()`. Sem perfil local, a resposta é `{ "hasProfile": false }` e a interface leva ao onboarding; nenhum zero é devolvido no lugar de um valor desconhecido.
 
-`GET /api/dashboard` retorna o Saldo Livre de Risco, o saldo consolidado, o total comprometido no período, gastos e média diária do mês com a variação contra o mesmo intervalo do mês anterior, e as quantidades de contas com saldo conhecido e desconhecido, pendências e importações.
+`GET /api/dashboard` retorna o Saldo Livre de Risco, o saldo consolidado com a data-base do saldo informado mais antigo (`balanceReferenceDate`), o total comprometido no período com a quantidade de obrigações estimadas (`committedEstimatedCount`), gastos e média diária do mês com a variação contra o mesmo intervalo do mês anterior, e as quantidades de contas com saldo conhecido e desconhecido, pendências e importações.
 
 `GET /api/dashboard/categories` retorna as fatias de gasto do período, já ordenadas, com a cauda somada em `Outros` e os lançamentos sem categoria em uma fatia própria. A soma das fatias é sempre igual a `totalCents`.
 

@@ -10,6 +10,10 @@ export type DashboardMetrics = {
   balanceCents: string;
   committedCents: string;
   committedCount: number;
+  /** Obrigações do período cadastradas com valor aproximado (L-1). */
+  committedEstimatedCount: number;
+  /** Data do saldo informado mais antigo usado no consolidado (R-26). */
+  balanceReferenceDate: string | null;
   monthExpensesCents: string;
   monthExpensesChange: number | null;
   dailyAverageCents: string;

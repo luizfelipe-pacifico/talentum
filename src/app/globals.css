@@ -1096,7 +1096,7 @@ p {
   text-decoration: none;
 }
 
-.tabs a[aria-selected='true'] {
+.tabs a[aria-current='page'] {
   border-bottom-color: var(--amber);
   color: var(--ink);
   font-weight: 600;
@@ -2449,4 +2449,467 @@ kbd {
   .guide-toc {
     position: static;
   }
+}
+
+/* ── Lapidação de outubro de 2026 ──────────────────────────────────
+   Refinamento, não redesenho: identidade e tokens de docs/BRANDING.md
+   preservados. Cada regra responde a uma lacuna medida no teste manual. */
+
+/* Superfícies do navegador seguem a paleta. */
+:root {
+  caret-color: var(--amber);
+  accent-color: var(--amber);
+}
+
+a:hover {
+  text-underline-offset: 3px;
+}
+
+/* Títulos grandes em Playfair pedem tracking levemente negativo; o corpo fica neutro. */
+.page-title,
+.h-display-lg,
+.figure-hero {
+  letter-spacing: -0.01em;
+}
+
+/* Resposta no próprio toque: o botão cede ao ser pressionado, sem esperar o
+   clique terminar. Só transform e cores, que o navegador compõe barato. */
+.btn,
+.icon-button,
+.close-button,
+.sidebar-import,
+.sidebar-account {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 100ms ease-out;
+}
+
+.btn:active,
+.icon-button:active,
+.close-button:active,
+.sidebar-import:active,
+.sidebar-account:active {
+  transform: scale(0.97);
+}
+
+/* Diálogos e gaveta chegam de onde fazem sentido: o diálogo emerge no
+   lugar, a gaveta entra pela borda em que vive. Curva de saída exponencial,
+   dentro da faixa de 200 a 300 ms definida para painéis. */
+@keyframes talentum-scrim-in {
+  from { opacity: 0; }
+}
+
+@keyframes talentum-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes talentum-drawer-in {
+  from { transform: translateX(24px); opacity: 0; }
+}
+
+.overlay-scrim {
+  animation: talentum-scrim-in 200ms ease-out;
+}
+
+.dialog {
+  animation: talentum-dialog-in 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.drawer {
+  animation: talentum-drawer-in 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Movimento reduzido: o global já desliga transições e animações; aqui o
+   toque também deixa de escalar, e a interface continua inteira sem movimento. */
+@media (prefers-reduced-motion: reduce) {
+  .btn:active,
+  .icon-button:active,
+  .close-button:active,
+  .sidebar-import:active,
+  .sidebar-account:active {
+    transform: none;
+  }
+}
+
+/* Contraste reforçado: divisórias e o véu dos diálogos ficam mais definidos. */
+@media (prefers-contrast: more) {
+  :root,
+  html.dark {
+    --line: var(--line-strong);
+  }
+
+  .overlay-scrim {
+    background: rgb(26 17 10 / 70%);
+  }
+
+  .dialog,
+  .drawer {
+    border-color: var(--ink2);
+  }
+}
+
+/* Faixa de erro dentro do próprio componente (docs/DASHBOARD.md, R-28). */
+.error-strip {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+
+/* Áreas do Início: lista de destinos, não grade de cartões iguais. Cada linha
+   é um link inteiro, com a descrição alinhada ao nome. */
+.area-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  column-gap: 32px;
+}
+
+.area-list a {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  align-items: center;
+  column-gap: 14px;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  transition: background-color 160ms ease;
+}
+
+.area-list a:hover {
+  background: var(--surface);
+  text-decoration: none;
+}
+
+.area-list .bi {
+  color: var(--amber);
+  font-size: 17px;
+}
+
+.area-list strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.area-list .small {
+  grid-column: 2;
+}
+
+.area-list .area-chevron {
+  color: var(--ink2);
+  font-size: 15px;
+  transition: transform 160ms ease;
+}
+
+.area-list a:hover .area-chevron {
+  transform: translateX(2px);
+}
+
+/* O ícone acompanha o nome do destino, não o centro da linha: com a
+   descrição em duas linhas, centralizar desalinhava ícone e título. */
+.area-list a {
+  align-items: start;
+}
+
+.area-list a > .bi:first-child {
+  margin-top: 2px;
+}
+
+.area-list .area-chevron {
+  align-self: center;
+}
+
+/* Ritmo interno dos diálogos: título, texto e ação respiram por igual. */
+.dialog {
+  display: grid;
+  gap: 14px;
+}
+
+/* Ações do diálogo mantêm a largura do próprio rótulo. */
+.dialog > .btn {
+  justify-self: start;
+}
+
+/* ── Responsividade ────────────────────────────────────────────────
+   Medida em 390, 768, 1280, 1440 e 1920 px. O Electron hoje abre com no
+   mínimo 1024 px, mas o layout serve a qualquer largura: abaixo de 900 px a
+   barra lateral vira gaveta, abaixo de 600 px o cabeçalho cabe em uma linha
+   e as margens seguem a grade de 4 colunas de docs/BRANDING.md. */
+
+/* O rótulo "Conta ativa" tinha 9 px: abaixo do piso de 12 px. */
+.sidebar-account-label {
+  font-size: 12px;
+  line-height: 14px;
+}
+
+.area-list {
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+}
+
+/* O botão de menu só existe quando a barra lateral vira gaveta. */
+.topbar-heading {
+  min-width: 0;
+  flex: 1 1 260px;
+}
+
+.menu-button {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ink);
+  font-size: 20px;
+}
+
+.nav-scrim {
+  display: none;
+}
+
+/* Desktop pequeno: com a barra lateral fixa, o cabeçalho já não comporta o
+   rótulo do botão e um título com base de 260 px. Em 1024 px (mínimo do
+   Electron) quebrava em duas linhas. */
+@media (max-width: 1180px) {
+  .topbar {
+    flex-wrap: nowrap;
+  }
+
+  .topbar .row-tight {
+    flex-wrap: nowrap;
+    flex: none;
+  }
+
+  .topbar-heading {
+    flex: 1 1 0;
+  }
+
+  .topbar-heading .page-title,
+  .topbar-heading .page-context {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .btn-label {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 45;
+    width: min(300px, 86vw);
+    transform: translateX(-100%);
+    transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: var(--shadow-md);
+  }
+
+  .shell[data-nav='open'] .sidebar {
+    transform: none;
+  }
+
+  /* Recolher a barra não faz sentido na gaveta. */
+  .sidebar-collapse {
+    display: none;
+  }
+
+  .nav-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 44;
+    border: none;
+    background: rgb(26 17 10 / 45%);
+    animation: talentum-scrim-in 200ms ease-out;
+  }
+
+  .menu-button {
+    display: inline-flex;
+  }
+
+  /* Uma linha só: título encolhe com reticências e o botão de lançar fica só com o ícone. */
+  .topbar {
+    align-items: center;
+    gap: 12px;
+    flex-wrap: nowrap;
+  }
+
+  .topbar .row-tight {
+    flex-wrap: nowrap;
+    flex: none;
+  }
+
+  .topbar-heading {
+    flex: 1 1 0;
+  }
+
+  .topbar-heading .page-title,
+  .topbar-heading .page-context {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .btn-label {
+    display: none;
+  }
+
+  /* Os controles de janela só servem ao Electron. */
+  html:not(.electron) .window-controls {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .topbar {
+    flex-wrap: nowrap;
+    padding: 12px 16px;
+  }
+
+  .page-title {
+    font-size: 22px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .page-context {
+    display: none;
+  }
+
+  .btn-label {
+    display: none;
+  }
+
+  /* Tema continua em Configurações; no celular o cabeçalho guarda espaço. */
+  .theme-select {
+    display: none;
+  }
+
+  .content {
+    padding: 20px 16px 48px;
+  }
+
+  .content-inner {
+    gap: 24px;
+  }
+
+  /* As abas rolam na horizontal em vez de quebrar a linha. */
+  .tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+  }
+
+  .tabs a {
+    flex: none;
+  }
+
+  .card-lg,
+  .empty {
+    padding: 28px 18px;
+  }
+
+  .overlay {
+    padding: 12px;
+    align-items: flex-end;
+  }
+
+  .dialog,
+  .dialog-md,
+  .dialog-lg {
+    width: 100%;
+    padding: 22px 18px;
+  }
+
+  .drawer {
+    width: 100%;
+  }
+
+  .figure-hero {
+    font-size: 40px;
+  }
+}
+
+/* Telas de toque: alvo mínimo de 44 px (WCAG 2.5.5), independente da largura. */
+@media (pointer: coarse) {
+  .btn,
+  .icon-button,
+  .nav-item,
+  .menu-button,
+  .close-button,
+  .sidebar-import,
+  .sidebar-quiet,
+  .tabs a {
+    min-height: 44px;
+  }
+
+  .menu-button,
+  .icon-button,
+  .close-button {
+    min-width: 44px;
+  }
+}
+
+/* ── Ilustrações de estado ─────────────────────────────────────────
+   Decorativas: não arrastam, não são selecionadas e deixam o clique passar.
+   A placa Alabastro faz parte do desenho e garante contraste nos dois temas. */
+.state-art {
+  display: block;
+  width: 160px;
+  height: 160px;
+  margin: 0 auto 8px;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  pointer-events: none;
+}
+
+.state-art-sm {
+  width: 112px;
+  height: 112px;
+}
+
+.state-art-lg {
+  width: 200px;
+  height: 200px;
+}
+
+@media (max-width: 600px) {
+  .state-art,
+  .state-art-lg {
+    width: 128px;
+    height: 128px;
+  }
+}
+
+/* Variante do tema ativo: a outra fica fora do layout. */
+.state-art-escuro {
+  display: none;
+}
+
+html.dark .state-art-claro {
+  display: none;
+}
+
+html.dark .state-art-escuro {
+  display: block;
 }

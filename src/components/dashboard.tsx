@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { useApp } from '@/components/app-state';
+import { StateArt } from '@/components/state-art';
 import { useCategoryBreakdown } from '@/hooks/use-category-breakdown';
 import { useDashboardData, type DashboardMetrics } from '@/hooks/use-dashboard-data';
-import { formatCents, formatPercent, formatPeriod } from '@/lib/format';
+import { shareOfTotal } from '@/lib/chart';
+import { formatCents, formatDay, formatPercent, formatPeriod } from '@/lib/format';
 
 /* Dashboard.
 
@@ -73,8 +75,8 @@ function Skeleton() {
 
 function ErrorState({ retry }: { retry: () => void }) {
   return (
-    <section className="card card-lg error-state" role="alert">
-      <p className="eyebrow">Indicadores indisponíveis</p>
+    <section className="card card-lg empty error-state" role="alert">
+      <StateArt name="falha-consulta" />
       <h2 className="h-display">Não foi possível consultar o banco local</h2>
       <p className="muted">
         Nenhum valor é exibido enquanto a consulta não responder. Um saldo mostrado agora seria uma
@@ -91,7 +93,7 @@ function ErrorState({ retry }: { retry: () => void }) {
 function EmptyState({ onImport }: { onImport: () => void }) {
   return (
     <section className="card card-lg empty">
-      <i className="bi bi-hdd" aria-hidden="true" />
+      <StateArt name="base-vazia" size="lg" />
       <h2 className="h-display">Sua base financeira ainda está vazia</h2>
       <p className="muted">
         Importe um extrato ou cadastre sua posição atual. Nenhum valor é presumido: os indicadores
@@ -115,21 +117,41 @@ function CategoryChart() {
   if (state.status === 'loading') {
     return (
       <section className="card">
-        <p className="eyebrow">Para onde o dinheiro foi</p>
+        <h2 className="h-display">Para onde o dinheiro foi</h2>
         <span className="skeleton skeleton-chart" />
       </section>
     );
   }
-  if (state.status === 'error' || !state.payload.hasProfile) return null;
+  if (state.status === 'error') {
+    return (
+      <section className="card error-strip" role="alert">
+        <h2 className="h-display">Para onde o dinheiro foi</h2>
+        <p className="muted">Não foi possível consultar os gastos por categoria.</p>
+        <button type="button" className="btn btn-neutral btn-sm" onClick={state.retry}>
+          <i className="bi bi-arrow-clockwise" aria-hidden="true" />
+          Tentar novamente
+        </button>
+      </section>
+    );
+  }
+  if (!state.payload.hasProfile) return null;
 
   const { slices, totalCents, period } = state.payload;
   const total = BigInt(totalCents);
-  if (total === 0n) return null;
-
-  const largest = slices.reduce(
-    (max, slice) => (BigInt(slice.cents) > max ? BigInt(slice.cents) : max),
-    0n,
-  );
+  // Zero confirmado pelo backend é uma afirmação válida (R-29): dizê-la é
+  // melhor que esconder o gráfico e deixar a dúvida entre "sem gasto" e "falhou".
+  if (total === 0n) {
+    return (
+      <section className="card">
+        <div className="card-header">
+          <h2 className="h-display">Para onde o dinheiro foi</h2>
+          <span className="small muted">{formatPeriod(period.start, period.end)}</span>
+        </div>
+        <StateArt name="sem-gastos" size="sm" />
+        <p className="muted">Nenhum gasto confirmado neste período. Lançamentos pendentes aparecem aqui depois de confirmados.</p>
+      </section>
+    );
+  }
 
   return (
     <section className="card">
@@ -154,9 +176,8 @@ function CategoryChart() {
         </thead>
         <tbody>
           {slices.map((slice) => {
-            const cents = BigInt(slice.cents);
-            const share = largest > 0n ? Number((cents * 1000n) / largest) / 10 : 0;
-            const percent = Number((cents * 1000n) / total) / 10;
+            // A barra e o rótulo medem a mesma coisa: a fatia do total do período.
+            const percent = shareOfTotal(BigInt(slice.cents), total);
             const recessive = slice.name === 'Sem categoria' || slice.name === 'Outros';
             return (
               <tr key={slice.name}>
@@ -165,7 +186,7 @@ function CategoryChart() {
                   <span className="catbar-track" aria-hidden="true">
                     <span
                       className={recessive ? 'catbar-fill catbar-fill-recessive' : 'catbar-fill'}
-                      style={{ width: `${Math.max(share, 1)}%` }}
+                      style={{ width: `${Math.max(percent, 1)}%` }}
                     />
                   </span>
                   <span className="catbar-share num">{percent.toFixed(1).replace('.', ',')}%</span>
@@ -204,6 +225,17 @@ function Metrics({ data }: { data: DashboardMetrics }) {
           {data.committedCount > 0 &&
             ` em ${data.committedCount} ${data.committedCount === 1 ? 'obrigação' : 'obrigações'}`}
         </p>
+        {data.committedEstimatedCount > 0 && (
+          <p className="callout callout-info">
+            <i className="bi bi-info-circle" aria-hidden="true" />
+            <span className="small">
+              {data.committedEstimatedCount === 1
+                ? '1 obrigação entra com valor estimado.'
+                : `${data.committedEstimatedCount} obrigações entram com valor estimado.`}{' '}
+              O resultado muda quando o valor exato for informado.
+            </span>
+          </p>
+        )}
         {incomplete && (
           <p className="callout callout-warn">
             <i className="bi bi-exclamation-triangle" aria-hidden="true" />
@@ -224,6 +256,7 @@ function Metrics({ data }: { data: DashboardMetrics }) {
             {data.accountsWithKnownBalance === 1
               ? 'conta com saldo conhecido'
               : 'contas com saldo conhecido'}
+            {data.balanceReferenceDate && `, saldo informado em ${formatDay(data.balanceReferenceDate)}`}
           </p>
         </Card>
 
@@ -259,7 +292,7 @@ function Metrics({ data }: { data: DashboardMetrics }) {
             {data.pendingCount === 1
               ? 'lançamento aguarda confirmação'
               : 'lançamentos aguardam confirmação'}
-            . Até lá eles não entram no saldo nem nos gastos.
+            . Lançamentos pendentes só entram no saldo e nos gastos depois de confirmados.
           </p>
           <Link className="btn btn-primary" href="/conciliacao">
             Abrir fila de conciliação
