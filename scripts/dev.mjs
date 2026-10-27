@@ -3,6 +3,7 @@ import { existsSync, rmSync } from 'node:fs';
 import net from 'node:net';
 import { platform } from 'node:os';
 import { resolve } from 'node:path';
+import { listeningPids } from './ports.mjs';
 
 const port = 3000;
 const databaseUrl = process.env.DATABASE_URL ?? 'file:../temp/talentum-local.db';
@@ -25,13 +26,7 @@ function killProcessOnPort() {
       return;
     }
 
-    const processIds = new Set(
-      netstatOutput
-        .split(/\r?\n/)
-        .filter((line) => line.includes(`:${port}`) && line.includes('LISTENING'))
-        .map((line) => line.trim().split(/\s+/).at(-1))
-        .filter(Boolean),
-    );
+    const processIds = listeningPids(netstatOutput, port);
 
     for (const processId of processIds) {
       try {

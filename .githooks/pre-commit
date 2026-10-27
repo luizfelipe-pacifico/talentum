@@ -1,0 +1,6 @@
+#!/bin/sh
+# Bloqueia o commit quando qualquer teste, inclusive os de regressão, falha.
+# Ver "Bug fixes are test-first" em CLAUDE.md.
+set -e
+pnpm typecheck
+pnpm test

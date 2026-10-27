@@ -44,6 +44,23 @@ Talentum is an early-stage, open-source, local-first financial application plann
 - Before build, commit, push or deploy, scan source, configuration, documentation and history as appropriate for secrets and personal data.
 - A feature is not done until implementation, tests and relevant documentation agree.
 
+## Interface validation covers both themes
+
+- Validate every layout change in the light theme and in the dark theme, never in only one. Render both, compare contrast, legibility, borders, illustrations and states, and report the result for each theme.
+- Theme-specific assets, such as the state illustrations, must exist for both themes and be checked in both.
+
+## Bug fixes are test-first
+
+Every bug fix follows this order, without exception:
+
+1. Write a regression test that reproduces the bug and name it after the defect.
+2. Run it and confirm it fails for the reason described. A test that passes before the fix does not reproduce the bug.
+3. Fix the code.
+4. Run the regression test again and confirm it passes, then run the complete suite.
+5. Never delete or weaken an existing regression test to make a change pass.
+
+Regression tests live in `tests/regression/` and run with `pnpm test`. The whole suite, regression tests included, must pass before every commit and every push so that a bug that already existed can never ship again. The versioned Git hooks in `.githooks/` enforce this; install them once with `pnpm hooks:install`. Never bypass them with `--no-verify`.
+
 
 ## Mandatory pre-commit and pre-push security gate
 
