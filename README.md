@@ -182,6 +182,8 @@ pnpm prisma:migrate
 | `pnpm build` | Gera a build de produção do Next.js |
 | `pnpm start` | Executa a build de produção na porta 3000 |
 | `pnpm typecheck` | Verifica os tipos TypeScript |
+| `pnpm test` | Roda a suíte, inclusive os testes de regressão |
+| `pnpm hooks:install` | Ativa os hooks que rodam typecheck e testes antes de commit e push |
 | `pnpm prisma:generate` | Gera o Prisma Client |
 | `pnpm prisma:validate` | Valida o schema Prisma |
 | `pnpm prisma:migrate` | Cria e aplica migrações SQLite locais |

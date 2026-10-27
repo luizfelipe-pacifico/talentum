@@ -34,6 +34,8 @@ Não copie valores reais para `.env.example`. O arquivo `.env` local não deve s
 | `cloudflare/.dev.vars` | segredos do próprio Worker em desenvolvimento | não |
 | `cloudflare/wrangler.jsonc` | binding `DB`, `database_id` do D1 e variáveis públicas | sim |
 
+`CLOUDFLARE_API_BASE_URL` é o Worker visto do host (`http://127.0.0.1:8787` com `pnpm cloudflare:dev`) e `DOCKER_CLOUDFLARE_API_BASE_URL` é o mesmo Worker visto de dentro do container (`http://host.docker.internal:8787`), pela mesma razão das duas URLs do SQLite. A LP lê o `.env` da raiz também quando roda de dentro de `apps/web` (`process.loadEnvFile` em `apps/web/next.config.ts`); variáveis já definidas no ambiente têm precedência. Em `cloudflare/.dev.vars`, `PUBLIC_WEB_URL` e `ALLOWED_ORIGIN` apontam para a LP local e sobrescrevem os valores de produção durante `wrangler dev`.
+
 `DATABASE_URL` é o SQLite do host, resolvido a partir de `prisma/`. `DOCKER_DATABASE_URL` é o caminho dentro do container `talentum-local` e precisa apontar para o volume `talentum-data`; os dois existem porque `temp/` do host não existe dentro da imagem. `CLOUDFLARE_API_BASE_URL` e `CLOUDFLARE_BFF_SHARED_SECRET` são o único acesso da LP à borda, e o segundo precisa ser idêntico ao `BFF_SHARED_SECRET` do Worker. Nenhum dado financeiro é configurado ou trafega pela borda: o D1 é acessado somente pelo Worker.
 
 ## Comandos existentes
@@ -48,7 +50,8 @@ Não copie valores reais para `.env.example`. O arquivo `.env` local não deve s
 | `pnpm docker:down` | encerra os containers sem apagar o volume SQLite |
 | `pnpm build` | chama `next build` |
 | `pnpm start` | executa a build pelo servidor Next.js na porta 3000 |
-| `pnpm typecheck` | chama `tsc --noEmit` |
+| `pnpm typecheck` | gera o Prisma Client só quando o schema mudou e chama `tsc --noEmit` |
+| `pnpm hooks:install` | ativa os hooks versionados em `.githooks/` (typecheck e testes antes de commit e push) |
 | `pnpm test` | roda a suíte com o executor nativo do Node |
 | `pnpm prisma:generate` | chama `prisma generate` |
 | `pnpm prisma:validate` | chama `prisma validate` |
@@ -63,7 +66,8 @@ Não copie valores reais para `.env.example`. O arquivo `.env` local não deve s
 | `pnpm cloudflare:test` | testa contratos, migration de runtime e isolamento da LP |
 | `pnpm web:typecheck` | verifica os tipos da LP/BFF isolada |
 | `pnpm web:build` | gera a build isolada destinada à Vercel |
-| `pnpm lp:imagens` | gera os derivados WebP da marca usados pela LP |
+| `pnpm marca:gerar` | gera a marca vetorial (SVG claro, escuro e selo) e os `.ico` do app, da LP e da janela |
+| `pnpm estados:gerar` | gera as ilustrações de estado por tema a partir dos mestres em `design/estados-vetor/` |
 | `pnpm lp:icones` | gera o mapa de ícones SVG da LP a partir de `bootstrap-icons` |
 | `pnpm lp:telas` | gera as variantes de 640 px das capturas exibidas na LP |
 
@@ -135,6 +139,14 @@ Para atualizar, clone a origem em diretório temporário, revise o diff (sobretu
 ## Testes
 
 `pnpm test` usa o executor embutido do Node (`node --test`), sem biblioteca adicional. Os arquivos ficam em `tests/` com extensão `.test.mjs`.
+
+### Testes de regressão — atual
+
+Todo bug é corrigido em ordem fixa: primeiro um teste em `tests/regression/` que reproduz o defeito e falha pelo motivo descrito, depois a correção, depois a suíte completa. A regra está em `CLAUDE.md` e `CODEX.md`. `.githooks/pre-commit` e `.githooks/pre-push` rodam `pnpm typecheck` e `pnpm test`; ative-os uma vez com `pnpm hooks:install` e nunca use `--no-verify`.
+
+Os testes do Worker não leem o código-fonte: `tests/regression/helpers/worker.mjs` monta um D1 em memória com `node:sqlite` e as migrations reais de `cloudflare/migrations`, e importa `cloudflare/src/index.ts` diretamente. Exige Node com `node:sqlite` (22.13 ou superior).
+
+`pnpm typecheck` compara `prisma/schema.prisma` com a cópia guardada no cliente gerado e só roda `prisma generate` quando houve mudança. No Windows o servidor de desenvolvimento trava a DLL do Prisma, e regenerar com ele aberto falhava com EPERM; se o schema mudou, feche o servidor antes do typecheck.
 
 As fórmulas financeiras vivem em `src/server/dashboard-metrics.ts`, um módulo puro sem Prisma e sem relógio implícito, e são testadas diretamente: o Node faz *type stripping* nativo e importa o `.ts` sem etapa de build. A flag `--experimental-strip-types` é passada explicitamente para manter compatibilidade a partir do Node 22.13; em Node 22.18 ou superior ela é dispensável.
 
