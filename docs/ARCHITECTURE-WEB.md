@@ -48,11 +48,15 @@ Todos podem ler conteúdo com estado `PUBLISHED`. Criar post, comentar, curtir e
 - **GitHub Releases:** instaladores assinados de Windows e Linux produzidos pelo pipeline de release.
 - **Borda:** TLS, WAF, Turnstile e cabeçalhos de segurança.
 
-Em desenvolvimento local, a LP possui imagem Docker própria e é publicada apenas em `127.0.0.1:3100`. Ela não reutiliza a imagem do app local nem inclui Prisma, SQLite, Electron ou domínio financeiro. A Content Security Policy usa nonce novo por resposta, propagado pelo middleware ao renderizador do Next.js, para permitir somente os scripts emitidos pela própria renderização sem liberar scripts inline indiscriminadamente.
+Em desenvolvimento local, a LP possui imagem Docker própria e é publicada apenas em `127.0.0.1:3100`. Ela não reutiliza a imagem do app local nem inclui Prisma, SQLite, Electron ou domínio financeiro. A Content Security Policy usa nonce novo por resposta, propagado pelo middleware ao renderizador do Next.js, para permitir somente os scripts emitidos pela própria renderização sem liberar scripts inline indiscriminadamente. Somente com `NODE_ENV=development` a política acrescenta `'unsafe-eval'` em `script-src` e `ws:` em `connect-src`, exigidos pelo React e pelo recarregamento do `next dev`; sem eles a página de desenvolvimento não hidrata. A build de produção continua sem os dois.
+
+O conteúdo da LP não depende de JavaScript para existir: o HTML do servidor nasce visível, e a animação de entrada só esconde um bloco depois que o componente hidratou e confirmou que ele está fora da tela.
 
 ## Indexação — atual
 
 `apps/web/src/app/robots.ts` e `apps/web/src/app/sitemap.ts` são rotas de metadados do Next.js servidas em `/robots.txt` e `/sitemap.xml`. O sitemap lista somente a LP (`/`). O robots libera o site e bloqueia `/api/` (BFF) e `/downloads` (exige sessão), além de apontar o sitemap. O domínio anunciado vem de `apps/web/src/site.ts` e é `https://talentum-tech.vercel.app`, onde a LP está publicada. O teste `tests/web-seo.test.mjs` impede que rotas privadas entrem no sitemap.
+
+O layout declara `robots` com `index` e `follow`, canonical, Open Graph e cartão do X a partir de `metadataBase`. Como o layout é dinâmico (lê o nonce da CSP), o Next 15 transmitiria os metadados no corpo da página para quem não estivesse na sua lista de robôs; `htmlLimitedBots: /.*/` em `apps/web/next.config.ts` mantém título, descrição e canonical sempre no `<head>`. O CSS da LP é embutido no HTML (`experimental.inlineCss`), o que a CSP já permite com `style-src 'unsafe-inline'`. Medições e decisões estão em `DESIGN-QA.md`.
 
 ## Implantação
 

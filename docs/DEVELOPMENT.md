@@ -63,6 +63,9 @@ Não copie valores reais para `.env.example`. O arquivo `.env` local não deve s
 | `pnpm cloudflare:test` | testa contratos, migration de runtime e isolamento da LP |
 | `pnpm web:typecheck` | verifica os tipos da LP/BFF isolada |
 | `pnpm web:build` | gera a build isolada destinada à Vercel |
+| `pnpm lp:imagens` | gera os derivados WebP da marca usados pela LP |
+| `pnpm lp:icones` | gera o mapa de ícones SVG da LP a partir de `bootstrap-icons` |
+| `pnpm lp:telas` | gera as variantes de 640 px das capturas exibidas na LP |
 
 `pnpm dev` e `pnpm dev:all` executam `prisma migrate deploy` antes de abrir o servidor. A URL local padrão aponta para `temp/talentum-local.db`, que é ignorado pelo Git. Crie migrations com `pnpm prisma:migrate --name <nome>`; não use `prisma db push` como fluxo do projeto.
 
@@ -77,6 +80,10 @@ A imagem usa Ubuntu 24.04, Node.js 22 copiado da imagem oficial, execução por 
 ### Banco local dentro do Docker
 
 Para que `http://localhost:3000` use o banco dentro do Docker, suba o app pelo Compose (`pnpm docker:up:detached`). O SQLite fica em `/data/talentum-local.db`, no volume nomeado `talentum-data`, e não no host. Depois, `pnpm dev:all` detecta o container pelo healthcheck e só abre a janela Electron sobre ele. Não rode `pnpm dev` com o container no ar: o script libera a porta 3000 encerrando o processo que a ocupa, o que inclui o encaminhamento de porta do Docker, e passaria a usar o `temp/talentum-local.db` do host. O banco continua SQLite; trocá-lo por um servidor de banco contrariaria o modelo local-first de `ARCHITECTURE-ELECTRON.md`.
+
+### Portas compartilhadas com outros projetos
+
+Os servidores do Talentum escutam somente no loopback IPv4 (`127.0.0.1`). Outro servidor local iniciado com `--hostname localhost` pode ocupar a mesma porta no IPv6 (`[::1]`), e o navegador, que tenta o IPv6 primeiro ao resolver `localhost`, abre esse outro projeto. Quando `http://localhost:<porta>` mostrar uma página que não é do Talentum, use `http://127.0.0.1:<porta>` ou encerre o outro servidor. Para conferir quem escuta, use `Get-NetTCPConnection -LocalPort 3000,3001,3100 -State Listen` no Windows ou `lsof -iTCP -sTCP:LISTEN` no Linux.
 
 ## Skills de agente
 
