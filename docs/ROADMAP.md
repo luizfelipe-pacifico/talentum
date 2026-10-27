@@ -36,6 +36,16 @@ Cada etapa só termina quando inclui implementação, testes, migrações/contra
 - acessibilidade por teclado, contraste e leitores de tela desde o início;
 - nenhuma etapa pode apresentar funcionalidade planejada como pronta.
 
+# Pré-MVP — aviso de nova versão
+
+**Planejado.** Especificação completa em [`ATUALIZACOES.md`](./ATUALIZACOES.md).
+
+O aplicativo consulta as releases do repositório oficial no GitHub e, quando existe versão estável mais nova que a instalada, abre um diálogo com a ilustração `nova-versao` e dois botões: **Baixar agora**, que baixa o instalador do Windows, confere checksum e assinatura, fecha o app e abre o instalador; e **Adiar**, que suprime o aviso daquela versão por 24 horas.
+
+Está antes do MVP por decisão do mantenedor: quem instalar a primeira versão precisa receber as correções seguintes sem procurar a LP. Depende dos instaladores assinados publicados em GitHub Releases (MVP 1 e MVP 2) para operar; até lá, o verificador não encontra versão e não exibe nada.
+
+**Saída:** release nova estável gera o aviso, "Adiar" respeita 24 horas e nenhum instalador sem assinatura ou com checksum divergente é executado.
+
 # MVP — primeiro release utilizável
 
 O roteiro operacional, com ordem, rotas, APIs, migrations e critérios verificáveis, está em [`ROUTING_MVP.md`](./ROUTING_MVP.md).
