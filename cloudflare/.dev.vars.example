@@ -5,3 +5,8 @@ TOKEN_HASH_PEPPER=gere-outro-segredo-local-diferente
 BFF_SHARED_SECRET=gere-um-terceiro-segredo-local-diferente
 GOOGLE_CLIENT_ID=id-publico-sintetico.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=segredo-oauth-sintetico
+
+# Sobrescrevem as variáveis de produção do wrangler.jsonc durante `wrangler dev`:
+# o callback do login volta para a LP local, não para o domínio publicado.
+PUBLIC_WEB_URL=http://localhost:3100
+ALLOWED_ORIGIN=http://localhost:3100

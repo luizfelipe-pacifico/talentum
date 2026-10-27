@@ -61,3 +61,6 @@ Thumbs.db
 
 # Capturas e relatórios de trabalho das skills de design (taste-skill)
 .taste-skill/
+
+# Fontes raster das ilustrações de estado: os mestres vetoriais em design/estados-vetor são a fonte versionada.
+design/estados-fonte/

@@ -31,3 +31,8 @@ export function formatPeriod(startIso: string, endIso: string): string {
   const month = new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(end);
   return `${start.getDate()} a ${end.getDate()} de ${month}`;
 }
+
+/** Data curta por extenso: "1 de setembro". Usada na data-base de saldos (R-26). */
+export function formatDay(iso: string): string {
+  return new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'long' }).format(new Date(iso));
+}

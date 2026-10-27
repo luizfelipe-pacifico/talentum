@@ -3,7 +3,7 @@ import { consumeActionCode } from '@/server/action-codes';
 import { db } from '@/server/db';
 import { getLocalProfileId } from '@/server/profile';
 import {
-  committedCents,
+  committedSummary,
   consolidatedBalance,
   dailyAverageCents,
   endOfMonth,
@@ -94,7 +94,7 @@ export async function GET(request: Request) {
     }),
     db.scheduledObligation.findMany({
       where: { profileId, status: 'open', dueDate: { lte: periodEnd } },
-      select: { amountCents: true, dueDate: true, status: true },
+      select: { amountCents: true, dueDate: true, status: true, isEstimated: true },
     }),
     db.transaction.count({ where: { profileId, status: 'pending' } }),
     db.importBatch.count({ where: { profileId, status: 'completed' } }),
@@ -125,16 +125,18 @@ export async function GET(request: Request) {
 
   const currentExpenses = expensesCents(currentRows.map(toInput));
   const previousExpenses = expensesCents(previousRows.map(toInput));
-  const committed = committedCents(obligations, periodEnd);
+  const committed = committedSummary(obligations, periodEnd);
 
   return NextResponse.json(
     {
       hasProfile: true,
       period: { start: current.start.toISOString(), end: periodEnd.toISOString(), elapsedDays: current.elapsedDays },
-      riskFreeBalanceCents: cents(riskFreeBalanceCents(balance.cents, committed)),
+      riskFreeBalanceCents: cents(riskFreeBalanceCents(balance.cents, committed.cents)),
       balanceCents: cents(balance.cents),
-      committedCents: cents(committed),
-      committedCount: obligations.length,
+      committedCents: cents(committed.cents),
+      committedCount: committed.count,
+      committedEstimatedCount: committed.estimatedCount,
+      balanceReferenceDate: balance.referenceDate?.toISOString() ?? null,
       monthExpensesCents: cents(currentExpenses),
       monthExpensesChange: percentChange(currentExpenses, previousExpenses),
       dailyAverageCents: cents(dailyAverageCents(currentExpenses, current.elapsedDays)),

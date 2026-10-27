@@ -1,4 +1,13 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { NextConfig } from 'next';
+
+/* O projeto tem um único .env, na raiz (docs/BEST_PRACTICES.md). Rodando de
+   dentro de apps/web, o Next só leria apps/web/.env e o BFF ficaria sem o
+   endereço e o segredo do Worker. Variáveis já definidas no ambiente, como as
+   da Vercel e do Compose, continuam tendo precedência. */
+const rootEnv = resolve(__dirname, '..', '..', '.env');
+if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
 
 const nextConfig: NextConfig = {
   output: process.env.TALENTUM_STANDALONE_BUILD === '1' ? 'standalone' : undefined,

@@ -141,7 +141,7 @@ export function LayoutGuidePage() {
           <p className="callout-title">Referência interna de design</p>
           <p className="small">
             Esta página não faz parte do produto: ela existe para manter telas futuras coerentes com{' '}
-            <strong>docs/BRANDING.md</strong>. Todos os componentes abaixo usam as classes reais da folha de
+            <strong>o guia de marca do projeto</strong>. Todos os componentes abaixo usam as classes reais da folha de
             estilo do aplicativo. Os valores monetários são amostras de formatação: nenhum dado financeiro,
             real ou fictício, é representado aqui.
           </p>
@@ -366,22 +366,22 @@ border: 1px solid var(--line);`}
         <Spec
           title="Abas contextuais"
           hint="Sub-navegação de uma área. Vive acima do conteúdo, nunca dentro de um card."
-          code={`<div role="tablist" className="tabs">
-  <a href="/extratos" role="tab" aria-selected="true">Lançamentos</a>
-</div>`}
+          code={`<nav className="tabs" aria-label="Seções">
+  <a href="/extratos" aria-current="page">Lançamentos</a>
+</nav>`}
           block
         >
-          <div role="tablist" className="tabs" style={{ marginBottom: 0 }}>
-            <a href="#layout" role="tab" aria-selected="true">
+          <nav className="tabs" aria-label="Seções de exemplo" style={{ marginBottom: 0 }}>
+            <a href="#layout" aria-current="page">
               Lançamentos
             </a>
-            <a href="#layout" role="tab" aria-selected="false">
+            <a href="#layout">
               Cartões e benefícios
             </a>
-            <a href="#layout" role="tab" aria-selected="false">
+            <a href="#layout">
               Faturas e recorrências
             </a>
-          </div>
+          </nav>
         </Spec>
       </Section>
 
@@ -1207,7 +1207,7 @@ app.open('notif');     // drawer de notificações`}
 
       <p className="note">
         Os tokens e classes desta página vivem na folha de estilo global do aplicativo e derivam de{' '}
-        <strong>docs/BRANDING.md</strong>. Ao mudar um token, atualize os dois lugares no mesmo change set.{' '}
+        <strong>o guia de marca do projeto</strong>. Ao mudar um token, atualize os dois lugares no mesmo change set.{' '}
         <Link href="/configuracoes">Voltar às configurações</Link>
       </p>
     </div>

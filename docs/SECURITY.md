@@ -67,6 +67,17 @@ Este documento é normativo para autenticação, APIs, arquivos, banco de dados,
 | Isolamento | headers, CORS e cache | sandbox, context isolation, IPC mínimo e fuses |
 | Auditoria | login, sessão, moderação e download | eventos técnicos locais sem finanças |
 
+## Controles verificados em outubro de 2026 — atual
+
+Cada item tem teste em `tests/regression/`:
+
+- API local recusa `Host` fora do loopback (DNS rebinding);
+- callback OAuth vinculado ao navegador que iniciou o login (CSRF de login);
+- refresh concorrente com o mesmo token não gera dois sucessores;
+- rate limit do Worker conta o IP de quem acessou a LP, repassado pelo BFF autenticado em `X-Talentum-Client-IP`, e não o IP do servidor do BFF;
+- Electron nega navegação, janelas novas e permissões, e valida a origem do remetente de cada IPC;
+- interface não cita documentação interna; o guia de layout só existe em desenvolvimento.
+
 ## Isolamento do deploy Vercel
 
 - `talentum.vercel.app` contém apenas LP, página de downloads e BFF mínimo de sessão;

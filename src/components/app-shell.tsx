@@ -3,42 +3,72 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { trapFocus } from '@/lib/focus-trap';
 import logoDark from '../../icon-talentum-dark.svg';
 import { useApp } from '@/components/app-state';
 import { Overlays } from '@/components/overlays';
-import { NAV, PAGE_META, TAB_GROUPS, THEME_OPTIONS } from '@/lib/demo-data';
-
-function isActive(pathname: string, href: string) {
-  return href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
-}
-
-function pageMeta(pathname: string) {
-  return PAGE_META.find((entry) => isActive(pathname, entry.prefix)) ?? PAGE_META[PAGE_META.length - 1];
-}
-
-function tabsFor(pathname: string) {
-  return TAB_GROUPS.find((group) => isActive(pathname, group.prefix))?.tabs ?? null;
-}
+import { NAV, THEME_OPTIONS } from '@/lib/demo-data';
+import { activeTab as findActiveTab, isActive, pageMeta, tabsFor } from '@/lib/navigation';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const app = useApp();
+
+  /* Abaixo de 900 px a barra lateral vira gaveta (globals.css). Aqui ficam o
+     estado da gaveta e o que o CSS não resolve: rótulos visíveis, foco preso,
+     Esc, fechar ao navegar e tirar a gaveta fechada do teclado. */
+  const [narrow, setNarrow] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 900px)');
+    const update = () => setNarrow(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    setNavOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!narrow || !navOpen || !sidebarRef.current) return;
+    const release = trapFocus(sidebarRef.current);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNavOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      release();
+    };
+  }, [narrow, navOpen]);
 
   // A landing page é uma página pública inteira: ela não usa sidebar nem topbar
   // do aplicativo. Ponte temporária de pré-visualização em /lp.
   if (pathname === '/lp' || pathname.startsWith('/lp/')) return <>{children}</>;
   const meta = pageMeta(pathname);
   const tabs = tabsFor(pathname);
-  const expanded = !app.collapsed;
+  const activeTab = findActiveTab(pathname);
+  // Na gaveta os rótulos aparecem sempre; recolher só vale para a barra fixa.
+  const expanded = !app.collapsed || narrow;
 
   const title = meta.title;
   const context =
     app.survival && pathname === '/' ? 'Prioridade hoje: quitar a dívida de maior custo' : meta.context;
 
   return (
-    <div className="shell" style={{ ['--sidebar-w' as string]: app.collapsed ? '76px' : '248px' }}>
-      <aside className="sidebar" aria-label="Navegação principal">
+    <div className="shell" data-nav={narrow && navOpen ? 'open' : 'closed'} style={{ ['--sidebar-w' as string]: app.collapsed ? '76px' : '248px' }}>
+      <aside
+        ref={sidebarRef}
+        id="navegacao-principal"
+        className="sidebar"
+        aria-label="Navegação principal"
+        inert={narrow && !navOpen}
+      >
         {/* A marca é o caminho para o Início: não existe item "Início" na navegação. */}
         <Link
           href="/"
@@ -57,6 +87,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           type="button"
           className="sidebar-account"
           onClick={() => app.open('conta')}
+          aria-label="Conta ativa: Todas as contas"
+          title="Conta ativa: Todas as contas"
           aria-haspopup="dialog"
         >
           <i className="bi bi-bank" style={{ fontSize: 15, color: 'var(--amber)', flex: 'none' }} />
@@ -79,6 +111,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className="nav-item"
+                aria-label={item.label}
                 aria-current={active ? 'page' : undefined}
                 title={item.label}
               >
@@ -98,12 +131,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         )}
 
-        <button type="button" className="sidebar-import" onClick={app.openImport} title="Importação rápida">
+        <button type="button" className="sidebar-import" onClick={app.openImport} aria-label="Importação rápida" title="Importação rápida">
           <i className="bi bi-cloud-arrow-up" />
           {expanded && <span style={{ whiteSpace: 'nowrap' }}>Importação rápida</span>}
         </button>
 
-        <Link href="/configuracoes" className="sidebar-quiet" title="Configurações">
+        <Link href="/configuracoes" className="sidebar-quiet" aria-label="Configurações" title="Configurações">
           <i className="bi bi-gear" />
           {expanded && <span style={{ whiteSpace: 'nowrap' }}>Configurações</span>}
         </Link>
@@ -120,9 +153,23 @@ export function AppShell({ children }: { children: ReactNode }) {
         </button>
       </aside>
 
+      {narrow && navOpen && (
+        <button type="button" className="nav-scrim" aria-label="Fechar menu" onClick={() => setNavOpen(false)} />
+      )}
+
       <div className="shell-main">
         <header className="topbar">
-          <div style={{ minWidth: 0, flex: '1 1 260px' }}>
+          <button
+            type="button"
+            className="menu-button"
+            onClick={() => setNavOpen((open) => !open)}
+            aria-label={navOpen ? 'Fechar menu' : 'Abrir menu'}
+            aria-expanded={navOpen}
+            aria-controls="navegacao-principal"
+          >
+            <i className="bi bi-list" aria-hidden="true" />
+          </button>
+          <div className="topbar-heading">
             <h1 className="page-title">{title}</h1>
             <p className="page-context">{context}</p>
           </div>
@@ -135,9 +182,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               </span>
             )}
 
-            <button type="button" className="btn btn-sm" onClick={() => app.open('express')}>
-              <i className="bi bi-cash-coin" style={{ fontSize: 15 }} />
-              Lançar dinheiro
+            <button type="button" className="btn btn-sm" onClick={() => app.open('express')} aria-label="Lançar dinheiro">
+              <i className="bi bi-cash-coin" style={{ fontSize: 15 }} aria-hidden="true" />
+              <span className="btn-label">Lançar dinheiro</span>
             </button>
 
             <button
@@ -200,18 +247,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="content">
           <div className="content-inner">
             {tabs && (
-              <div role="tablist" className="tabs">
+              <nav className="tabs" aria-label={`Seções de ${meta.title}`}>
                 {tabs.map((tab) => (
-                  <Link
-                    key={tab.href}
-                    href={tab.href}
-                    role="tab"
-                    aria-selected={pathname === tab.href}
-                  >
+                  <Link key={tab.href} href={tab.href} aria-current={activeTab === tab.href ? 'page' : undefined}>
                     {tab.label}
                   </Link>
                 ))}
-              </div>
+              </nav>
             )}
             {children}
           </div>

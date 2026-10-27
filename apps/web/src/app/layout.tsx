@@ -51,8 +51,9 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/marca/talentum-clara-64.webp', type: 'image/webp', media: '(prefers-color-scheme: light)' },
-      { url: '/marca/talentum-escura-64.webp', type: 'image/webp', media: '(prefers-color-scheme: dark)' },
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/marca/talentum-clara.svg', type: 'image/svg+xml', media: '(prefers-color-scheme: light)' },
+      { url: '/marca/talentum-escura.svg', type: 'image/svg+xml', media: '(prefers-color-scheme: dark)' },
     ],
   },
 };
