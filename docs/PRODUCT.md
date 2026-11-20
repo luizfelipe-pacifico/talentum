@@ -21,20 +21,15 @@ This document is the product specification of Talentum: what the product is for,
 
 ## Status vocabulary
 
-Every statement of state in this document carries one of these labels:
-
-- **Current:** exists and was verified in the repository (code, migrations or tests).
-- **Partial:** exists only as a scaffold or as part of the flow, without meeting the completion criterion. Used inside feature tables; a Partial item is Current for what exists and Planned for the rest.
-- **Planned:** accepted, still to be implemented in the order given here.
-- **Open:** requires a documented decision or the maintainer's ratification before implementation.
+Statements carry the status labels defined in [README.md](README.md#status-labels): Current, Partial, Planned, Open, Rule and Historical. Partial is used mainly inside feature tables.
 
 When code and this document disagree, verifiable code wins; fix the outdated documentation in the same change set.
 
 ## Product vision and scope
 
-Status: **Current** as the product statement; individual capabilities carry their own status below.
+Status: **Rule** (product statement); individual capabilities carry their own status below.
 
-Talentum is a **local-first**, **open-source** personal finance application for people with busy routines. It reduces the friction of financial organisation by reading bank statements instead of requiring manual entry, categorising transactions, tracking goals and guiding new contributions to investments. It turns financial data into practical decisions without asking the person to type every expense or to be an investment specialist.
+Talentum is a **local-first**, **open-source** personal finance application for people with busy routines. It reduces the friction of financial organization by reading bank statements instead of requiring manual entry, categorizing transactions, tracking goals and guiding new contributions to investments. It turns financial data into practical decisions without asking the person to type every expense or to be an investment specialist.
 
 The central concept is a pipeline:
 
@@ -53,15 +48,15 @@ The product's core promise is the **Saldo Livre de Risco** (risk-free balance): 
 - **Zero friction.** Passive automation comes first; manual forms exist only for exceptions such as cash expenses or transactions that need reconciliation.
 - **Local-first privacy.** Real financial data (statements, transactions, merchants, balances, accounts, Pix keys, debts, investments) stays on the person's device in the local SQLite database. The cloud (Cloudflare Worker and D1) stores only minimal identity, sessions, consents, releases and download grants; it receives no financial values. See [SECURITY.md](SECURITY.md).
 - **Guided decisions.** The application translates financial information into simple guidance: how much can be spent, which account needs checking, which goal is late, where the next contribution should go.
-- **Open source.** The code is auditable, the product favours transparency, and data is exportable in open formats (export is **Planned**).
+- **Open source.** The code is auditable, the product favors transparency, and data is exportable in open formats (export is **Planned**).
 
 ### Audience and problems solved
 
-People who have little time to manage their finances; accumulate accounts, cards and institutions; do not want to type every transaction; need to find waste and forgotten subscriptions; want to reach purchase goals without losing control of the budget; want to start or organise an investment portfolio; and need privacy for sensitive financial data.
+People who have little time to manage their finances; accumulate accounts, cards and institutions; do not want to type every transaction; need to find waste and forgotten subscriptions; want to reach purchase goals without losing control of the budget; want to start or organize an investment portfolio; and need privacy for sensitive financial data.
 
 ### Navigation areas
 
-The local application is organised in six areas plus global actions. Status: **Current** as navigation and placeholder screens; the functionality behind each area is mostly **Planned** (see the [Route map](#route-map)).
+The local application is organized in six areas plus global actions. Status: **Current** as navigation and placeholder screens; the functionality behind each area is mostly **Planned** (see the [Route map](#route-map)).
 
 1. **Início** (`/`): entry point without financial numbers.
 2. **Dashboard** (`/dashboard`): verdict and supporting indicators.
@@ -77,7 +72,7 @@ Global actions: import a file (Current as a dialog trigger; the parser is Planne
 
 The MVP is complete when a person can sign up on the landing page, securely obtain the correct installer, create their local financial base, import CSV or OFX, review the entries and consult a reliable Dashboard, with all financial data kept in the local SQLite database.
 
-The MVP **does not include** PDF import, AI, the ARCA allocation methodology, cloud backup, gamification, community features, card ROI, budgets or the notification centre. These belong to later roadmap stages (see [ROADMAP.md](ROADMAP.md)); the original vision for them is preserved only as the [historical appendix](#appendix-original-vision-historical-non-normative).
+The MVP **does not include** PDF import, AI, the ARCA allocation methodology, cloud backup, gamification, community features, card ROI, budgets or the notification center. These belong to later roadmap stages (see [ROADMAP.md](ROADMAP.md)); the original vision for them is preserved only as the [historical appendix](#appendix-original-vision-historical-non-normative).
 
 | Outside the MVP Dashboard | Roadmap stage that enables it |
 | --- | --- |
@@ -86,7 +81,7 @@ The MVP **does not include** PDF import, AI, the ARCA allocation methodology, cl
 | News and summaries | Stages 15 and 16 |
 | Card ROI, annual-fee exemption thermometer, cashback and miles | Stage 8 |
 | Budget per category and planned vs. actual comparison | Stage 9 |
-| Actionable notification centre | Stage 10 |
+| Actionable notification center | Stage 10 |
 
 The roadmap and this executable plan prevail over the original vision when they conflict.
 
@@ -96,7 +91,7 @@ The roadmap and this executable plan prevail over the original vision when they 
 flowchart LR
     O[Onboarding] --> A[Accounts and balances]
     A --> I[Import CSV or OFX]
-    I --> E[Normalised statement]
+    I --> E[Normalized statement]
     E --> C[Reconciliation]
     C --> D[Dashboard]
     D --> H[History and corrections]
@@ -104,12 +99,12 @@ flowchart LR
 
 ## Product rules shared across features
 
-These rules are mandatory for every feature. Status: **Current** as rules; compliance is tracked per feature.
+These rules are mandatory for every feature. Status: **Rule**; compliance is tracked per feature.
 
 1. The frontend never accesses SQLite, Prisma or financial files directly.
 2. The frontend requests a temporary, opaque, single-use action code before every functional call to the backend (`POST /api/action-codes`, then the call with `X-Action-Code`).
-3. The backend validates the code, input, authorisation and context before reading or changing data. The action code never replaces authentication, authorisation, CSRF protection, idempotency or rate limiting.
-4. Every table has an `id`; every relation uses a foreign key ending in `Id`.
+3. The backend validates the code, input, authorization and context before reading or changing data. The action code never replaces authentication, authorization, CSRF protection, idempotency or rate limiting.
+4. Every table has an `id`; every relation uses a foreign key to that `id` (`profileId` style in Prisma, `user_id` style in D1; see [DATABASE.md](DATABASE.md#tables-and-relations)).
 5. Persistent structures exist only in versioned migrations. No table is created manually at runtime.
 6. Prisma represents the schema applied by the migrations; production and Docker use `prisma migrate deploy`.
 7. Applied migrations are never rewritten. Changes produce a later migration.
@@ -117,7 +112,7 @@ These rules are mandatory for every feature. Status: **Current** as rules; compl
 9. Monetary values use integer cents (`BigInt`), never `Float`.
 10. Real CSV and OFX test files stay in `temp/`, outside Git. Tests use synthetic files only.
 11. The landing page and the renderer never access D1 directly; every cloud action goes through the BFF and the Worker.
-12. The desktop system, its local backend and SQLite are never part of the artefact published to Vercel.
+12. The desktop system, its local backend and SQLite are never part of the artifact published to Vercel.
 13. **Zero is a claim.** A financial value (including `R$ 0,00`) is rendered only after the backend confirms it. While loading or after a failure, the interface says it does not know.
 14. **Every financial screen has four states:** loading, empty, error and with data.
 15. **Distinguish confirmed, approximate and inferred values,** and show the reference date of any value derived from a declared balance or position.
@@ -135,7 +130,7 @@ These rules are mandatory for every feature. Status: **Current** as rules; compl
 5. Execute one vertical slice at a time, including backend, migration, contract, interface, UX states, tests and applicable documentation.
 6. Do not advance while the current step's "Done when" criterion cannot be demonstrated.
 7. Record decisions with relevant alternatives in `docs/decisions/`; do not invent infrastructure, credentials or missing requirements.
-8. Before commit or push, follow the full security gate in `CLAUDE.md` or `AGENTS.md`.
+8. Before commit or push, follow the [security gate](SECURITY.md#mandatory-pre-commit-and-pre-push-security-gate) and the offensive security review in SECURITY.md.
 
 ## Route map
 
@@ -191,7 +186,7 @@ The batch route parameter is `[loteId]` in code. Planned sub-routes under it kee
 | Route | Status | Feature | Notes |
 | --- | --- | --- | --- |
 | `POST /api/action-codes` | **Current** | all | Bootstrap; issues a 60-second single-use code bound to method and path. |
-| `GET /api/health/live` | **Current** | — | Liveness probe; requires no action code (see Open items). |
+| `GET /api/health/live` | **Current** | — | Liveness probe; a documented exception to the action-code rule (`CLAUDE.md`, Architecture rules): no application data, never called by the interface. |
 | `GET /api/system/status` | **Current** | — | Requires `X-Action-Code`. |
 | `GET /api/local-summary` | **Current** | area screens | Counts of active accounts, transactions, pending transactions, open obligations and import batches; lets area screens decide between empty and existing state. |
 | `GET /api/dashboard` | **Current** | 7 | Includes the Saldo Livre de Risco, consolidated balance, month spending, daily average, committed total and reconciliation count. |
@@ -276,7 +271,7 @@ Delivers only the cloud API, the public landing page and the authenticated downl
 - Landing page BFF with `HttpOnly` cookies, callback, refresh, protected `/downloads` and origin validation on mutations.
 - CSP, HSTS and `no-store` on the landing page; a test checks that the web package is isolated from the desktop and financial code.
 
-**Reported, not verifiable from the repository:** the original plan (10 September 2026) recorded the Worker as published and migration `0002` as applied to local and remote D1. Registering secrets, configuring OAuth, producing signed artefacts and running end-to-end tests in the published environment remain mandatory operational actions.
+**Reported, not verifiable from the repository:** the original plan (10 September 2026) recorded the Worker as published and migration `0002` as applied to local and remote D1. Registering secrets, configuring OAuth, producing signed artifacts and running end-to-end tests in the published environment remain mandatory operational actions.
 
 The health endpoint and the schema alone never mean that feedback or community features exist; those D1 tables exist but have no routes.
 
@@ -289,14 +284,14 @@ The health endpoint and the schema alone never mean that feedback or community f
 5. **Planned:** redacted logs and metrics, alerts and security events without tokens, public e-mails, raw IPs or financial data. Refresh-token reuse currently revokes the family but writes nothing to `security_events`.
 6. **Planned:** consent, privacy, session revocation, account deletion and minimal retention.
 7. **Planned:** signed Windows and Linux installers produced outside Vercel, with published checksum, signature and verifiable metadata.
-8. **Planned:** authentication, replay, rotation, authorisation, rate-limit, deploy-leak and end-to-end download tests.
+8. **Planned:** authentication, replay, rotation, authorization, rate-limit, deploy-leak and end-to-end download tests.
 
 ### Done when
 
 - An unauthenticated person reaches the landing page but not the protected downloads page.
 - Sign-up/login, refresh, logout and revocation pass the security tests.
-- Windows and Linux are offered only after backend authorisation.
-- The artefact deployed to Vercel contains no Electron, Prisma, SQLite, parsers or financial modules.
+- Windows and Linux are offered only after backend authorization.
+- The artifact deployed to Vercel contains no Electron, Prisma, SQLite, parsers or financial modules.
 - No secret appears in the bundle, repository, logs or HTTP responses.
 - The frontend never accesses D1, OAuth or GitHub Releases directly.
 
@@ -339,7 +334,7 @@ Status: **Planned** (the `/onboarding` screen is a placeholder). Full specificat
 
 Status: **Partial** (tables Current; routes, APIs and screens Planned).
 
-**What it does.** Represents where the person holds money. Does not require branch or account number. Own Pix keys are optional, encrypted, and used only to recognise transfers between the person's own accounts.
+**What it does.** Represents where the person holds money. Does not require branch or account number. Own Pix keys are optional, encrypted, and used only to recognize transfers between the person's own accounts.
 
 **Flow.**
 
@@ -377,7 +372,7 @@ Status: **Partial** (`Category` and `ScheduledObligation` Current; CRUD, screens
 | `Category` | `id`, `profileId` | classification as income, expense or transfer (`kind`) | **Current** (`mvp_financial_core`) |
 | `IncomeSource` | `id`, `profileId`, `accountId?` | expected or recurring income | Planned |
 | `ScheduledObligation` | `id`, `profileId`, `accountId?`, `categoryId?` | commitment with `amountCents`, `dueDate`, `status`, `recurrence`, `isEstimated` | **Current** (`mvp_scheduled_obligations`), consumed by the Dashboard |
-| `MerchantRule` | `id`, `profileId`, `categoryId` | deterministic categorisation rule | Planned |
+| `MerchantRule` | `id`, `profileId`, `categoryId` | deterministic categorization rule | Planned |
 
 **Migrations:** `mvp_financial_core` creates `Category` (Current); `mvp_scheduled_obligations` creates `ScheduledObligation` (Current); a later migration creates income and merchant rules (Planned). The obligation CRUD and the recurrences screen still belong to this feature.
 
@@ -410,7 +405,7 @@ Status: **Partial** (`ImportBatch` and `Transaction` Current; parser, APIs and s
 | `ImportFile` | `id`, `importBatchId` | minimal metadata; raw content not retained by default | Planned |
 | `CsvMappingProfile` | `id`, `profileId`, `institutionId?` | reusable column mapping | Planned |
 | `ImportIssue` | `id`, `importBatchId`, `transactionId?` | error or warning per line/field | Planned |
-| `Transaction` | `id`, `profileId`, `accountId`, `importBatchId?`, `categoryId?` | normalised entry | **Current** |
+| `Transaction` | `id`, `profileId`, `accountId`, `importBatchId?`, `categoryId?` | normalized entry | **Current** |
 
 **Migrations:** `mvp_financial_core` creates `ImportBatch` and `Transaction` (Current); `mvp_import_details` creates `ImportFile`, `CsvMappingProfile` and `ImportIssue` (Planned). The batch must also persist the covered period (see L-2).
 
@@ -434,7 +429,7 @@ Status: **Planned** (`/extratos` shows only a backend-confirmed count).
 
 Status: **Planned** (`/conciliacao` shows only the count of `Transaction.status = 'pending'`).
 
-**What it does.** Lets the person confirm or correct uncertain transactions without deleting the original data. Recognises category, transfer between own accounts, obligation and financial adjustment.
+**What it does.** Lets the person confirm or correct uncertain transactions without deleting the original data. Recognizes category, transfer between own accounts, obligation and financial adjustment.
 
 **Flow.**
 
@@ -462,7 +457,7 @@ Status: **Planned** (`/conciliacao` shows only the count of `Transaction.status 
 
 Status: **Current** for seven of nine elements; see the [Dashboard specification](#dashboard-specification).
 
-**What it does.** Summarises the current position using only backend queries. The Dashboard lives at `/dashboard`; the root `/` is Início, an entry point with no financial number, because a zero without backend confirmation is a false statement.
+**What it does.** Summarizes the current position using only backend queries. The Dashboard lives at `/dashboard`; the root `/` is Início, an entry point with no financial number, because a zero without backend confirmation is a false statement.
 
 **MVP indicators (Current):**
 
@@ -539,12 +534,12 @@ Interface complements:
 - a **Saved only on this device** indicator on financial steps;
 - a specific notice before attaching a file: **Your statement will be processed locally and will not be sent to the cloud**;
 - consent never uses a pre-checked box;
-- never promise absolute protection: unauthorised access to the device itself remains a risk;
+- never promise absolute protection: unauthorized access to the device itself remains a risk;
 - explain that login, session and technical account state are separate data kept in the backend, without financial values.
 
 ### Complete question map
 
-The questions below are the catalogue. The interface presents them progressively, hiding conditional questions that do not apply.
+The questions below are the catalog. The interface presents them progressively, hiding conditional questions that do not apply.
 
 #### Block 0 — Privacy and start
 
@@ -699,13 +694,13 @@ After confirmation, show clearly: confirmed values; approximate values; inferred
 
 **Step 1 — Essential context.** Currency and reference date; approximate net monthly income; frequency (monthly, fortnightly, variable or no recurring income); receiving day or range; "I'd rather tell you later" for non-essential fields. Never ask for profession, employer, CPF, address or gross income without an approved use case.
 
-**Step 2 — Institutions and accounts.** Fast repeat interface: select institution, choose account type and enter the current balance; an "Add another account" button allows multiple banks. Per account: institution; type (checking, payment, savings, brokerage, wallet or cash); optional nickname; current balance; balance date/time; origin (bank, user or import); main account for inflows/outflows, without forcing a single account. Never request branch, account number, password, access code or bank credential. To recognise movements between the person's own accounts, allow one or more Pix keys per account.
+**Step 2 — Institutions and accounts.** Fast repeat interface: select institution, choose account type and enter the current balance; an "Add another account" button allows multiple banks. Per account: institution; type (checking, payment, savings, brokerage, wallet or cash); optional nickname; current balance; balance date/time; origin (bank, user or import); main account for inflows/outflows, without forcing a single account. Never request branch, account number, password, access code or bank credential. To recognize movements between the person's own accounts, allow one or more Pix keys per account.
 
-**Pix keys and own transfers.** A Pix key can be CPF, CNPJ, phone, e-mail or random key. Even without branch/account, these values are personal data and some are strong identifiers; they stay only on the device. Per key: key type; owning local account by `accountId`; safe display nickname; locally encrypted normalised value; HMAC of the normalised value for lookup/comparison; masked last characters when safe to show; active/inactive state and known validity period; origin (declared by the user, or detected in a statement and confirmed).
+**Pix keys and own transfers.** A Pix key can be CPF, CNPJ, phone, e-mail or random key. Even without branch/account, these values are personal data and some are strong identifiers; they stay only on the device. Per key: key type; owning local account by `accountId`; safe display nickname; locally encrypted normalized value; HMAC of the normalized value for lookup/comparison; masked last characters when safe to show; active/inactive state and known validity period; origin (declared by the user, or detected in a statement and confirmed).
 
 The key is never stored in plain text in logs, timeline, analytics, D1 or error messages. A plain hash is not enough for CPF, phone and e-mail because the value space is predictable: use an HMAC with a device secret key for the equality index, and authenticated encryption for any recovery/display.
 
-When importing a Pix transaction, the local backend normalises the key found and compares its HMAC with the registered own keys. If origin and destination belong to the profile:
+When importing a Pix transaction, the local backend normalizes the key found and compares its HMAC with the registered own keys. If origin and destination belong to the profile:
 
 - classify as `OWN_ACCOUNT_TRANSFER`;
 - link both entries through a transfer-pair `id` when both exist;
@@ -717,7 +712,7 @@ Payee name, description, amount and time proximity can help reconciliation but n
 
 **Step 3 — Immediate commitments.** Cards and open statements; recurring bills and due dates; instalments and debts; amounts already reserved and not free to spend. This step is indispensable so the bank balance is never presented as the Saldo Livre de Risco.
 
-**Step 4 — Investments.** First select which institution/account is used for investing, then add positions in a quick grid. Per position: asset/fund and ticker when it exists; class and currency; quantity; average price, optional when unknown; declared current value; reference date; origin and confidence. Average price never blocks onboarding: it is useful for cost/result, but current value is enough for the wealth snapshot. Do not fetch external quotes in the MVP without an approved source, licence and update rule.
+**Step 4 — Investments.** First select which institution/account is used for investing, then add positions in a quick grid. Per position: asset/fund and ticker when it exists; class and currency; quantity; average price, optional when unknown; declared current value; reference date; origin and confidence. Average price never blocks onboarding: it is useful for cost/result, but current value is enough for the wealth snapshot. Do not fetch external quotes in the MVP without an approved source, license and update rule.
 
 **Step 5 — Import statement.** Explain that the file is processed locally and does not go to the cloud; accept CSV and OFX in the MVP, PDF in its own roadmap stage; allow multiple files and report which periods were detected; show progress, duplicates and lines needing review; never trust extension, MIME type or file name; never execute embedded content.
 
@@ -744,7 +739,7 @@ sequenceDiagram
     U->>UI: attaches statement
     UI->>API: sends local file
     API->>Parser: validates and extracts with limits
-    Parser-->>API: normalised batch and issues
+    Parser-->>API: normalized batch and issues
     API->>DB: atomic transaction
     API-->>Cloud: onboarding state only, if needed
 ```
@@ -782,7 +777,7 @@ Every table has an `id`; relations use IDs. Names below are aligned with the imp
 | `ImportBatch` | `profileId` | batch and fingerprint | **Current**; account/session links and covered period Planned (L-2) |
 | `ImportFile` | `importBatchId` | temporary file, type and hash | Planned |
 | `ImportIssue` | `importBatchId`, `transactionId?` | divergence or warning | Planned |
-| `Transaction` | `profileId`, `accountId`, `importBatchId?`, `categoryId?` | normalised entry | **Current** |
+| `Transaction` | `profileId`, `accountId`, `importBatchId?`, `categoryId?` | normalized entry | **Current** |
 | `OwnAccountTransfer` | `outgoingTransactionId`, `incomingTransactionId` | pairing of a transfer between own accounts | Planned (Feature 6) |
 
 Avoid a generic answers table as the final financial source. It eases prototyping but loses types, constraints and relations. UI state can be flexible; consolidated data must go into domain tables.
@@ -818,7 +813,7 @@ Initial recommendation: ask currency/reference date, offer import first, and use
 | declared balance diverges | false Dashboard | reconciliation, origin, reference date and confidence |
 | outdated quote | wrong wealth | visible reference date; never pretend real time |
 | missing average price | needless blocking | optional field and explicit pending item |
-| malicious file | execution, DoS or unauthorised read | allowlist, signature/content, limit, timeout and isolated parser |
+| malicious file | execution, DoS or unauthorized read | allowlist, signature/content, limit, timeout and isolated parser |
 | path traversal/hostile name | local overwrite/read | ignore the original name; internal ID and directory outside the webroot |
 | compromised renderer | finance read | authenticated local API, sandbox, CSP and minimal payload |
 | detailed log | finance leak | redact values, names and content; use technical IDs |
@@ -827,7 +822,7 @@ Initial recommendation: ask currency/reference date, offer import first, and use
 | predictable hash of CPF/phone | re-identification by brute force | HMAC with a device-protected key, not a plain hash |
 | false Pix pairing | omitted income/expense | require a confirmed own key or review on low confidence |
 | deletion during onboarding | lost work | transactions, recoverable draft and confirmation/reversal |
-| action code treated as the only security | bypass | keep authentication, authorisation, CSRF, rate limiting and validation |
+| action code treated as the only security | bypass | keep authentication, authorization, CSRF, rate limiting and validation |
 
 ### Financial validations
 
@@ -847,7 +842,7 @@ Initial recommendation: ask currency/reference date, offer import first, and use
 - full keyboard support, predictable focus and announcement of progress/errors;
 - visual masks never change the value without confirmation;
 - reviewable summary before consolidating financial data (WCAG 2.2, 3.3.4);
-- destructive actions can be cancelled or reverted;
+- destructive actions can be canceled or reverted;
 - never ask again for information already given in the same session (WCAG 2.2, 3.3.7).
 
 ### Local quality metrics
@@ -867,7 +862,7 @@ All **Open**:
 7. Does the onboarding completion state really need to go to D1?
 8. Does the first version accept multiple currencies? (Also blocks L-4.)
 9. Will the Pix key be typed, detected in the statement and confirmed, or both?
-10. Can the person register an old/inactive key to recognise history?
+10. Can the person register an old/inactive key to recognize history?
 
 ### Criteria to promote this proposal to official
 
@@ -882,121 +877,11 @@ All **Open**:
 
 Status: **Current** for the rules applied in `src/components/dashboard.tsx` and `src/server/dashboard-metrics.ts` and for seven of nine elements (see the [feasibility matrix](#feasibility-matrix)); individual items are marked where they remain Planned or Open.
 
-This specification is normative for the design of any panel, indicator, chart or financial table in Talentum. It crosses three sources deliberately: patterns observed in the ten best-rated system dashboards of 2026; the method of *Storytelling with Data* by Cole Nussbaumer Knaflic, adopted as the theoretical basis; and a measured audit of the original repository dashboard (now historical). [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md) is the source of truth for visual identity and prevails in any unresolved conflict of colour, typography or spacing.
-
-### Reference: the ten best-rated dashboards
-
-The 2026 sample covers system dashboards with consolidated public user ratings. The "characteristic decision" column records what each product does distinctively.
-
-| # | Product | Domain | Characteristic decision |
-| --- | --- | --- | --- |
-| 1 | **Linear** | work management | Almost monochrome surfaces, **one** accent colour. High density without crowding because everything non-essential is simply absent. |
-| 2 | **Stripe** | payments | Table as the primary interface; chart as summary. Right-aligned tabular numerals, soft gridlines. One visualised hero metric. |
-| 3 | **Vercel** | observability | Black-and-white system: hierarchy comes entirely from spacing and type weight. Status colours gain semantic weight because nothing else competes. |
-| 4 | **Attio** | CRM | AI output as a designed component integrated into the record, not a chat bubble overlay. |
-| 5 | **PostHog** | product analytics | *Insight cards*: each visualisation answers one question and states it in the title. |
-| 6 | **Hex** | notebooks and data apps | Notebook published as an app: clean cells, contained charts, generous white space. |
-| 7 | **Retool** | internal tools | Deliberate flatness. Strict component grid; familiarity beats novelty. |
-| 8 | **Mercury** | fintech | Editorial typography and disciplined colour applied to financial data. Visual calm as trust building. |
-| 9 | **Plausible** | web analytics | Radical simplicity: one page, one chart, a few ranked lists, zero mandatory configuration. |
-| 10 | **Supabase** | platform console | A single page template (header, tabs, table) reused across many tools; disciplined sidebar. |
-
-Financial dashboards of **Ramp**, **Brex**, **Wise Business**, **Revolut Business** and **Plaid** were also examined for proximity to Talentum's domain.
-
-#### Cross-cutting good practices
-
-What appears in almost all ten. These are the practices Talentum adopts.
-
-- **BP-1. One verdict per screen.** There is **one** metric the person opened the Dashboard to see. It gets the largest type and the top-left position; everything else is subordinate. No screen presents twelve widgets of equal weight. Operational test: the **five-second test** — a person identifies the main state in about five seconds.
-- **BP-2. Indicator ceiling.** One primary indicator per view plus a handful of secondary ones: **4 to 6 cards** in the metric strip, with an upper limit around **5 to 7** elements above the fold — the working-memory limit (Miller's 7±2). Plausible and Mercury win by refusing to show everything.
-- **BP-3. Progressive disclosure.** Show the minimum needed for the next decision. Summary first, detail on demand.
-- **BP-4. Chart restraint.** One meaningful trend beats five decorative ones. Well-composed numbers in a table communicate faster than charts; "tables have retaken the throne". Invest where the person spends time.
-- **BP-5. Colour is a signal channel, not decoration.** Colour means **state** and nothing else ("colour only means state: approved, refunded, failed" in Stripe). Brand colour belongs to the interface chrome, not to data visualisation. Green and red are reserved for gain and loss.
-- **BP-6. Numerals are a system.** Tabular figures, consistent decimals, right alignment for financial values. The currency symbol is lighter than the value. Proportional figures that "jitter from column to column" read as amateur. In dark interfaces: **dark financial UIs live or die by numeral legibility**.
-- **BP-7. States are components, not leftovers.** Loading (skeleton shaped like the content), empty (one-sentence explanation + action) and error (strip inside the component, with retry — never a full-page modal) are mandatory per component. The empty state is an onboarding surface.
-- **BP-8. Quiet chrome, high density.** Borders, shadows and decoration shrink; information density rises. Hierarchy comes from **weight, size and white space**, not boxes. In light mode, a slightly warm background for large surfaces and pure white reserved for content cards.
-- **BP-9. Density is a setting, not a philosophy.** Offer a comfortable/compact toggle. Table row: **36–40 px** compact, **48–52 px** comfortable.
-- **BP-10. Dark theme is a theme, not an inversion.** Built on tokens; chart palettes require redesign, not CSS inversion — contrast maths differs and lighter surfaces mean higher elevation.
-- **BP-11. Work queue before analytics.** Fintech-specific and the most relevant for Talentum: Ramp puts bill and expense inboxes, automation status and close progress in prime space; Brex shows what needs attention and hides what is fine. **Financial dashboards are to-do lists dressed as charts.**
-- **BP-12. Transparency is a design decision.** Wise exposes fees before asking for money. Design the **pending state**: money in transit with ambiguous UI breeds distrust. Exact timestamps, explicit breakdowns, declared fees.
-
-#### Consolidated layout
-
-```mermaid
-flowchart TB
-    subgraph Screen
-        S[Sidebar 248-256px<br/>collapses to 64-76px]
-        subgraph Content[Content area]
-            F[Single filter row — scope of everything below]
-            K[Metric strip: 4-6 cards<br/>number 28-32px · comparison 14px · ONE visual element]
-            G[12-column grid · 24px gutter<br/>charts and tables]
-        end
-        S --- Content
-    end
-```
-
-| Element | Value |
-| --- | --- |
-| Sidebar expanded / collapsed | 256 px / 64 px in references; Talentum uses **248 px / 76 px** (within range, kept) |
-| Navigation item | 36 px high, 12 px side padding, 8 px radius |
-| Metric card | 200–280 px wide, `auto-fill, minmax(200px, 1fr)` |
-| Card primary number | 28–32 px, high contrast |
-| Secondary comparison | 14 px, secondary colour |
-| Content grid | 12 columns, 24 px gutter, row `minmax(200px, auto)` |
-| Common spans | full table `1 / -1`; chart + table `span 7` + `span 5`; three cards `span 4` |
-| Primary breakpoint | 1366 px (Talentum targets 1440×900, minimum 1024×700) |
-
-### Theoretical basis: *Storytelling with Data*
-
-Cole Nussbaumer Knaflic, *Storytelling with Data: A Data Visualization Guide for Business Professionals* (Wiley). Its six lessons are the theoretical basis of the Talentum standard and apply to every screen that presents numbers.
-
-**Lesson 1 — Understand the context.** Investing before designing reduces rework. Before choosing any visual, answer: **who** is the audience; **what** they need to know or do; **how** the data supports it. Exploratory analysis (looking for what is there) differs from explanatory communication (showing what matters); a dashboard is explanatory. Tools: the **three-minute story**; the **Big Idea** — one complete sentence, with a point of view, stating what is at stake; the **storyboard** — structure and flow before pixels.
-
-> **Application to Talentum.** The Dashboard's Big Idea: *"After deducting everything already committed until the end of the period, this is what is left — and only this can be spent."* Every element on the screen either serves this sentence or leaves the screen.
-
-**Lesson 2 — Choose an effective visual.** Recommended: simple text (one or two numbers), table (multiple units, mixed audiences), heatmap, scatter plot, line (continuous data, especially time series), slopegraph (two periods), vertical and horizontal bars (categorical; **zero baseline mandatory**; horizontal when labels are long), stacked bars (total and components) and waterfall.
-
-| Form | Why avoid it |
-| --- | --- |
-| Pie | The eye does not compare angles precisely; the book's canonical example of the error. |
-| Donut | Same flaw as pie, worse: compares arcs instead of angles. |
-| 3D | Distorts magnitude. Admissible only with a real third dimension in the data. |
-| Second Y axis | Imposes cognitive effort and suggests a correlation the data does not contain. |
-
-The second Y axis is the number-one error in production dashboards: the alignment between the two scales is arbitrary, so the chart **invents** a relationship. Correct alternatives: two charts, small multiples, or index both series to a common base (=100 at t₀) on **one** axis.
-
-**Lesson 3 — Eliminate clutter.** Cognitive capacity is finite; every element that takes space without increasing understanding is unnecessary cognitive load and must go. Gestalt principles identify what is superfluous:
-
-| Principle | Meaning | Practical use |
-| --- | --- | --- |
-| **Proximity** | Close objects are perceived as a group | Group by spacing, not boxes |
-| **Similarity** | Same colour, shape or size suggests relation | Consistent colour per entity across the screen |
-| **Enclosure** | A subtle background separates more than a border | Light shading instead of an outline |
-| **Closure** | The mind completes incomplete shapes | Chart borders are removable |
-| **Continuity** | The eye follows implied lines | Aligned bars do not need a drawn baseline |
-| **Connection** | Physically linked elements associate strongly | A chart line connects more than colour |
-
-Tactics: remove chart borders; thin and lighten gridlines; push axes and labels to the background in grey; drop unnecessary markers; label data directly; left-align text forming clean vertical lines; **never use diagonal or rotated text**. White space is active: preserve margins, size the visual instead of stretching it, use emptiness for emphasis.
-
-**Lesson 4 — Focus attention.**
-
-| Memory | Duration and capacity | Design consequence |
-| --- | --- | --- |
-| **Iconic** | milliseconds, unconscious | Where pre-attentive attributes act |
-| **Short-term** | about **four "chunks"** of visual information | More than four groups at once saturates |
-| **Long-term** | lifetime | Images help retrieve verbal information |
-
-Pre-attentive attributes: **form** (orientation, shape, length, width, size), **colour** (hue, intensity/saturation), **position** (2D location), **motion** (flicker, direction — not recommended in explanatory communication). Length, position, size and intensity encode **numeric value**; hue and shape distinguish **category**. Derived rules: design in **greys** first, then introduce **one** accent; highlight **at most about 10%** of elements; use colour sparingly, consistently and with sufficient contrast; design for colour blindness (avoid red/green as the only distinction; blue and orange are the safe pair); the **top-left** corner is the most valuable real estate; direct labels reduce legend lookups; vary text size (larger title, smaller footnote).
-
-**Lesson 5 — Think like a designer.** Form follows function: decide what the audience must do with the data, then design what enables it. Concepts: **affordances** (highlight the important, eliminate distraction, explicit hierarchy); **accessibility** (usable by people with different abilities; use text generously and carefully); **aesthetics** (what is perceived as beautiful is perceived as more usable and tolerated longer — adherence, not decoration); **acceptance** (show before/after, articulate the advantage, offer alternatives, involve users).
-
-**Lesson 6 — Tell a story.** Data alone is not remembered; narrative is. Three acts: **setup** (context, main character — the audience — and the inciting incident), **conflict** (what is at stake), **resolution** (climax and call to action). Two flows: chronological (builds credibility) or **start with the end** (immediate clarity) — in product, start with the end. **Horizontal logic:** titles read in sequence tell the whole story, so titles must assert something. **Vertical logic:** within one surface, title, text and visual reinforce each other. Checks: **reverse storyboard** and **fresh perspective** (someone without context describes what they see).
-
-> **Direct application.** Horizontal logic condemns labels such as "Financial base" or "Statements processed". A card title must assert: "You have R$ X free until the 30th" communicates; "Balance" does not.
+This specification is normative for the design of any panel, indicator, chart or financial table in Talentum. It is built on three sources, kept in the [appendix](#appendix-dashboard-research-and-audit-history): patterns observed in the ten best-rated system dashboards of 2026; the method of *Storytelling with Data* by Cole Nussbaumer Knaflic, adopted as the theoretical basis; and a measured audit of the original repository dashboard (now historical). [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md) is the source of truth for visual identity and prevails in any unresolved conflict of color, typography or spacing.
 
 ### The Talentum standard
 
-Status: **Current** as normative rules; rules implemented in the current Dashboard are applied in `src/components/dashboard.tsx`. Rules that depend on non-existent features (multi-series charts, density toggle, palette validator) are marked.
+Status: **Rule**; rules implemented in the current Dashboard are applied in `src/components/dashboard.tsx`. Rules that depend on non-existent features (multi-series charts, density toggle, palette validator) are marked.
 
 #### Screen structure
 
@@ -1026,10 +911,10 @@ The order is narrative (Lesson 6, starting with the end): the answer first, then
 - **R-11. Equivalent table always available.** Every chart has an accessible tabular twin; it is the accessibility channel and the source of truth for values.
 - **R-12. Selective direct labels.** Label the extreme, the end point, the series that matters; never a number on every point. With two or more series, a legend is always present; with one series, the title names it — no legend box.
 
-#### Colour in visualisation
+#### Color in visualization
 
-- **R-13. The brand stays in the chrome.** Talentum's institutional palette is warm and almost monochrome: excellent for interface, unsuitable as a categorical palette (the original two-brown chart pair failed luminance, chroma and normal-vision separation, ΔE 9.7 in dark mode). Amber (`#B8773D`, 3.60:1 light / 4.11:1 dark) is the **emphasis colour** — one highlighted series against grey — not a categorical slot.
-- **R-14. Semantic tokens are never series colours.** `--ok`, `--warn`, `--err` and `--info` mean state. They pass as text in both themes (measured: `--ok` 6.25:1 / 6.34:1, `--warn` 4.82:1 / 6.93:1, `--err` 8.97:1 / 5.93:1, `--info` 6.89:1 / 6.85:1 on `#FFFDF8` / `#2A2622`) but fail against each other as fills (`--err` ↔ `--ok` ΔE 6.0 under deuteranopia; `--info` ↔ `--ok` ΔE 10.1 with normal vision, below the floor of 15). Every semantic use comes with **icon and label**, never colour alone.
+- **R-13. The brand stays in the chrome.** Talentum's institutional palette is warm and almost monochrome: excellent for interface, unsuitable as a categorical palette (the original two-brown chart pair failed luminance, chroma and normal-vision separation, ΔE 9.7 in dark mode). Amber (`#B8773D`, 3.60:1 light / 4.11:1 dark) is the **emphasis color** — one highlighted series against grey — not a categorical slot.
+- **R-14. Semantic tokens are never series colors.** `--ok`, `--warn`, `--err` and `--info` mean state. They pass as text in both themes (measured: `--ok` 6.25:1 / 6.34:1, `--warn` 4.82:1 / 6.93:1, `--err` 8.97:1 / 5.93:1, `--info` 6.89:1 / 6.85:1 on `#FFFDF8` / `#2A2622`) but fail against each other as fills (`--err` ↔ `--ok` ΔE 6.0 under deuteranopia; `--info` ↔ `--ok` ΔE 10.1 with normal vision, below the floor of 15). Every semantic use comes with **icon and label**, never color alone.
 - **R-15. Validated categorical palette.** Slot 1 and the de-emphasis grey are **ratified** in [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md) as `--data-1` and `--data-recessive` and are the ones the Dashboard uses (**Current**). The eight slots below remain **Open** until a multi-series chart exists:
 
 | Slot | Hue | Light | Dark |
@@ -1052,9 +937,9 @@ dark  (#2A2622): all five tests PASS
 The light-theme contrast `WARN` (teal 2.77:1, yellow 2.13:1, magenta 2.65:1) is not dismissible: it requires a relief channel — visible direct label or equivalent table, which R-11 already demands.
 
 - **R-16. Fixed order, never cycled.** Slots are assigned in sequence. A ninth series is never a generated hue: it becomes "Others", small multiples, or composite encoding.
-- **R-17. Colour follows the entity, not the position.** A filter that reduces the number of series must not repaint the survivors.
+- **R-17. Color follows the entity, not the position.** A filter that reduces the number of series must not repaint the survivors.
 - **R-18. Sequential is one hue; diverging is two plus grey.** Magnitude → one hue, light to dark. Polarity (above/below zero) → two opposite hues with a **neutral grey** in the middle. Never rainbow; never a hue at the midpoint.
-- **R-19. Gain and loss.** Green and red carry profit and loss, always with sign, arrow or label — never colour alone (about 1 in 12 men has a colour-vision deficiency).
+- **R-19. Gain and loss.** Green and red carry profit and loss, always with sign, arrow or label — never color alone (about 1 in 12 men has a color-vision deficiency).
 - **R-20. Validate, do not estimate.** No palette enters the product without passing the validator in both themes (see [Palette validation](#palette-validation); the validator is **Planned**).
 
 #### Numerals and money
@@ -1087,14 +972,14 @@ The light-theme contrast `WARN` (teal 2.77:1, yellow 2.13:1, magenta 2.65:1) is 
 - **R-32. Tooltip enriches, never the only path.** Every value is reachable by direct label or table; keyboard focus shows the same as hover.
 - **R-33. Touch target.** Minimum **24×24 px** (WCAG 2.2, 2.5.8, AA). **44×44 px** is the reinforced recommendation (2.5.5, AAA) and the preferred target for chart controls. The hit area exceeds the visual mark.
 - **R-34. Contrast.** 4.5:1 for normal text, 3:1 for large text and interface components, in **both** themes. Measure, do not assume.
-- **R-35. Never meaning in hue alone.** Every state comes with icon, label, position or shape besides colour.
+- **R-35. Never meaning in hue alone.** Every state comes with icon, label, position or shape besides color.
 - **R-36. No rotated text.** Long labels call for a horizontal bar.
 - **R-37. Contained motion.** Micro-interactions 120–200 ms; panel transitions 200–300 ms. Respect `prefers-reduced-motion`. No ambient animation. Motion is not an encoding channel.
 
 #### Marks and chrome
 
 - **R-38.** Thin marks; grid and axes as hairlines one tone above the surface; **solid, never dashed**.
-- **R-39.** A 2 px gap in the surface colour between adjacent and stacked fills, instead of a border around the mark.
+- **R-39.** A 2 px gap in the surface color between adjacent and stacked fills, instead of a border around the mark.
 - **R-40.** Data ends rounded at 4 px, anchored to the baseline; 2 px lines; markers at least 8 px.
 - **R-41.** Hierarchy by weight, size and white space — not nested boxes. No card inside a card.
 - **R-42.** The chart container accommodates the axis band. No tiny vertical scrolling inside a card.
@@ -1102,7 +987,7 @@ The light-theme contrast `WARN` (teal 2.77:1, yellow 2.13:1, magenta 2.65:1) is 
 
 ### Dashboard elements and formulas
 
-No element enters the screen without a closed formula and a confirmed data origin. Nine elements in four bands; five metric elements above the fold, within R-3. Three charts, no more (BP-4).
+No element enters the screen without a closed formula and a confirmed data origin. Nine elements in four bands; five metric elements above the fold, within R-3. Three charts, no more ([BP-4](#cross-cutting-good-practices)).
 
 | ID | Element | Band | Form | Question it answers | Status |
 | --- | --- | --- | --- | --- | --- |
@@ -1205,7 +1090,7 @@ The subtrahend of V, exposed as its own number so the verdict is explainable wit
 
 #### A — Reconciliation queue
 
-A work queue, not a chart (BP-11): count and list of open `ReconciliationItem`s ordered by decreasing financial impact. Until the reconciliation migration exists, the substitute is `Transaction.status = 'pending'` (**Current** approximation): `status` marks the entry, not a pending item with reason and confidence.
+A work queue, not a chart ([BP-11](#cross-cutting-good-practices)): count and list of open `ReconciliationItem`s ordered by decreasing financial impact. Until the reconciliation migration exists, the substitute is `Transaction.status = 'pending'` (**Current** approximation): `status` marks the entry, not a pending item with reason and confidence.
 
 #### G-1 — Period cash projection
 
@@ -1245,7 +1130,7 @@ Per month of the covered interval:
   result  = income − outflow
 ```
 
-Form: **diverging bar anchored at zero** — income above, outflow below, neutral grey at the zero line (R-18). Two opposite hues, never two neighbouring warm ones. **Hard constraint: render only months with confirmed data coverage.** A month without an imported statement has zero income and outflow in the database, but that means "unknown", not "no movement"; rendering it as an empty bar repeats the "zero is a claim" error across the time axis. The values are computable today; the chart cannot be published honestly until the covered period is persisted.
+Form: **diverging bar anchored at zero** — income above, outflow below, neutral grey at the zero line (R-18). Two opposite hues, never two neighboring warm ones. **Hard constraint: render only months with confirmed data coverage.** A month without an imported statement has zero income and outflow in the database, but that means "unknown", not "no movement"; rendering it as an empty bar repeats the "zero is a claim" error across the time axis. The values are computable today; the chart cannot be published honestly until the covered period is persisted.
 
 #### Feasibility matrix
 
@@ -1273,32 +1158,6 @@ Seven of nine elements are live (as of the 26 October 2026 update).
 - **L-4 — Open. Cross-currency consolidation is unresolved.** `Account.currency` exists with default `BRL`, but the consolidated balance sums cents from all active accounts without checking currency (verified in `src/app/api/dashboard/route.ts`). With an account in another currency the result is meaningless. Until onboarding decision 8 (multiple currencies) is made, the formula should filter by a reference currency and state on screen how many accounts were left out.
 - **L-5 — Open. Own-account transfers inflate spending until the reconciliation migration.** `OwnAccountTransfer` arrives with `mvp_reconciliation`. Before it, moving money between own accounts appears as expense in one and income in another, inflating I-2, G-2 and G-3. Available mitigation (**Current**): `Category.kind = 'transfer'`, applied manually. It is a palliative and must be stated in the interface, not hidden.
 - **L-6 — Partially resolved.** The obligation entity was called `ScheduledObligation` in some documents and `RecurringObligation` in others; the implemented schema fixed `ScheduledObligation`, used throughout this document. **Open:** `PixIdentifier` versus `PixKey` — no migration has fixed the name yet; the Pix migration must choose one and update every document in the same change set. This document uses `PixIdentifier` provisionally.
-
-### Historical note: audit of the original dashboard (10–11 September 2026)
-
-Status: historical, non-normative.
-
-On 10 September 2026 the original `DashboardPage` (then in `src/components/demo-pages.tsx`, with `src/hooks/use-dashboard-data.ts` and `src/app/api/dashboard/route.ts`) was audited. It showed six equal-weight cards in two rows of three (registered balance as hero, daily average, month spending, financial base count, processed statements count, reconciliation queue count). It used no fictitious data, but it was not a dashboard: it showed installation telemetry instead of answering the financial question, and its error state made a false statement about money. Defects found:
-
-- **D-1 (critical):** the hero was the raw registered balance — the false sense of availability the product exists to discredit — and the Saldo Livre de Risco was absent. Led to R-1.
-- **D-2 (critical):** on query failure or while loading, the screen showed `R$ 0,00` with "no account or transaction registered", because the error flag was never read. Led to R-28 and R-29.
-- **D-3 (serious):** six widgets of equal weight, three of them measuring the software rather than finances. Led to R-3.
-- **D-4 (serious):** zero comparative context; no delta, period, goal or sparkline. Led to R-4.
-- **D-5 (serious):** no chart in the product; the only precedent (a decorative bar chart in the layout guide) used a brown/amber pair that failed palette validation in both themes. Led to R-13 and R-15.
-- **D-6 (medium):** Playfair Display used for numbers. Led to R-21.
-- **D-7 (medium):** `tabular-nums` on the large hero figure. Led to R-22.
-- **D-8 (medium):** two primary amber buttons and action links inside metric cards, mixing the action layer with the fact layer.
-- **D-9 (medium):** the same chip token used for two meanings, carrying no state. Led to R-35.
-- **D-10 (medium):** the Dashboard was the only route without a designed empty state.
-- **D-11:** no Dashboard query was scoped by `profileId`.
-- **D-12:** the balance ignored entries after the snapshot (I-1 formula).
-- **D-13:** an account without a snapshot counted as zero.
-- **D-14:** month spending included transfers and pending entries.
-- **D-15:** truncating division without a declared rule.
-
-All fifteen were fixed on 11 September 2026: the panel was rewritten in `src/components/dashboard.tsx`, formulas isolated in `src/server/dashboard-metrics.ts` with unit tests (including explicit half-up rounding for D-15), and the API contract rebuilt with `profileId` scoping. The planned enablement order (fix D-11..D-15 → migration with L-1 fields → resolve L-2 → reconciliation migration → Stage 9 budget) has been completed up to the obligations migration; the remaining steps are L-2 (G-3), `mvp_reconciliation` (correct A, resolve L-5) and Stage 9 (budget in the daily average).
-
-The 26 October 2026 update added: reference date of the oldest declared balance (R-26), estimated-obligation warning on the verdict (L-1), category bars measuring share of total, an error strip with retry on the chart (R-28), and the `GET /api/local-summary` check on area screens (R-29).
 
 ### Review checklist
 
@@ -1328,12 +1187,12 @@ Apply before approving any screen with numbers. A failed item blocks delivery.
 - [ ] The form matches the reader's job (R-6).
 - [ ] Emphasis was considered before a categorical palette.
 
-**Colour**
+**Color**
 
 - [ ] Palette validated by the script, in both themes, against the real surfaces.
-- [ ] No semantic token used as a series colour.
+- [ ] No semantic token used as a series color.
 - [ ] Amber restricted to chrome and emphasis.
-- [ ] Colour is never the only carrier of meaning.
+- [ ] Color is never the only carrier of meaning.
 - [ ] Filtering does not repaint surviving series.
 
 **Numbers**
@@ -1352,7 +1211,7 @@ Apply before approving any screen with numbers. A failed item blocks delivery.
 
 - [ ] Contrast measured in both themes.
 - [ ] Targets ≥ 24×24 px; visible focus; logical tab order.
-- [ ] Every visualisation has an equivalent table.
+- [ ] Every visualization has an equivalent table.
 - [ ] `prefers-reduced-motion` respected.
 
 **Privacy**
@@ -1362,7 +1221,7 @@ Apply before approving any screen with numbers. A failed item blocks delivery.
 
 ### Palette validation
 
-Status: **Planned.** Colour checking is computable — so compute it; never estimate whether a pair is colour-blind safe. The intended invocation:
+Status: **Planned.** Color checking is computable — so compute it; never estimate whether a pair is color-blind safe. The intended invocation:
 
 ```bash
 node scripts/validate_palette.js "<hex,hex,...>" --mode light --surface "#FFFDF8"
@@ -1378,7 +1237,7 @@ The script used during the original research is **not versioned** in the reposit
 1. **Open:** ratify the **full** categorical palette of R-15 (only `--data-1` and `--data-recessive` are ratified).
 2. **Open:** define the exact financial gain and loss tokens, distinct from the four semantic tokens.
 3. **Open:** whether density (comfortable/compact) is configurable in the MVP or later.
-4. **Open:** the default period of the Saldo Livre de Risco on screen: calendar month (current behaviour), next 30 days, or the person's choice.
+4. **Open:** the default period of the Saldo Livre de Risco on screen: calendar month (current behavior), next 30 days, or the person's choice.
 5. **Planned:** version the palette validator and run it automatically.
 6. **Resolved:** `ScheduledObligation` fields (migration `mvp_scheduled_obligations`). The CRUD and recurrences screen remain in Feature 3.
 7. **Open:** add `periodStart` and `periodEnd` to `ImportBatch` (L-2) and define how temporal coverage is displayed.
@@ -1390,7 +1249,7 @@ The script used during the original research is **not versioned** in the reposit
 
 Status: **Planned, before the MVP** (see "Pre-MVP" in [ROADMAP.md](ROADMAP.md)). Nothing in this section is implemented. The `nova-versao` illustration already exists (**Current**) in `design/estados-vetor/` and in the theme variants under `public/estados/` (`claro` and `escuro`).
 
-The behaviour can only operate once signed installers are published on GitHub Releases (MVP 1 and MVP 2). Until then the checker finds no new version and nothing appears.
+The behavior can only operate once signed installers are published on GitHub Releases (MVP 1 and MVP 2). Until then the checker finds no new version and nothing appears.
 
 ### What the person sees
 
@@ -1423,7 +1282,7 @@ sequenceDiagram
 
 1. **Query:** at start-up and every 6 hours, the local backend queries the public releases API of the official repository, which is fixed in code and not configurable by the renderer. Only stable releases count (not `draft`, not `prerelease`).
 2. **Comparison:** SemVer (`MAJOR.MINOR.PATCH`), compared numerically with the running package version. Invalid tags are ignored.
-3. **Contract:** the renderer never talks to GitHub. It receives from the local backend only version, sanitised notes and the asset identifier.
+3. **Contract:** the renderer never talks to GitHub. It receives from the local backend only version, sanitized notes and the asset identifier.
 4. **Download and install:** done by the Electron main process, triggered by a specific preload method. Main downloads only from the GitHub releases domain, checks the SHA-256 published in the release and the installer signature, and only then runs it and quits the app. Failure in any check cancels the installation and shows an error, executing nothing.
 5. **Postpone:** the postponed date and version are stored in `UserPreference`, in local SQLite.
 
@@ -1441,7 +1300,7 @@ sequenceDiagram
 - Postpone suppresses the notice for 24 hours for that version.
 - Download now with an invalid checksum or signature does not run the installer.
 - Regression tests cover version comparison, release filtering and refusal of an unverified installer.
-- The dialog is validated in the light and dark themes and at the five reference widths.
+- The dialog is validated at the twelve viewport classes in the light and dark themes ([DESIGN-SYSTEM.md](DESIGN-SYSTEM.md#the-twelve-viewport-classes)).
 
 ### Relation to Stage 21
 
@@ -1464,7 +1323,7 @@ Roadmap Stage 21 (automatic updates and release channels) remains responsible fo
 
 ### Feature implementation order
 
-1. Finish the cloud track for sign-up, session and download authorisation (core flow **Current**; remaining items Planned).
+1. Finish the cloud track for sign-up, session and download authorization (core flow **Current**; remaining items Planned).
 2. Implement persistent onboarding.
 3. Finish institutions, accounts and snapshots.
 4. Implement categories, income and obligations.
@@ -1487,7 +1346,7 @@ Roadmap Stage 21 (automatic updates and release channels) remains responsible fo
 - SQLite is created and updated with `prisma migrate deploy` in development, Docker and the packaged application.
 - Windows and Linux builds are reproducible, signed and verifiable.
 - Landing page, BFF, Worker, D1 and the download flow meet the cloud track and its security tests.
-- The context published to Vercel contains only the landing page and BFF, proven by inspecting the artefact.
+- The context published to Vercel contains only the landing page and BFF, proven by inspecting the artifact.
 
 ## Open items
 
@@ -1500,9 +1359,7 @@ Product-level items that need a decision. Onboarding decisions 1–10 and Dashbo
 5. **Balance origin:** L-3.
 6. **Multi-currency:** L-4 and onboarding decision 8; the current consolidated balance sums all currencies.
 7. **Default Dashboard period:** calendar month today (Dashboard decision 4).
-8. **`GET /api/health/live` without action code:** the project rule says every frontend-to-backend request except the bootstrap uses an action code. The liveness probe is used by the Docker Compose health check and returns no data, so it is an exception candidate; confirm and record it in [ARCHITECTURE.md](ARCHITECTURE.md) and [SECURITY.md](SECURITY.md), or change it.
-9. **Cloud-track operational state:** Worker publication and remote D1 migration status were reported in the original plan but cannot be verified from the repository.
-10. **Import formats in onboarding copy:** this document uses CSV and OFX for the MVP (Feature 4); the earlier onboarding draft mentioned OFX only. Confirm CSV and OFX for the onboarding flow.
+8. **Cloud-track operational state:** Worker publication and remote D1 migration status were reported in the original plan but cannot be verified from the repository.
 
 ## References
 
@@ -1527,50 +1384,150 @@ Product-level items that need a decision. Onboarding decisions 1–10 and Dashbo
 **Accessibility and file handling**
 
 - WCAG 2.2 — criteria 1.4.3 (minimum contrast), 1.4.11 (non-text contrast), 2.5.5 (enhanced target, AAA), 2.5.8 (minimum target size, AA), 3.3.4 (error prevention) and 3.3.7 (redundant entry).
-- OWASP File Upload Cheat Sheet: defence in depth, allowlist, real type, signature, safe name, limits, storage outside the webroot and up-to-date parser.
+- OWASP File Upload Cheat Sheet: defense in depth, allowlist, real type, signature, safe name, limits, storage outside the webroot and up-to-date parser.
+
+## Appendix: Dashboard research and audit history
+
+Status: research basis and historical record. The normative rules derived from this material are in [The Talentum standard](#the-talentum-standard); where they differ, the standard prevails. The product survey cites industry roundups (see [References](#references)), which are secondary sources: recheck a product before citing it in a review.
+
+### Reference: the ten best-rated dashboards
+
+The 2026 sample covers system dashboards with consolidated public user ratings. The "characteristic decision" column records what each product does distinctively.
+
+| # | Product | Domain | Characteristic decision |
+| --- | --- | --- | --- |
+| 1 | **Linear** | work management | Almost monochrome surfaces, **one** accent color. High density without crowding because everything non-essential is simply absent. |
+| 2 | **Stripe** | payments | Table as the primary interface; chart as summary. Right-aligned tabular numerals, soft gridlines. One visualized hero metric. |
+| 3 | **Vercel** | observability | Black-and-white system: hierarchy comes entirely from spacing and type weight. Status colors gain semantic weight because nothing else competes. |
+| 4 | **Attio** | CRM | AI output as a designed component integrated into the record, not a chat bubble overlay. |
+| 5 | **PostHog** | product analytics | *Insight cards*: each visualization answers one question and states it in the title. |
+| 6 | **Hex** | notebooks and data apps | Notebook published as an app: clean cells, contained charts, generous white space. |
+| 7 | **Retool** | internal tools | Deliberate flatness. Strict component grid; familiarity beats novelty. |
+| 8 | **Mercury** | fintech | Editorial typography and disciplined color applied to financial data. Visual calm as trust building. |
+| 9 | **Plausible** | web analytics | Radical simplicity: one page, one chart, a few ranked lists, zero mandatory configuration. |
+| 10 | **Supabase** | platform console | A single page template (header, tabs, table) reused across many tools; disciplined sidebar. |
+
+Financial dashboards of **Ramp**, **Brex**, **Wise Business**, **Revolut Business** and **Plaid** were also examined for proximity to Talentum's domain.
+
+#### Cross-cutting good practices
+
+What appears in almost all ten. These are the practices Talentum adopts.
+
+- **BP-1. One verdict per screen.** There is **one** metric the person opened the Dashboard to see. It gets the largest type and the top-left position; everything else is subordinate. No screen presents twelve widgets of equal weight. Operational test: the **five-second test** — a person identifies the main state in about five seconds.
+- **BP-2. Indicator ceiling.** One primary indicator per view plus a handful of secondary ones: **4 to 6 cards** in the metric strip, with an upper limit around **5 to 7** elements above the fold — the working-memory limit (Miller's 7±2). Plausible and Mercury win by refusing to show everything.
+- **BP-3. Progressive disclosure.** Show the minimum needed for the next decision. Summary first, detail on demand.
+- **BP-4. Chart restraint.** One meaningful trend beats five decorative ones. Well-composed numbers in a table communicate faster than charts; "tables have retaken the throne". Invest where the person spends time.
+- **BP-5. Color is a signal channel, not decoration.** Color means **state** and nothing else ("color only means state: approved, refunded, failed" in Stripe). Brand color belongs to the interface chrome, not to data visualization. Green and red are reserved for gain and loss.
+- **BP-6. Numerals are a system.** Tabular figures, consistent decimals, right alignment for financial values. The currency symbol is lighter than the value. Proportional figures that "jitter from column to column" read as amateur. In dark interfaces: **dark financial UIs live or die by numeral legibility**.
+- **BP-7. States are components, not leftovers.** Loading (skeleton shaped like the content), empty (one-sentence explanation + action) and error (strip inside the component, with retry — never a full-page modal) are mandatory per component. The empty state is an onboarding surface.
+- **BP-8. Quiet chrome, high density.** Borders, shadows and decoration shrink; information density rises. Hierarchy comes from **weight, size and white space**, not boxes. In light mode, a slightly warm background for large surfaces and pure white reserved for content cards.
+- **BP-9. Density is a setting, not a philosophy.** Offer a comfortable/compact toggle. Table row: **36–40 px** compact, **48–52 px** comfortable.
+- **BP-10. Dark theme is a theme, not an inversion.** Built on tokens; chart palettes require redesign, not CSS inversion — contrast math differs and lighter surfaces mean higher elevation.
+- **BP-11. Work queue before analytics.** Fintech-specific and the most relevant for Talentum: Ramp puts bill and expense inboxes, automation status and close progress in prime space; Brex shows what needs attention and hides what is fine. **Financial dashboards are to-do lists dressed as charts.**
+- **BP-12. Transparency is a design decision.** Wise exposes fees before asking for money. Design the **pending state**: money in transit with ambiguous UI breeds distrust. Exact timestamps, explicit breakdowns, declared fees.
+
+#### Consolidated layout
+
+```mermaid
+flowchart TB
+    subgraph Screen
+        S[Sidebar 248-256px<br/>collapses to 64-76px]
+        subgraph Content[Content area]
+            F[Single filter row — scope of everything below]
+            K[Metric strip: 4-6 cards<br/>number 28-32px · comparison 14px · ONE visual element]
+            G[12-column grid · 24px gutter<br/>charts and tables]
+        end
+        S --- Content
+    end
+```
+
+| Element | Value |
+| --- | --- |
+| Sidebar expanded / collapsed | 256 px / 64 px in references; Talentum uses **248 px / 76 px** (within range, kept) |
+| Navigation item | 36 px high, 12 px side padding, 8 px radius |
+| Metric card | 200–280 px wide, `auto-fill, minmax(200px, 1fr)` |
+| Card primary number | 28–32 px, high contrast |
+| Secondary comparison | 14 px, secondary color |
+| Content grid | 12 columns, 24 px gutter, row `minmax(200px, auto)` |
+| Common spans | full table `1 / -1`; chart + table `span 7` + `span 5`; three cards `span 4` |
+| Primary breakpoint | 1366 px (Talentum targets 1440×900, minimum 1024×700) |
+
+### Theoretical basis: *Storytelling with Data*
+
+Cole Nussbaumer Knaflic, *Storytelling with Data: A Data Visualization Guide for Business Professionals* (Wiley). Its six lessons are the theoretical basis of the Talentum standard and apply to every screen that presents numbers.
+
+**Lesson 1 — Understand the context.** Investing before designing reduces rework. Before choosing any visual, answer: **who** is the audience; **what** they need to know or do; **how** the data supports it. Exploratory analysis (looking for what is there) differs from explanatory communication (showing what matters); a dashboard is explanatory. Tools: the **three-minute story**; the **Big Idea** — one complete sentence, with a point of view, stating what is at stake; the **storyboard** — structure and flow before pixels.
+
+> **Application to Talentum.** The Dashboard's Big Idea: *"After deducting everything already committed until the end of the period, this is what is left — and only this can be spent."* Every element on the screen either serves this sentence or leaves the screen.
+
+**Lesson 2 — Choose an effective visual.** Recommended: simple text (one or two numbers), table (multiple units, mixed audiences), heatmap, scatter plot, line (continuous data, especially time series), slopegraph (two periods), vertical and horizontal bars (categorical; **zero baseline mandatory**; horizontal when labels are long), stacked bars (total and components) and waterfall.
+
+| Form | Why avoid it |
+| --- | --- |
+| Pie | The eye does not compare angles precisely; the book's canonical example of the error. |
+| Donut | Same flaw as pie, worse: compares arcs instead of angles. |
+| 3D | Distorts magnitude. Admissible only with a real third dimension in the data. |
+| Second Y axis | Imposes cognitive effort and suggests a correlation the data does not contain. |
+
+The second Y axis is the number-one error in production dashboards: the alignment between the two scales is arbitrary, so the chart **invents** a relationship. Correct alternatives: two charts, small multiples, or index both series to a common base (=100 at t₀) on **one** axis.
+
+**Lesson 3 — Eliminate clutter.** Cognitive capacity is finite; every element that takes space without increasing understanding is unnecessary cognitive load and must go. Gestalt principles identify what is superfluous:
+
+| Principle | Meaning | Practical use |
+| --- | --- | --- |
+| **Proximity** | Close objects are perceived as a group | Group by spacing, not boxes |
+| **Similarity** | Same color, shape or size suggests relation | Consistent color per entity across the screen |
+| **Enclosure** | A subtle background separates more than a border | Light shading instead of an outline |
+| **Closure** | The mind completes incomplete shapes | Chart borders are removable |
+| **Continuity** | The eye follows implied lines | Aligned bars do not need a drawn baseline |
+| **Connection** | Physically linked elements associate strongly | A chart line connects more than color |
+
+Tactics: remove chart borders; thin and lighten gridlines; push axes and labels to the background in grey; drop unnecessary markers; label data directly; left-align text forming clean vertical lines; **never use diagonal or rotated text**. White space is active: preserve margins, size the visual instead of stretching it, use emptiness for emphasis.
+
+**Lesson 4 — Focus attention.**
+
+| Memory | Duration and capacity | Design consequence |
+| --- | --- | --- |
+| **Iconic** | milliseconds, unconscious | Where pre-attentive attributes act |
+| **Short-term** | about **four "chunks"** of visual information | More than four groups at once saturates |
+| **Long-term** | lifetime | Images help retrieve verbal information |
+
+Pre-attentive attributes: **form** (orientation, shape, length, width, size), **color** (hue, intensity/saturation), **position** (2D location), **motion** (flicker, direction — not recommended in explanatory communication). Length, position, size and intensity encode **numeric value**; hue and shape distinguish **category**. Derived rules: design in **greys** first, then introduce **one** accent; highlight **at most about 10%** of elements; use color sparingly, consistently and with sufficient contrast; design for color blindness (avoid red/green as the only distinction; blue and orange are the safe pair); the **top-left** corner is the most valuable real estate; direct labels reduce legend lookups; vary text size (larger title, smaller footnote).
+
+**Lesson 5 — Think like a designer.** Form follows function: decide what the audience must do with the data, then design what enables it. Concepts: **affordances** (highlight the important, eliminate distraction, explicit hierarchy); **accessibility** (usable by people with different abilities; use text generously and carefully); **aesthetics** (what is perceived as beautiful is perceived as more usable and tolerated longer — adherence, not decoration); **acceptance** (show before/after, articulate the advantage, offer alternatives, involve users).
+
+**Lesson 6 — Tell a story.** Data alone is not remembered; narrative is. Three acts: **setup** (context, main character — the audience — and the inciting incident), **conflict** (what is at stake), **resolution** (climax and call to action). Two flows: chronological (builds credibility) or **start with the end** (immediate clarity) — in product, start with the end. **Horizontal logic:** titles read in sequence tell the whole story, so titles must assert something. **Vertical logic:** within one surface, title, text and visual reinforce each other. Checks: **reverse storyboard** and **fresh perspective** (someone without context describes what they see).
+
+> **Direct application.** Horizontal logic condemns labels such as "Financial base" or "Statements processed". A card title must assert: "You have R$ X free until the 30th" communicates; "Balance" does not.
+
+### Historical note: audit of the original dashboard (10–11 September 2026)
+
+Status: historical, non-normative.
+
+On 10 September 2026 the original `DashboardPage` (then in `src/components/demo-pages.tsx`, with `src/hooks/use-dashboard-data.ts` and `src/app/api/dashboard/route.ts`) was audited. It showed six equal-weight cards in two rows of three (registered balance as hero, daily average, month spending, financial base count, processed statements count, reconciliation queue count). It used no fictitious data, but it was not a dashboard: it showed installation telemetry instead of answering the financial question, and its error state made a false statement about money. Defects found:
+
+- **D-1 (critical):** the hero was the raw registered balance — the false sense of availability the product exists to discredit — and the Saldo Livre de Risco was absent. Led to R-1.
+- **D-2 (critical):** on query failure or while loading, the screen showed `R$ 0,00` with "no account or transaction registered", because the error flag was never read. Led to R-28 and R-29.
+- **D-3 (serious):** six widgets of equal weight, three of them measuring the software rather than finances. Led to R-3.
+- **D-4 (serious):** zero comparative context; no delta, period, goal or sparkline. Led to R-4.
+- **D-5 (serious):** no chart in the product; the only precedent (a decorative bar chart in the layout guide) used a brown/amber pair that failed palette validation in both themes. Led to R-13 and R-15.
+- **D-6 (medium):** Playfair Display used for numbers. Led to R-21.
+- **D-7 (medium):** `tabular-nums` on the large hero figure. Led to R-22.
+- **D-8 (medium):** two primary amber buttons and action links inside metric cards, mixing the action layer with the fact layer.
+- **D-9 (medium):** the same chip token used for two meanings, carrying no state. Led to R-35.
+- **D-10 (medium):** the Dashboard was the only route without a designed empty state.
+- **D-11:** no Dashboard query was scoped by `profileId`.
+- **D-12:** the balance ignored entries after the snapshot (I-1 formula).
+- **D-13:** an account without a snapshot counted as zero.
+- **D-14:** month spending included transfers and pending entries.
+- **D-15:** truncating division without a declared rule.
+
+All fifteen were fixed on 11 September 2026: the panel was rewritten in `src/components/dashboard.tsx`, formulas isolated in `src/server/dashboard-metrics.ts` with unit tests (including explicit half-up rounding for D-15), and the API contract rebuilt with `profileId` scoping. The planned enablement order (fix D-11..D-15 → migration with L-1 fields → resolve L-2 → reconciliation migration → Stage 9 budget) has been completed up to the obligations migration; the remaining steps are L-2 (G-3), `mvp_reconciliation` (correct A, resolve L-5) and Stage 9 (budget in the daily average).
+
+The 26 October 2026 update added: reference date of the oldest declared balance (R-26), estimated-obligation warning on the verdict (L-1), category bars measuring share of total, an error strip with retry on the chart (R-28), and the `GET /api/local-summary` check on area screens (R-29).
 
 ## Appendix: Original vision (historical, non-normative)
 
-Status: historical. This appendix condenses the original product vision written before the MVP plan. It is **superseded** by every section above wherever they differ, and nothing here is a requirement or describes implemented behaviour. The source document is the PDF `App de Gestão Financeira ARCA.pdf` in `docs/`.
+Status: historical. Before the MVP plan, the product was described in the PDF `App de Gestão Financeira ARCA.pdf` in `docs/`. Its full content is rewritten, illustrated and annotated in [ARCA-VISION.md](ARCA-VISION.md): the six-tab vision, the ARCA methodology and tolerance band, gamification, onboarding, the original technical ideas and a table of what each idea was superseded by. Read that document instead of the PDF.
 
-### What the original vision described
-
-**Areas.** Six tabs: Início (executive dashboard), Extratos/Cartões/Benefícios, Conciliação, Patrimônio e Metas, Invest (news), Histórico/Perfil/Gamificação, plus global modals for notifications, file import and express cash entry.
-
-**Executive dashboard.** A "Saldo Real Drenado" (drained real balance) — the bank balance minus open card statements, recurring bills and mapped debits due by month end — which became the **Saldo Livre de Risco**; daily average against a planned budget limit (now Stage 9); financial evolution (moving average of spending, contributions and budget consumed); active notifications (statements due, today's automatic debits, recurring bills, asset dividends, statements not yet imported, pillars needing attention, achievements); gamification summary; portfolio status.
-
-**Statements, cards and benefits.** Drag-and-drop import of PDF and OFX statements (the MVP uses CSV and OFX; PDF is a later stage), future Open Finance connection; three-step import (selection, processing with automatic categorisation, triage of only low-confidence entries) with visible progress; smart transaction list with search and filters by period, category, bank/account, keyword, institution and type, grouped by day; registration of recurring bills and automatic debits (card statement, rent, utilities, streaming, tuition) feeding the drained balance; card ROI (benefits vs. annual fee, e.g. benefits R$ 120,00 − fee R$ 45,00 = R$ 75,00 net benefit), annual-fee exemption thermometer, miles/points/cashback estimates and expiry warnings (Stage 8).
-
-**Reconciliation.** Smart Triage cards to confirm or adjust uncertain transactions with one tap; financial adjustments (late interest, fines, early-payment discounts, value corrections, notes); express cash entry with three fields (amount, category, note — e.g. `R$ 15,00 - Café - Dinheiro`) reachable from any screen; marking a card statement as `Conciliada` after checking it against the bank debit.
-
-**Wealth and goals (ARCA, Stage 14).** The ARCA methodology, credited to Thiago Nigro, splits wealth into four pillars with a 25% target each: Ações (B3 stocks), Real Estate (FIIs and real-estate assets), Caixa (liquid fixed income and reserves such as Tesouro Selic and daily-liquidity CDBs) and Ativos Internacionais (ETFs, BDRs, dollar assets). The product credits the methodology and author without repeating the brand everywhere. A ±10% relative tolerance band makes each pillar balanced between **22.5% and 27.5%**: below is lagging (priority for contributions), above is overweight (avoid new contributions); the band avoids excessive recommendations from daily market swings. A next-contribution calculator directs new money to the pillar furthest below target, favouring contributions over sales (e.g. portfolio R$ 40.000,00, international at 17.5%, contribution R$ 1.000,00 → international); for an empty pillar it may suggest a compatible class without becoming personalised financial advice. Goal boxes compute the monthly deposit and feasibility (e.g. R$ 300,00 per month to travel in December). Surplus allocation suggests splitting month-end leftovers between goals and pillars.
-
-**Survival and payoff mode.** When the person is in the red, has accumulated statements or pays high interest, the focus shifts from wealth building to recovery: contribution recommendations may freeze, the highest-cost debt is prioritised, Caixa and liquidity gain priority, overdue bills and interest are highlighted, and allocation returns after recovery.
-
-**Invest (Stages 15–16).** News feed collected through a proxy service (avoiding client-side CORS), filters `Mercado Geral`, `Minha Carteira` and `Macro`, news cards with title, related asset, source, time, reading time and original link, and on-demand AI summaries through Cloudflare Workers AI, always crediting the source. Ollama was considered as a free local alternative but rejected as the main path because large models increase disk, RAM and GPU use and add an install step; it remained only a possible future optional fallback.
-
-**History, profile and gamification (Stage 17).** Timeline of imports, edits, reconciliations, contributions, goals met, backups, achievements and portfolio changes, with restore points to undo imports and edits when technically possible. XP rewarding useful behaviour, with levels: 1 `Poupador Iniciante` (0–500), 2 `Construtor de Caixa` (501–1.500), 3 `Estrategista ARCA` (1.501–3.500), 4 `Mestre do Rebalanceamento` (3.501–7.000), 5 `Investidor Inabalável` (7.001+). Badges: `Escudo de Emergência` (six months of living costs in Caixa), `Equilíbrio Perfeito` (four pillars within the band), `Leitor de Mercado` (ten news summaries read), `Meta Batida` (goal met without early withdrawal). Daily/weekly missions (import the last seven days, review pending entries, read two summaries) and monthly missions (contribute to the most lagging pillar, review automated categories, check statements and recurring debits). Privacy panel with local SQLite state, JSON/CSV export and encrypted backup.
-
-**First access.** A target of at most 45 seconds with little text: the landing page offers Windows or Linux, sign-up/login with Google OAuth 2.0 records the account in Cloudflare D1 and releases the download; the Electron app asks for login with the same Google account, validates the session and creates the local SQLite database; a three-card tutorial (automated reader, goals, four-pillar portfolio) followed by importing the first file; quick initial wealth entry or starting from R$ 0,00. The detailed [onboarding specification](#onboarding-and-initial-financial-snapshot) supersedes this.
-
-**Notifications (Stage 10).** Actionable, not excessive; examples: a card statement due today, an expected dividend payment, the week's statement not imported, a budget surplus to allocate, a pillar below the balance band.
-
-### Superseded technical assumptions
-
-The original vision also listed technology and data choices that the current repository replaced. They are recorded only to explain history:
-
-| Original assumption | Current reality |
-| --- | --- |
-| Next.js with Tailwind CSS for the UI | Tailwind is configured in PostCSS but not imported; the UI is hand-written CSS (see [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md)). |
-| Local database file `local.db` | The local database file is `temp/talentum-local.db` in development and `/data/talentum-local.db` in Docker (see [ARCHITECTURE.md](ARCHITECTURE.md)). |
-| PDF and OFX parsing with PDF.js and Node-OFX | The MVP imports CSV and OFX; `pdfjs-dist` and `ofx-data-extractor` are installed but unused, and no parser exists yet. |
-| D1 stores account metadata, licence control and encrypted backup references | D1 stores minimal identity, sessions, consents, releases and download grants; it receives no financial data. Encrypted backup is **Planned**. |
-| AES-256-GCM end-to-end encrypted SQLite snapshot sent to D1 (zero-knowledge) | **Planned**, not implemented; any cloud backup needs an explicit, documented and reviewed requirement. |
-| Prisma models `UsuarioMetadados`, `Transacao`, `AtivoArca`, `HistoricoTimeline` with `Float` money | Superseded by the Prisma schema in [DATABASE.md](DATABASE.md) (`BigInt` cents, `profileId` scoping, opaque IDs). |
-| Local APIs `/api/extratos`, `/api/transacoes`, `/api/arca`, `/api/arca/rebalancear`, `/api/resumo` | Do not exist. The current and planned local APIs are those in the [Route map](#route-map). The rebalancing algorithm idea (sum wealth, compute pillar percentages, find the pillar furthest from target within the 22.5–27.5% band, suggest for the given amount) remains a Stage 14 input. |
-| Communication flow landing page → D1 → Electron with PDF/OFX processing, Workers AI and E2EE backup | Superseded by [ARCHITECTURE.md](ARCHITECTURE.md). |
-| `pnpm run dev` frees port 3000, clears `.next` and starts Next.js; `pnpm run dev:all` also opens the app in Electron | Both scripts exist (`scripts/dev.mjs`, `scripts/dev-all.mjs`); their exact behaviour is documented in [BEST_PRACTICES.md](BEST_PRACTICES.md). |
-
-### Expected result (original wording)
-
-Talentum should work as a financial autopilot: read data with minimal effort, ask for confirmation only when necessary, anticipate obligations, show the balance actually available and guide the next financial step clearly — combining automation, local privacy, goal planning, wealth tracking and practical financial education in a simple, actionable experience.
+Nothing in the original vision is a requirement or describes implemented behavior. Every section above **supersedes** it wherever they differ. Its one-sentence summary still holds as the product's intent: Talentum should work as a financial autopilot that reads data with minimal effort, asks for confirmation only when necessary, anticipates obligations, shows the balance actually available and guides the next financial step clearly.

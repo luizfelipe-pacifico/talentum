@@ -1,6 +1,6 @@
 # Database
 
-This document is the single reference for how Talentum stores data: which data may live on the user's device and which may reach the cloud, the modeling rules every table follows, the current local SQLite schema managed by Prisma, the current Cloudflare D1 schema used by the Worker, how migrations are created and applied in each store, and the capacity and approval process for any new persistent structure. Apply it whenever you create or change persistence, migrations, queries, queues, caches, backups or data contracts. Statements are labelled **Current** (implemented in the repository), **Planned** (agreed direction, not implemented) or **Open** (undecided or in conflict).
+This document is the single reference for how Talentum stores data: which data may live on the user's device and which may reach the cloud, the modeling rules every table follows, the current local SQLite schema managed by Prisma, the current Cloudflare D1 schema used by the Worker, how migrations are created and applied in each store, and the capacity and approval process for any new persistent structure. Apply it whenever you create or change persistence, migrations, queries, queues, caches, backups or data contracts. Statements carry the status labels defined in [README.md](README.md#status-labels).
 
 ## Contents
 
@@ -24,7 +24,7 @@ Talentum has two independent data stores. The local SQLite database on the user'
 
 ### Local only
 
-Status: **Current** as policy. The following data stays exclusively in the device's SQLite database:
+Status: **Rule**. The following data stays exclusively in the device's SQLite database:
 
 - institutions, accounts and Pix identifiers;
 - balances and balance snapshots;
@@ -38,7 +38,7 @@ Never create one cloud row per financial transaction. One million users must res
 
 ### Allowed in D1
 
-Status: **Current** as policy. D1 may hold only:
+Status: **Rule**. D1 may hold only:
 
 - minimal identity and the public profile;
 - OAuth provider links and consents;
@@ -64,7 +64,7 @@ Social ranking or gamification must never reveal net worth, income, spending or 
 
 ## Modeling principles
 
-Status: **Current** as rules. Where the current schema deviates, the deviation is listed in [Open items](#open-items).
+Status: **Rule**. Where the current schema deviates, the deviation is listed in [Open items](#open-items).
 
 ### Tables and relations
 
@@ -414,7 +414,7 @@ Applying remote migrations changes a remote resource and requires explicit autho
 
 ## Migration procedure for both stores
 
-Status: **Current** as rules.
+Status: **Rule**.
 
 - Every schema change includes a reviewable migration with a unique name and scope.
 - Fixtures and tests use only synthetic data.
@@ -446,7 +446,7 @@ Use expand/contract for incompatible changes:
 
 ## Indexes and query rules
 
-Status: **Current** as rules.
+Status: **Rule**.
 
 ### Index design
 
@@ -482,7 +482,7 @@ N+1 queries are prohibited; load relations in batches or with controlled joins. 
 
 ## Concurrency and idempotency
 
-Rules (**Current** as policy):
+Status: **Rule**.
 
 - a unique constraint on the idempotency key in the correct scope;
 - short transactions;
@@ -502,7 +502,7 @@ Status: **Planned** (no cache exists). Create a cache only after measuring the p
 
 ### Retention, deletion and audit
 
-Status: **Current** as a rule; per-table records are **Open** (not yet written for existing tables). For each table record: purpose; legal basis or consent when applicable; retention period; deletion event; dependencies and cascades; fields allowed in audit; export procedure. Separate operational data from audit events. Never copy a full payload into logs. Use tombstones only when integrity or moderation requires it.
+Status: **Rule**; per-table records are **Open** (not yet written for existing tables). For each table record: purpose; legal basis or consent when applicable; retention period; deletion event; dependencies and cascades; fields allowed in audit; export procedure. Separate operational data from audit events. Never copy a full payload into logs. Use tombstones only when integrity or moderation requires it.
 
 ### Backup and restore
 
@@ -624,8 +624,8 @@ Status: **Planned**. Never declare readiness just because the schema accepts a m
 2. **ID format.** Policy prefers UUIDv7 or ULID; Prisma (`uuid()`) and the Worker (`crypto.randomUUID()`) generate random UUIDv4. They satisfy opacity but not time ordering. Decide whether to migrate generators.
 3. **Unconstrained local states.** Local `status`, `kind`, `type`, `format` and `recurrence` columns are free strings without `CHECK` constraints, contrary to the rule of restricting finite states in the database when safe.
 4. **Action-code rows are never purged.** Consumed and expired `action_codes`, `auth_transactions` and stale `rate_limit_windows` rows remain in D1; no cleanup job exists. Define retention and a purge mechanism.
-5. **Download grant consumption.** The Worker inserts `download_grants` rows and returns the artifact URL directly; nothing marks `consumed_at`, so the grant is not enforced as single-use.
-6. **Unused security and audit tables.** `security_events` and `audit_events` exist but nothing writes them; refresh-token reuse is not recorded as a security event.
+5. **Download grant consumption.** Nothing marks `download_grants.consumed_at`; the security gap is owned by [SECURITY.md](SECURITY.md#open-items) (item 8).
+6. **Unused security and audit tables.** `security_events` and `audit_events` exist but nothing writes them; the missing recording is owned by [SECURITY.md](SECURITY.md#open-items) (item 13).
 7. **Unused consents table.** `consents` exists but no flow records acceptance of terms or privacy.
 8. **Community routes.** Feedback and community tables exist without any Worker route; their API contract is Planned.
 9. **Remote backup metadata and communication preference.** Not allowed in D1 until a feature requiring them is approved and documented.

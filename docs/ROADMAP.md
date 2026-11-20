@@ -18,13 +18,10 @@ This roadmap is the source of truth for Talentum's planned delivery order: the c
 
 This roadmap was originally consolidated from the code and all project documentation on 2026-09-05 and its status was re-verified against the repository on 2026-11-20.
 
-States used in this document:
+Status labels (Current, Partial, Planned, Open) are defined in [README.md](README.md#status-labels). This document adds two scope labels:
 
-- **Current:** verifiable in the repository.
 - **MVP:** required to prove the core value and produce the first usable release.
 - **Next stage:** a macro-feature after the MVP.
-- **Planned:** agreed scope not yet implemented.
-- **Open:** depends on an ADR, research or validation, or on resolving a conflict.
 
 The presence of a dependency, a table or a scaffold does not mean the corresponding capability is implemented.
 
@@ -66,13 +63,13 @@ Status: **Planned.** The full specification is in [PRODUCT.md](PRODUCT.md). The 
 
 The application queries the releases of the official GitHub repository and, when a stable version newer than the installed one exists, opens a dialog with the `nova-versao` illustration and two buttons: `Baixar agora` (download now), which downloads the Windows installer, verifies checksum and signature, closes the app and opens the installer; and `Adiar` (postpone), which suppresses the notice for that version for 24 hours.
 
-It comes before the MVP by the maintainer's decision: whoever installs the first version must receive the following fixes without looking for the landing page. It depends on signed installers published to GitHub Releases (MVP 1 and MVP 2) to operate; until then the checker finds no version and shows nothing.
+"Pre-MVP" is the maintainer's decision about release content, not build order: the notice must ship in the first installer that reaches anyone, so that whoever installs it receives the following fixes without looking for the landing page. It is built alongside MVP 1 and MVP 2 because it needs their signed installers on GitHub Releases to operate; until then the checker finds no version and shows nothing.
 
 **Exit:** a new stable release triggers the notice, `Adiar` respects 24 hours, and no installer without a signature or with a mismatched checksum is executed.
 
 ## MVP: first usable release
 
-The MVP ends when a person can sign up, install Talentum, import an OFX file, review their entries and see the free balance locally. It does not include PDF, AI, ARCA, cloud backup, gamification or community. The operational route-by-route plan is in [PRODUCT.md](PRODUCT.md).
+The MVP ends when a person can sign up, install Talentum, import a CSV or OFX file, review their entries and see the free balance locally. It does not include PDF, AI, ARCA, cloud backup, gamification or community. The operational route-by-route plan is in [PRODUCT.md](PRODUCT.md).
 
 ### MVP 0 — Technical foundation and security
 
@@ -109,7 +106,7 @@ Partial state (**Current**): the Next.js application, local REST API, Prisma/SQL
 
 Partial state (**Current**): the landing page, the BFF, Google OAuth/OIDC with PKCE, opaque sessions, refresh rotation with reuse detection, logout, `/api/me`, release listing, download grants recorded in D1, the protected `/downloads` page, Worker action codes, IP-keyed rate limits on code issuance and login, CSP and HSTS on the landing page, and the D1 cloud schema exist. **Planned:** Turnstile, CORS handling (`ALLOWED_ORIGIN` is declared but unused), per-user rate limits, WAF rules, an allowlist-verified isolated Vercel deploy context, signed installers in GitHub Releases, terms, privacy, account deletion and retention.
 
-**Open:** the public domain conflicts between sources. The landing page code uses `talentum-tech.vercel.app` (its comment says `talentum.vercel.app` belongs to another project), while the Worker configuration (`ALLOWED_ORIGIN`, `PUBLIC_WEB_URL`) and earlier documents use `talentum.vercel.app`. The canonical domain must be decided and both sides aligned.
+**Open:** the production domain is undecided; see [ARCHITECTURE.md §3.4](ARCHITECTURE.md#34-domain).
 
 ### MVP 2 — Secure Electron and first access
 
@@ -144,20 +141,20 @@ Partial state (**Current**): context isolation, sandbox, `nodeIntegration: false
 
 Partial state (**Current**): the `LocalProfile`, `Institution`, `Account`, `Category`, `BalanceSnapshot` and `ScheduledObligation` tables exist with relations by IDs and money in `BigInt` cents, and the dashboard reads them. **Planned:** CRUD routes and validation in the local API, the screens that create and edit these records, encrypted Pix keys, own-transfer identification and merchant rules.
 
-### MVP 4 — OFX import
+### MVP 4 — CSV and OFX import
 
-**Goal:** eliminate manual typing for the most structured format.
+**Goal:** eliminate manual typing for the two formats banks export most (the MVP formats are defined in [PRODUCT.md](PRODUCT.md), Feature 4).
 
-- Drag and drop or selection of OFX files.
+- Drag and drop or selection of CSV and OFX files, with column mapping for CSV.
 - Type, size and content validation; an isolated, bounded parser.
 - Batch, file, fingerprint, diagnostics and progress by IDs.
 - Transaction normalization and duplicate prevention.
 - Discarding or retaining the original according to an explicit policy.
 - Exclusively synthetic fixtures for different institutions.
 
-**Exit:** a valid OFX file produces local transactions traceable to their source batch.
+**Exit:** a valid CSV or OFX file produces local transactions traceable to their source batch.
 
-Partial state: the `ImportBatch` and `Transaction` tables and the `ofx-data-extractor` dependency exist (**Current**); no parser or import route exists (**Planned**).
+Partial state: the `ImportBatch` and `Transaction` tables and the `ofx-data-extractor` dependency exist (**Current**); no CSV or OFX parser and no import route exists (**Planned**).
 
 ### MVP 5 — Categorization and reconciliation
 
@@ -184,11 +181,11 @@ Status: **Planned.** The `/conciliacao` screens are navigable layouts only.
 - Spending by category, daily average and month-to-date consumption.
 - Accessible charts and empty/error/offline states.
 - Essential local alerts for due dates and stale data.
-- Unit tests for the formulas and end-to-end tests of the OFX flow.
+- Unit tests for the formulas and end-to-end tests of the import flow.
 
 **Exit:** the first MVP release for Windows and Linux, with installation, usage, security and limitations documentation.
 
-Partial state (**Current**): the dashboard reads SQLite and computes consolidated balance, committed obligations up to period end, risk-free balance, income, expenses, daily average, period-over-period change and category breakdown in a pure module with unit tests; empty and error state illustrations exist for both themes. **Planned:** local due-date and stale-data alerts, end-to-end tests of the OFX flow (blocked on MVP 4) and the release documentation.
+Partial state (**Current**): the dashboard reads SQLite and computes consolidated balance, committed obligations up to period end, risk-free balance, income, expenses, daily average, period-over-period change and category breakdown in a pure module with unit tests; empty and error state illustrations exist for both themes. **Planned:** local due-date and stale-data alerts, end-to-end tests of the import flow (blocked on MVP 4) and the release documentation.
 
 ## Later stages: one macro-feature per stage
 
@@ -277,7 +274,7 @@ flowchart LR
     F[MVP 0 Foundation] --> W[MVP 1 Web]
     F --> E[MVP 2 Electron]
     E --> D[MVP 3 Data]
-    D --> O[MVP 4 OFX]
+    D --> O[MVP 4 CSV and OFX]
     O --> C[MVP 5 Reconciliation]
     C --> M[MVP 6 Dashboard]
     M --> P[PDF and cards]

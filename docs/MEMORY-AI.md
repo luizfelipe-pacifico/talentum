@@ -2,7 +2,7 @@
 
 This document teaches AI agents (Claude Code, Codex and others) how the maintainer thinks, decides and expects work to be done on Talentum. Read it at the start of every session together with `CLAUDE.md`. It complements the rules there: `CLAUDE.md` says **what is mandatory**; this file explains **why**, shows the maintainer's way of thinking, and records lessons learned so each session works better than the last.
 
-It contains working style and preferences only. Never add personal data, credentials, account identifiers, financial values or anything covered by the prohibited list in `CLAUDE.md`.
+This file is versioned and public. It contains working style, preferences, decisions and lessons only, written generically. What must never be written here is listed in `CLAUDE.md` under "What must never be written to `docs/MEMORY-AI.md`": personal and financial data, credentials, account identifiers, details of the maintainer's machine and setup, and unnecessary operational metadata.
 
 ## Contents
 
@@ -24,7 +24,7 @@ It contains working style and preferences only. Never add personal data, credent
 
 - Read it before planning. Apply it when a request is short or ambiguous: the maintainer often writes briefly and expects the agent to fill the gaps the way described here.
 - Update it in the same turn whenever the maintainer states a preference, corrects you, approves an approach without hesitation, or reveals a way of thinking that is not yet recorded. Add a dated entry to the [lessons learned log](#lessons-learned-log) and, if the lesson is general, fold it into the relevant section.
-- Standing instructions ("sempre…", "always…") go to `CLAUDE.md` and `AGENTS.md` as mandatory rules; this file records the reasoning behind them.
+- Standing instructions ("sempre…", "always…") go to `CLAUDE.md` as mandatory rules (`AGENTS.md` only points to it); this file records the reasoning behind them.
 - Keep entries specific and checkable. Remove entries that turn out to be wrong instead of leaving contradictions.
 
 ## Communication
@@ -82,8 +82,10 @@ It contains working style and preferences only. Never add personal data, credent
 
 ## Tools and environment
 
-- Development machine: Arch Linux, editor Zed (configuration synced through a private GitHub repository with a systemd timer), previously VS Code with GitHub Settings Sync. Claude Code is used in the terminal with the Claude in Chrome extension; Gemini is used in the browser for image generation.
-- GitHub CLI (`gh`) is authenticated; the project uses pnpm, Node 22+, Docker Compose and Wrangler.
+- Agents work in a terminal on Linux; write shell examples in POSIX `sh`/`bash`, not PowerShell.
+- Claude Code has the Claude in Chrome extension available for research, provider dashboards and image generation with Gemini, under the safety rules in `CLAUDE.md`.
+- The project uses pnpm, Node 22+, Docker Compose, Wrangler and the GitHub CLI.
+- Several agent sessions may work in the same repository at the same time. Before rewriting a file, check `git status` and modification times; when another session is editing the same files, coordinate with it and never overwrite its changes.
 
 ## Decision patterns
 
@@ -104,13 +106,17 @@ Keep this section short and current so a session started after `/clear` can resu
 
 - **2026-11-20: integrating branch `feat/conclusao-mvp` into `main`.** The branch (13 commits: CSV/OFX import, onboarding, accounts, reconciliation, timeline and backup, Electron packaging, CI gate) diverged from `main` before the documentation consolidation. The merge is being prepared in a separate worktree on branch `integrate/conclusao-mvp`. Decisions taken: the Worker refresh-token claim keeps `main`'s version (inserts the successor before referencing it); `electron/main.cjs` combines `main`'s external-link allowlist and trusted-sender checks with the branch's packaged backend (random loopback port, bootstrap secret, `migrate deploy`); the branch's duplicate `setWindowOpenHandler` was dropped; `PAGE_META` lives in `src/lib/navigation.ts`; the landing-page grain stays removed; `electron-winstaller` build scripts are disabled (NSIS does not need them). Known bug to fix test-first after the merge: the `.chart` class is defined twice in `globals.css`, so the new dashboard charts inherit the old 8-column bar grid. The branch's Portuguese doc changes and ADRs 0002–0004 are being ported into the English docs.
 - **Next: Cloudflare Turnstile and free WAF rules**, then the offensive security review of the merged code before pushing.
-- **Open from the doc audit:** domain conflict (`talentum-tech.vercel.app` vs `talentum.vercel.app` in `wrangler.jsonc`), Worker logout with an expired access token leaves the refresh family valid, download grants are never validated or consumed, `GET /api/auth/refresh` has no origin check, no CORS, rate limits only on `codes` and `login`.
+- **Open from the doc audit:** see the Open items of `ARCHITECTURE.md` (domain) and `SECURITY.md` (CSRF on refresh, logout with an expired access token, unenforced download grants, CORS, rate-limit coverage).
+- **2026-11-20: documentation coherence pass.** After an audit found duplication and contradictions left by the consolidation, the maintainer said "pode aplicar tudo, decide o que for mais sensato". Applied: one owner per fact (`docs/README.md`), status labels defined once (adds Partial, Rule, Historical), `AGENTS.md` reduced to a pointer, research and QA logs moved to appendices, American spelling, the pre-commit gate and incident steps moved from `CLAUDE.md` to `SECURITY.md` (`CLAUDE.md` keeps the obligation and the link), decisions listed in the lessons log below. Not committed yet: waits for the maintainer's request.
 
 ## Lessons learned log
 
 Add newest entries at the top. Format: date, what happened, the lesson.
 
-- **2026-11-20** The maintainer said "faça commit e push de tudo para a main" twice during long tasks. Lesson: commit and push to `main` directly when asked, in coherent commits, always through the hooks and the security gate; leave out only work that is clearly someone else's unfinished change and say so.
+- **2026-11-20** The maintainer asked for an explicit rule about what must not be exposed in this file. Lesson: this file is public; the list now lives in `CLAUDE.md`, and details of the maintainer's machine and personal setup were removed from it.
+- **2026-11-20** The maintainer asked whether the docs were "a Frankenstein" and then delegated every fix ("decide o que for mais sensato"). Decisions taken, so later sessions do not reopen them: (1) MVP import formats are CSV and OFX; PDF is Stage 7. (2) Commits go on a dedicated branch by default, documentation-only changes may go to `main`, and an explicit request to commit to `main` is followed (hooks and gate still apply). (3) Turnstile and WAF: implement what lives in the repository; settings in a provider dashboard are prepared and applied only after explicit authorization. (4) Infrastructure liveness probes (`/api/health/live`, Worker `/health`) are a documented exception to the action-code rule. (5) `AGENTS.md` is a pointer to `CLAUDE.md`, so the two cannot diverge. (6) The self-review score is anchored to named checklists, and every deduction names a failed item. (7) Each fact has one owner document (`docs/README.md`). Lesson: when delegated, choose the option that removes the contradiction at its source, and record each decision once.
+
+- **2026-11-20** The maintainer said "faça commit e push de tudo para a main" twice during long tasks. Lesson: commit and push to `main` directly when asked (the default otherwise is the branch rule in `BEST_PRACTICES.md`), in coherent commits, always through the hooks and the security gate; leave out only work that is clearly someone else's unfinished change and say so.
 - **2026-11-20** The maintainer gave an exclusive Chrome browser for Claude to use freely (Claude in Chrome). Lesson: use it for research, dashboards (Cloudflare, GitHub, Vercel) and image generation (Gemini), following the safety rules in `CLAUDE.md`.
 - **2026-11-20** Security instructions arrived: test security and idempotency, never trust the client, act as an ethical hacker before every commit and push, enable Turnstile and free firewall rules, rotate any exposed credential immediately, research security practice. Lesson: security review is part of every delivery, not a separate project.
 - **2026-11-20** The maintainer asked to document everything said, "even if it looks silly", so a session after `/clear` understands all context. Lesson: write instructions and context to this file as they arrive, and keep [Current work](#current-work) updated during long tasks.
@@ -119,4 +125,4 @@ Add newest entries at the top. Format: date, what happened, the lesson.
 - **2026-11-20** Docs consolidation: 27 Markdown files were merged into 8 English documents. Code comments and one regression test referenced the old file names, and a first search missed them because `grep --include='*.{a,b}'` does not expand braces. Lesson: after renaming documents, search the whole repository without include filters, and run the full test suite.
 - **2026-11-20** The maintainer asked "what is obsolete?" and then, in the next message, asked to merge, translate and rename everything. Lesson: an audit is usually the first step of a rewrite; collect findings in a form that writers can reuse directly.
 - **2026-11-20** Several "always" instructions arrived in a row (design principles, responsiveness, skills, copy, AI slop, self-review score, illustrations, familiar patterns). Lesson: codify each one in `CLAUDE.md` and `AGENTS.md` immediately, and keep the reasoning here.
-- **2026-11-20** Zed setup: VS Code extensions synced through GitHub were mapped to Zed equivalents with `auto_install_extensions`, and a GitHub-backed sync was built because Zed has no native settings sync. Lesson: when a tool lacks a feature the maintainer is used to, rebuild the familiar workflow instead of only explaining the gap.
+- **2026-11-20** An editor migration lacked a feature the maintainer relied on. Lesson: when a tool lacks a feature the maintainer is used to, rebuild the familiar workflow instead of only explaining the gap.

@@ -1,6 +1,6 @@
 # Talentum Design System
 
-This document is the source of truth for Talentum's visual identity and interface design: brand principles and voice, the design principles every change is validated against, marks and assets, color, typography, layout, responsiveness and the twelve viewport classes, geometry, iconography, motion, components, state illustrations, accessibility, UX writing, and the visual QA process with its dated log. It covers the local application in `src/` (Next.js UI rendered in the browser and in Electron) and the public landing page in `apps/web/`. Every statement of state is marked **Current**, **Planned**, or **Open**; values marked Current were verified against the stylesheets and scripts in the repository.
+This document is the source of truth for Talentum's visual identity and interface design: brand principles and voice, the design principles every change is validated against, marks and assets, color, typography, layout, responsiveness and the twelve viewport classes, geometry, iconography, motion, components, state illustrations, accessibility, UX writing, and the visual QA process with its dated log. It covers the local application in `src/` (Next.js UI rendered in the browser and in Electron) and the public landing page in `apps/web/`. Statements carry the status labels defined in [README.md](README.md#status-labels); values marked Current were verified against the stylesheets and scripts in the repository.
 
 ## Table of contents
 
@@ -19,15 +19,15 @@ This document is the source of truth for Talentum's visual identity and interfac
 - [Accessibility](#accessibility)
 - [UX writing and copy](#ux-writing-and-copy)
 - [Visual QA process](#visual-qa-process)
-- [Visual QA log](#visual-qa-log)
 - [Design review checklist](#design-review-checklist)
 - [Governance](#governance)
 - [Open items](#open-items)
 - [References](#references)
+- [Appendix: Visual QA log](#appendix-visual-qa-log)
 
 ## Brand principles and voice
 
-Status: **Current** (normative guidance).
+Status: **Rule**.
 
 Talentum is a local-first personal finance system. It must communicate trust, clarity, stability and depth. Its visual language combines the rigor required by financial information with a restrained classical aesthetic. Every design choice should improve comprehension, reinforce hierarchy and reduce cognitive fatigue.
 
@@ -62,7 +62,7 @@ The full writing rules, glossary and copy checklists are in [UX writing and copy
 
 ## Design principles
 
-Status: **Current** (normative). CLAUDE.md requires every interface change to be validated against all of these principles before it is called done, and any principle a change does not meet to be reported.
+Status: **Rule**. CLAUDE.md requires every interface change to be validated against all of these principles before it is called done, and any principle a change does not meet to be reported.
 
 Each principle has an ID, a one-line rule, how it applies to Talentum, and a check that a reviewer can perform. The sources are listed under [References](#references); the principles distill them, they do not replace them. Where a rule already exists elsewhere in this document, the principle points to it instead of restating it.
 
@@ -488,7 +488,7 @@ The local app self-hosts the fonts through `@fontsource` packages imported in `s
 
 ### Grid foundation
 
-Status: **Current** (guidance).
+Status: **Rule** (guidance).
 
 Use a 12-column desktop grid, an 8-column tablet grid and a 4-column mobile grid. Components align to shared column and baseline boundaries rather than isolated arbitrary positions.
 
@@ -515,7 +515,7 @@ Status: **Current**. Below 1000 px the header navigation collapses into the `Se�
 
 ### Spacing scale
 
-Status: **Current** (guidance). Base unit `4px`:
+Status: **Rule** (guidance). Base unit `4px`:
 
 ```text
 4, 8, 12, 16, 24, 32, 48, 64, 96
@@ -537,7 +537,7 @@ Preserve symmetry at the page level, but allow controlled asymmetry when it clar
 
 ## Responsiveness and viewport validation
 
-Status: **Current** (normative process). CLAUDE.md makes this section mandatory for every interface change.
+Status: **Rule** (process). CLAUDE.md makes this section mandatory for every interface change.
 
 Responsiveness is adapting the experience to the context, not fitting the same layout into a smaller box. For each layout and each viewport class, choose the pattern that best serves the task there: filters that sit side by side on a desktop become a `Filtrar` button that opens a sheet on a phone; a table becomes a list; hover becomes an explicit control. Shrinking, wrapping and hiding are tools, not the goal.
 
@@ -577,7 +577,7 @@ Status: **Open**. Recorded here and in [Open items](#open-items); the CSS is not
 
 ### TV and the 10-foot interface
 
-Status: **Current** as validation rules; **Open** as implementation (see the gaps above). Talentum has no TV build; the TV classes cover a browser or casting on a television.
+Status: **Rule** for validation; **Open** as implementation (see the gaps above). Talentum has no TV build; the TV classes cover a browser or casting on a television.
 
 - **Distance.** Android TV assumes about 3 m (10 ft) between viewer and screen; Apple says people sit "often 8 feet or more" away. Text, targets and focus must read from there.
 - **Minimum type size.** Apple's tvOS minimum is 23 pt and default 29 pt on a 1920 × 1080 pt canvas. Express it as a share of the viewport height so it holds at any density: body text at least about 2.7% of the viewport height and no text below about 2.1% (29 px and 23 px at TV L; 15 px and 12 px at TV S).
@@ -825,7 +825,7 @@ The exception does not extend to the local app or Electron renderer, which use n
 
 ## Components and layout patterns
 
-Status: **Current** (guidance).
+Status: **Rule** (guidance).
 
 ### Navigation
 
@@ -894,7 +894,7 @@ Status: **Current**. This is the map of every place in the local app and the lan
 - **Origin:** flat illustrations generated with Gemini and supplied by the maintainer as 1024 × 1024 JPEGs. The JPEGs stay outside Git in `design/estados-fonte/` (ignored), because they are not needed to build or run.
 - **Vector masters:** `design/estados-vetor/<key>.svg` (20 files), vectorized with a median filter against JPEG noise, separation into flat color layers and Bézier tracing (potrace), stacked from lightest to darkest color so no gaps open. They are the source of truth. New illustrations enter as masters in `design/estados-vetor/` with the paper in `#F4F1EA`, and the variants are always produced by the script.
 - **Variants:** `pnpm estados:gerar` (`scripts/gerar-estados.mjs`) generates `public/estados/claro/` and `public/estados/escuro/` (20 files each) and, for the landing page keys, `apps/web/public/estados/` (`erro-tela`, `nao-encontrada`, `sem-versoes`). The plate is removed and the paper areas take the exact color of the surface where the illustration appears (`#FFFDF8` light, `#2A2622` dark, `#F4F1EA` on the LP), so it looks integrated. In dark, neutrals invert to the warm tone of light text and browns rise in luminance; light neutrals become muted cream instead of disappearing into the background.
-- **Behavior:** `StateArt` (`src/components/state-art.tsx`) renders both variants and CSS shows only the one for the active theme (`.state-art-escuro` hidden by default, `.state-art-claro` hidden under `html.dark`), with no JavaScript needed and no visible swap on load. Sizes: `sm` 112 px, `lg` 200 px, and 128 px for default and `lg` at 600 px and below. The image is decorative (`alt=""`), cannot be dragged (`draggable={false}`, `dragstart` cancelled, `-webkit-user-drag: none`) or selected (`user-select: none`), and lets clicks pass through (`pointer-events: none`). The landing page uses its own light-only component, `apps/web/src/components/lp/state-art.tsx`, reading `/estados/<key>.svg`.
+- **Behavior:** `StateArt` (`src/components/state-art.tsx`) renders both variants and CSS shows only the one for the active theme (`.state-art-escuro` hidden by default, `.state-art-claro` hidden under `html.dark`), with no JavaScript needed and no visible swap on load. Sizes: `sm` 112 px, `lg` 200 px, and 128 px for default and `lg` at 600 px and below. The image is decorative (`alt=""`), cannot be dragged (`draggable={false}`, `dragstart` canceled, `-webkit-user-drag: none`) or selected (`user-select: none`), and lets clicks pass through (`pointer-events: none`). The landing page uses its own light-only component, `apps/web/src/components/lp/state-art.tsx`, reading `/estados/<key>.svg`.
 - **Validation:** always in both themes (CLAUDE.md rule). Tests in `tests/regression/state-art.test.mjs`.
 - **Integrity (27 October 2026):** all illustrations were reviewed in both themes against the originals. The background is removed only where the color is practically that of the paper, so light objects without an outline are not swallowed (the card in `sem-cartoes` and the sheet in `importar-extrato` used to come out clipped). The sheet in `importar-extrato` was redrawn in the master, because its cream was indistinguishable from the original's paper. The ground in `nao-encontrada`, cut straight by the edge of the generated image, closes as a half-moon: elliptical clip, sand fill and outline. Tests in `tests/regression/state-art-integrity.test.mjs`.
 - **Sourcing:** see [Illustration sourcing](#illustration-sourcing) for how new illustrations are made.
@@ -945,11 +945,11 @@ To make a new flat illustration:
 6. **Register.** If it is a state illustration, add its key to the `StateArtName` union and a row to the [Map](#map) table, and update the expected count in `tests/regression/state-art.test.mjs`.
 7. **Validate both themes.** Render it in the light theme and in the dark theme on its real surface and check that no shape disappears into the background (Integrity, 27 October 2026). Run `node --test tests/regression/state-art.test.mjs tests/regression/state-art-integrity.test.mjs`; the first test enforces `aria-hidden="true"`, the absence of `<image>` and base64, and the 200 KB limit.
 
-The licensing and terms of use of images generated with Gemini must be confirmed before a generated illustration ships (see Open items).
+The terms of use of images generated with Gemini are still to be confirmed (see Open items, licensing of generated illustrations).
 
 ## Accessibility
 
-Status: **Current** (requirements).
+Status: **Rule**.
 
 - Meet WCAG 2.2 AA contrast requirements for text and interactive elements. Validate every final foreground and background combination; on the LP use `--lp-amber-text` for small Amber text and `--lp-amber-strong` for Amber buttons with light text.
 - Maintain visible keyboard focus using a treatment distinct from the component border (the global `:focus-visible` Amber outline).
@@ -963,7 +963,7 @@ Status: **Current** (requirements).
 
 ## UX writing and copy
 
-Status: **Current** (normative). Interface copy is Brazilian Portuguese; this section is in English and its examples in pt-BR. It extends [Voice and terminology](#voice-and-terminology).
+Status: **Rule**. Interface copy is Brazilian Portuguese; this section is in English and its examples in pt-BR. It extends [Voice and terminology](#voice-and-terminology).
 
 The test for every word on screen: the reader has no doubt about what it means or what will happen next. When specific and short conflict, choose specific.
 
@@ -1080,7 +1080,129 @@ Every layout change is validated in the light theme **and** in the dark theme, n
 - **Evidence:** working screenshots stay in ignored directories (for example `temp/ui-audit/` or `.taste-skill/`) and are never committed. Screenshots must not contain real personal or financial data.
 - **Regression tests:** layout rules that were fixed get a test in `tests/regression/` (for example `responsive.test.mjs`, `state-art.test.mjs`, `state-art-integrity.test.mjs`, `brand-vectors.test.mjs`, `ui-shell.test.mjs`, `error-pages.test.mjs`).
 
-## Visual QA log
+## Design review checklist
+
+- [ ] The screen has one clear primary task.
+- [ ] The composition follows the 60–30–10 color principle.
+- [ ] Amber is restricted to meaningful emphasis and action.
+- [ ] Playfair Display is limited to display hierarchy.
+- [ ] Montserrat remains readable in operational content.
+- [ ] Layout elements align to the shared grid and spacing scale.
+- [ ] Border radii remain between `4px` and `8px` in normal components.
+- [ ] Shadows and decoration are restrained and matte.
+- [ ] Loading, empty, error, disabled and success states are defined.
+- [ ] Empty states assert absence only after backend confirmation.
+- [ ] Icons come from Bootstrap Icons (on the LP, `pnpm lp:icones` was run).
+- [ ] Keyboard, contrast, zoom and reduced-motion behavior were verified.
+- [ ] The change was rendered and checked in the light theme and in the dark theme.
+- [ ] The interface prioritizes financial information over decoration.
+- [ ] The [principles validation checklist](#principles-validation-checklist) passes, with failures reported.
+- [ ] All twelve viewport classes were checked in both themes and the results table is in the report.
+- [ ] Each pattern is the one the pattern catalog assigns to its context, or the deviation is justified.
+- [ ] The [copy review checklist](#copy-review-checklist) and the [AI-slop checklist](#ai-slop-checklist-copy-and-layout) pass.
+
+## Governance
+
+Status: **Current**.
+
+- Treat the tokens and rules in this document as the default source of truth.
+- Record exceptions here with a reason and validate them during design review (current exceptions: `--font-mono` in the layout guide, LP parallax).
+- Add new colors, typography styles, spacing values and components centrally, as tokens in `src/app/globals.css` (and the mirrored `--lp-*` token in `apps/web/src/styles/lp.css` when the LP needs it), instead of introducing one-off values.
+- Update this document whenever the visual system changes, and keep implementation tokens synchronized with the documented values.
+- Regenerate derived assets with their scripts (`pnpm marca:gerar`, `pnpm estados:gerar`, `pnpm lp:icones`, `pnpm lp:telas`, `pnpm lp:lut`) instead of editing outputs by hand.
+
+## Open items
+
+- **Open — LP parallax exception.** The motion rule forbids parallax, but the landing page uses scroll parallax and pointer drift/tilt (`apps/web/src/components/lp/motion.tsx`, `lp.css`), disabled when columns stack and under reduced motion. It is recorded here as a Current LP-only exception; the maintainer should confirm it (or remove the parallax) and, if kept, record the rationale in an ADR.
+- **Open — semantic status token ratification.** `--ok`, `--warn`, `--err`, `--info` and their soft backgrounds exist in both themes, but the `globals.css` header still calls them proposals pending contrast validation. Validate all combinations in both themes and then mark them normative.
+- **Open — categorical chart palette.** The eight-slot categorical palette is not ratified (dashboard decision in [PRODUCT.md](PRODUCT.md)).
+- **Open — LP hover token divergence.** `--lp-amber-hover` is `#8a5629` while the app's `--amber-hover` is `#9f6533`, although `lp.css` says the tokens mirror each other. Decide whether the divergence is intended (AA on the LP) and align or document it.
+- **Open — LP dark theme.** The landing page is light-only, while the interface-validation rule requires both themes. Decide whether the LP gets a dark theme or is formally exempt.
+- **Open — orphan stylesheet.** `src/app/styles.css` is tracked but not imported anywhere; it defines unrelated tokens (`--background`, `--foreground`, `--accent`, `--muted`) and styles (system-ui font, 1.25rem radius, uppercase eyebrow) that contradict this system. Confirm it is dead and remove it, or document its purpose.
+- **Open — LP `Início` screenshot caption.** The LP screenshot and caption still describe indicators showing zero, which no longer matches the dashboard's empty state; replacement awaits a maintainer decision.
+- **Planned — `nova-versao` illustration.** Generated in both themes for the planned update notice but not used by any component yet.
+- **Open — TV adaptation.** No CSS responds to TV viewing distance or remote input: no type scaling relative to viewport height, no 5% safe-area inset, no directional focus model, no way to hide amounts on a shared screen. See Responsiveness and viewport validation.
+- **Open — hover capability.** Only `pointer: coarse` is handled; add a `hover: none` rule (or equivalent) so no affordance depends on hover on touch and TV.
+- **Open — short viewports.** No height-based rule exists for 700 px desktops, 1366 × 768 laptops, TV S (540 px) or phones in landscape.
+- **Open — safe-area insets.** Neither stylesheet uses `env(safe-area-inset-*)`.
+- **Open — 600 px boundary.** A 600 px tablet takes the phone rules because `max-width: 600px` includes 600; confirm or change.
+- **Open — Mobile S measurement.** No QA record exists at 320 px; measure it.
+- **Open — mobile navigation pattern.** Seven destinations exceed a bottom tab bar; decide whether a bar with the most used areas plus the drawer would serve phones better than the drawer alone.
+- **Open — mobile filter and transaction-list patterns.** No sheet-based filter and no transaction list exist yet; build them with the catalog patterns.
+- **Open — copy audit.** Visible strings in `src/components/demo-pages.tsx` and `src/components/overlays.tsx` use jargon forbidden by the UX writing rules (`backend`, `ID`, `SQLite`, `persistidas`, `onboarding`) and `banco local`, which reads as a local bank; one empty state says `transações` instead of `lançamentos`; `Lote` and `Desfazer lote` may be clearer as `importação`. Rewrite them in a dedicated change with tests updated.
+- **Open — calculation explanation.** The layout guide defines `Entender o cálculo` for derived figures, but the dashboard does not render it next to `Saldo Livre de Risco`.
+- **Open — Dashboard and Invest labels.** Both navigation labels are English or truncated words in a pt-BR interface; decide whether to keep them as product names or translate them.
+- **Open — licensing of generated illustrations.** The state illustrations already in the app and on the landing page were generated with Gemini and vectorized, so they already ship. Confirm that Gemini's terms of use allow them in an open-source project and record the result here before the first public installer release; if the terms do not allow it, replace them. New illustrations may follow the sourcing process meanwhile, and each one adds to what must be replaced if the answer is no.
+
+## References
+
+Pages read or found while writing the Design principles, Responsiveness and viewport validation, and UX writing and copy sections (November 2026). Each link is cited for the claims attributed to it above.
+
+Usability and perception:
+
+- Nielsen Norman Group — 10 usability heuristics for user interface design: https://www.nngroup.com/articles/ten-usability-heuristics/
+- Nielsen Norman Group — Proximity principle in visual design: https://www.nngroup.com/articles/gestalt-proximity/
+- Nielsen Norman Group — Progressive disclosure: https://www.nngroup.com/articles/progressive-disclosure/
+- Laws of UX (Fitts, Hick, Jakob, Miller, chunking, Doherty, Tesler, aesthetic-usability, von Restorff, serial position, proximity, similarity, common region, uniform connectedness, Prägnanz): https://lawsofux.com/
+- Vitsœ — Dieter Rams, ten principles for good design: https://www.vitsoe.com/us/about/good-design
+
+Accessibility (W3C, WCAG 2.2):
+
+- What's new in WCAG 2.2: https://www.w3.org/WAI/standards-guidelines/wcag/new-in-22/
+- Understanding 1.4.3 Contrast (Minimum): https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html
+- Understanding 1.4.11 Non-text Contrast: https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast
+- Understanding 1.4.10 Reflow: https://www.w3.org/WAI/WCAG22/Understanding/reflow
+- Understanding 1.4.12 Text Spacing: https://www.w3.org/WAI/WCAG22/Understanding/text-spacing
+- Understanding 2.4.11 Focus Not Obscured (Minimum): https://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum.html
+- Understanding 2.5.8 Target Size (Minimum): https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum
+
+Viewports, platforms and TV:
+
+- StatCounter — mobile screen resolution stats: https://gs.statcounter.com/screen-resolution-stats/mobile/worldwide
+- StatCounter — desktop screen resolution stats: https://gs.statcounter.com/screen-resolution-stats/desktop/worldwide/
+- Android Developers — Use window size classes: https://developer.android.com/develop/adaptive-apps/guides/use-window-size-classes
+- Android Developers — Build adaptive navigation: https://developer.android.com/develop/ui/compose/layouts/adaptive/build-adaptive-navigation
+- SAP Fiori for Android — Navigation bar usage (restates Material 3: two to five destinations): https://www.sap.com/design-system/fiori-design-android/v26-4/components/m3-standard-components/navigation-bar/usage
+- Android Developers — Design for TV: https://developer.android.com/design/ui/tv/guides/foundations/design-for-tv
+- Android Developers — TV layouts: https://developer.android.com/design/ui/tv/guides/styles/layouts
+- Android Developers — TV typography: https://developer.android.com/design/ui/tv/guides/styles/typography
+- Apple Human Interface Guidelines — Layout: https://developer.apple.com/design/human-interface-guidelines/layout
+- Apple Human Interface Guidelines — Typography: https://developer.apple.com/design/human-interface-guidelines/typography
+- Apple Human Interface Guidelines — Designing for tvOS: https://developer.apple.com/design/human-interface-guidelines/designing-for-tvos
+- Apple Human Interface Guidelines — Focus and selection: https://developer.apple.com/design/human-interface-guidelines/focus-and-selection
+- Apple Human Interface Guidelines — Tab bars: https://developer.apple.com/design/human-interface-guidelines/tab-bars
+- Apple Human Interface Guidelines — Sheets: https://developer.apple.com/design/human-interface-guidelines/sheets
+- Apple Human Interface Guidelines — Gestures: https://developer.apple.com/design/human-interface-guidelines/gestures
+
+Responsive patterns:
+
+- Nielsen Norman Group — Mobile faceted search: https://www.nngroup.com/articles/mobile-faceted-search/
+- Nielsen Norman Group — Bottom sheets: https://www.nngroup.com/articles/bottom-sheet/
+- Nielsen Norman Group — Mobile tables: https://www.nngroup.com/articles/mobile-tables/
+- Brad Frost — Responsive navigation patterns: https://bradfrost.com/blog/post/responsive-nav-patterns/
+- Brad Frost — This is responsive: https://bradfrost.com/blog/post/this-is-responsive/
+- Luke Wroblewski — Off-canvas multi-device layouts (summary): https://stuffandnonsense.co.uk/blog/luke_wroblewski_off_canvas_multi_device_layouts
+
+UX writing:
+
+- Nielsen Norman Group — How users read on the web: https://www.nngroup.com/articles/how-users-read-on-the-web/
+- Nielsen Norman Group — UI copy (command labels): https://www.nngroup.com/articles/ui-copy/
+- Nielsen Norman Group — Error-message guidelines: https://www.nngroup.com/articles/error-message-guidelines/
+- Nielsen Norman Group — Empty states in complex applications: https://www.nngroup.com/articles/empty-state-interface-design/
+- Nielsen Norman Group — Confirmation dialogs: https://www.nngroup.com/articles/confirmation-dialog/
+- GOV.UK — Writing guidelines: https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/
+- GOV.UK — Clear language: https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/clear-language/
+- Microsoft Writing Style Guide — Top 10 tips for style and voice: https://learn.microsoft.com/en-us/style-guide/top-10-tips-style-voice
+- Google developer documentation style guide — UI elements and interaction: https://developers.google.com/style/ui-elements
+- Material Design (legacy) — Writing: https://m1.material.io/style/writing.html
+- Mailchimp Content Style Guide — Voice and tone: https://styleguide.mailchimp.com/voice-and-tone/
+- Mailchimp Content Style Guide — Writing for accessibility: https://styleguide.mailchimp.com/writing-for-accessibility/
+- gov.br — Guia de edição de serviços, escrevendo para o seu usuário: https://www.gov.br/pt-br/guia-de-edicao-de-servicos-do-gov.br/escrevendo-para-o-seu-usuario
+- Lei 15.263/2025 (Política Nacional de Linguagem Simples), copy hosted by Previc: https://www.gov.br/previc/pt-br/acesso-a-informacao-1/acoes-e-programas/simplifica-previc-1/Lei%20n%2015.263%2C%20de%2014%20de%20novembro%202025
+
+The StatCounter, W3C and GOV.UK clear-language pages could not be fetched directly in this session (network policy or redirects); their figures and thresholds were taken from search results that quote them and should be rechecked on the pages before they are changed.
+
+## Appendix: Visual QA log
 
 Dated entries, oldest first. Entries are historical records of what was observed at that date; later changes are noted inline.
 
@@ -1171,126 +1293,4 @@ Full measurement (second round): the 22 app routes and the four dialogs and draw
 
 ### State illustrations in both themes, 26 October 2026
 
-Verified in Chrome on `/patrimonio/metas`, a nonexistent route and the notifications drawer, in the light and dark themes. Without the plate and with the paper in the surface color, the illustrations sit on the card without forming a square in either theme. The image does not start a drag (`dragstart` cancelled), does not enter selection and does not intercept clicks. The integrity review of 27 October 2026 is described under State illustrations.
-
-## Design review checklist
-
-- [ ] The screen has one clear primary task.
-- [ ] The composition follows the 60–30–10 color principle.
-- [ ] Amber is restricted to meaningful emphasis and action.
-- [ ] Playfair Display is limited to display hierarchy.
-- [ ] Montserrat remains readable in operational content.
-- [ ] Layout elements align to the shared grid and spacing scale.
-- [ ] Border radii remain between `4px` and `8px` in normal components.
-- [ ] Shadows and decoration are restrained and matte.
-- [ ] Loading, empty, error, disabled and success states are defined.
-- [ ] Empty states assert absence only after backend confirmation.
-- [ ] Icons come from Bootstrap Icons (on the LP, `pnpm lp:icones` was run).
-- [ ] Keyboard, contrast, zoom and reduced-motion behavior were verified.
-- [ ] The change was rendered and checked in the light theme and in the dark theme.
-- [ ] The interface prioritizes financial information over decoration.
-- [ ] The [principles validation checklist](#principles-validation-checklist) passes, with failures reported.
-- [ ] All twelve viewport classes were checked in both themes and the results table is in the report.
-- [ ] Each pattern is the one the pattern catalog assigns to its context, or the deviation is justified.
-- [ ] The [copy review checklist](#copy-review-checklist) and the [AI-slop checklist](#ai-slop-checklist-copy-and-layout) pass.
-
-## Governance
-
-Status: **Current**.
-
-- Treat the tokens and rules in this document as the default source of truth.
-- Record exceptions here with a reason and validate them during design review (current exceptions: `--font-mono` in the layout guide, LP parallax).
-- Add new colors, typography styles, spacing values and components centrally, as tokens in `src/app/globals.css` (and the mirrored `--lp-*` token in `apps/web/src/styles/lp.css` when the LP needs it), instead of introducing one-off values.
-- Update this document whenever the visual system changes, and keep implementation tokens synchronized with the documented values.
-- Regenerate derived assets with their scripts (`pnpm marca:gerar`, `pnpm estados:gerar`, `pnpm lp:icones`, `pnpm lp:telas`, `pnpm lp:lut`) instead of editing outputs by hand.
-
-## Open items
-
-- **Open — LP parallax exception.** The motion rule forbids parallax, but the landing page uses scroll parallax and pointer drift/tilt (`apps/web/src/components/lp/motion.tsx`, `lp.css`), disabled when columns stack and under reduced motion. It is recorded here as a Current LP-only exception; the maintainer should confirm it (or remove the parallax) and, if kept, record the rationale in an ADR.
-- **Open — semantic status token ratification.** `--ok`, `--warn`, `--err`, `--info` and their soft backgrounds exist in both themes, but the `globals.css` header still calls them proposals pending contrast validation. Validate all combinations in both themes and then mark them normative.
-- **Open — categorical chart palette.** The eight-slot categorical palette is not ratified (dashboard decision in [PRODUCT.md](PRODUCT.md)).
-- **Open — LP hover token divergence.** `--lp-amber-hover` is `#8a5629` while the app's `--amber-hover` is `#9f6533`, although `lp.css` says the tokens mirror each other. Decide whether the divergence is intended (AA on the LP) and align or document it.
-- **Open — LP dark theme.** The landing page is light-only, while the interface-validation rule requires both themes. Decide whether the LP gets a dark theme or is formally exempt.
-- **Open — orphan stylesheet.** `src/app/styles.css` is tracked but not imported anywhere; it defines unrelated tokens (`--background`, `--foreground`, `--accent`, `--muted`) and styles (system-ui font, 1.25rem radius, uppercase eyebrow) that contradict this system. Confirm it is dead and remove it, or document its purpose.
-- **Open — LP `Início` screenshot caption.** The LP screenshot and caption still describe indicators showing zero, which no longer matches the dashboard's empty state; replacement awaits a maintainer decision.
-- **Planned — `nova-versao` illustration.** Generated in both themes for the planned update notice but not used by any component yet.
-- **Open — TV adaptation.** No CSS responds to TV viewing distance or remote input: no type scaling relative to viewport height, no 5% safe-area inset, no directional focus model, no way to hide amounts on a shared screen. See Responsiveness and viewport validation.
-- **Open — hover capability.** Only `pointer: coarse` is handled; add a `hover: none` rule (or equivalent) so no affordance depends on hover on touch and TV.
-- **Open — short viewports.** No height-based rule exists for 700 px desktops, 1366 × 768 laptops, TV S (540 px) or phones in landscape.
-- **Open — safe-area insets.** Neither stylesheet uses `env(safe-area-inset-*)`.
-- **Open — 600 px boundary.** A 600 px tablet takes the phone rules because `max-width: 600px` includes 600; confirm or change.
-- **Open — Mobile S measurement.** No QA record exists at 320 px; measure it.
-- **Open — mobile navigation pattern.** Seven destinations exceed a bottom tab bar; decide whether a bar with the most used areas plus the drawer would serve phones better than the drawer alone.
-- **Open — mobile filter and transaction-list patterns.** No sheet-based filter and no transaction list exist yet; build them with the catalog patterns.
-- **Open — copy audit.** Visible strings in `src/components/demo-pages.tsx` and `src/components/overlays.tsx` use jargon forbidden by the UX writing rules (`backend`, `ID`, `SQLite`, `persistidas`, `onboarding`) and `banco local`, which reads as a local bank; one empty state says `transações` instead of `lançamentos`; `Lote` and `Desfazer lote` may be clearer as `importação`. Rewrite them in a dedicated change with tests updated.
-- **Open — calculation explanation.** The layout guide defines `Entender o cálculo` for derived figures, but the dashboard does not render it next to `Saldo Livre de Risco`.
-- **Open — Dashboard and Invest labels.** Both navigation labels are English or truncated words in a pt-BR interface; decide whether to keep them as product names or translate them.
-- **Open — licensing of generated illustrations.** Confirm the terms of use and licensing of images generated with Gemini for an open-source project before shipping any generated illustration, and record the result here.
-
-## References
-
-Pages read or found while writing the Design principles, Responsiveness and viewport validation, and UX writing and copy sections (November 2026). Each link is cited for the claims attributed to it above.
-
-Usability and perception:
-
-- Nielsen Norman Group — 10 usability heuristics for user interface design: https://www.nngroup.com/articles/ten-usability-heuristics/
-- Nielsen Norman Group — Proximity principle in visual design: https://www.nngroup.com/articles/gestalt-proximity/
-- Nielsen Norman Group — Progressive disclosure: https://www.nngroup.com/articles/progressive-disclosure/
-- Laws of UX (Fitts, Hick, Jakob, Miller, chunking, Doherty, Tesler, aesthetic-usability, von Restorff, serial position, proximity, similarity, common region, uniform connectedness, Prägnanz): https://lawsofux.com/
-- Vitsœ — Dieter Rams, ten principles for good design: https://www.vitsoe.com/us/about/good-design
-
-Accessibility (W3C, WCAG 2.2):
-
-- What's new in WCAG 2.2: https://www.w3.org/WAI/standards-guidelines/wcag/new-in-22/
-- Understanding 1.4.3 Contrast (Minimum): https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html
-- Understanding 1.4.11 Non-text Contrast: https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast
-- Understanding 1.4.10 Reflow: https://www.w3.org/WAI/WCAG22/Understanding/reflow
-- Understanding 1.4.12 Text Spacing: https://www.w3.org/WAI/WCAG22/Understanding/text-spacing
-- Understanding 2.4.11 Focus Not Obscured (Minimum): https://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum.html
-- Understanding 2.5.8 Target Size (Minimum): https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum
-
-Viewports, platforms and TV:
-
-- StatCounter — mobile screen resolution stats: https://gs.statcounter.com/screen-resolution-stats/mobile/worldwide
-- StatCounter — desktop screen resolution stats: https://gs.statcounter.com/screen-resolution-stats/desktop/worldwide/
-- Android Developers — Use window size classes: https://developer.android.com/develop/adaptive-apps/guides/use-window-size-classes
-- Android Developers — Build adaptive navigation: https://developer.android.com/develop/ui/compose/layouts/adaptive/build-adaptive-navigation
-- SAP Fiori for Android — Navigation bar usage (restates Material 3: two to five destinations): https://www.sap.com/design-system/fiori-design-android/v26-4/components/m3-standard-components/navigation-bar/usage
-- Android Developers — Design for TV: https://developer.android.com/design/ui/tv/guides/foundations/design-for-tv
-- Android Developers — TV layouts: https://developer.android.com/design/ui/tv/guides/styles/layouts
-- Android Developers — TV typography: https://developer.android.com/design/ui/tv/guides/styles/typography
-- Apple Human Interface Guidelines — Layout: https://developer.apple.com/design/human-interface-guidelines/layout
-- Apple Human Interface Guidelines — Typography: https://developer.apple.com/design/human-interface-guidelines/typography
-- Apple Human Interface Guidelines — Designing for tvOS: https://developer.apple.com/design/human-interface-guidelines/designing-for-tvos
-- Apple Human Interface Guidelines — Focus and selection: https://developer.apple.com/design/human-interface-guidelines/focus-and-selection
-- Apple Human Interface Guidelines — Tab bars: https://developer.apple.com/design/human-interface-guidelines/tab-bars
-- Apple Human Interface Guidelines — Sheets: https://developer.apple.com/design/human-interface-guidelines/sheets
-- Apple Human Interface Guidelines — Gestures: https://developer.apple.com/design/human-interface-guidelines/gestures
-
-Responsive patterns:
-
-- Nielsen Norman Group — Mobile faceted search: https://www.nngroup.com/articles/mobile-faceted-search/
-- Nielsen Norman Group — Bottom sheets: https://www.nngroup.com/articles/bottom-sheet/
-- Nielsen Norman Group — Mobile tables: https://www.nngroup.com/articles/mobile-tables/
-- Brad Frost — Responsive navigation patterns: https://bradfrost.com/blog/post/responsive-nav-patterns/
-- Brad Frost — This is responsive: https://bradfrost.com/blog/post/this-is-responsive/
-- Luke Wroblewski — Off-canvas multi-device layouts (summary): https://stuffandnonsense.co.uk/blog/luke_wroblewski_off_canvas_multi_device_layouts
-
-UX writing:
-
-- Nielsen Norman Group — How users read on the web: https://www.nngroup.com/articles/how-users-read-on-the-web/
-- Nielsen Norman Group — UI copy (command labels): https://www.nngroup.com/articles/ui-copy/
-- Nielsen Norman Group — Error-message guidelines: https://www.nngroup.com/articles/error-message-guidelines/
-- Nielsen Norman Group — Empty states in complex applications: https://www.nngroup.com/articles/empty-state-interface-design/
-- Nielsen Norman Group — Confirmation dialogs: https://www.nngroup.com/articles/confirmation-dialog/
-- GOV.UK — Writing guidelines: https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/
-- GOV.UK — Clear language: https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/clear-language/
-- Microsoft Writing Style Guide — Top 10 tips for style and voice: https://learn.microsoft.com/en-us/style-guide/top-10-tips-style-voice
-- Google developer documentation style guide — UI elements and interaction: https://developers.google.com/style/ui-elements
-- Material Design (legacy) — Writing: https://m1.material.io/style/writing.html
-- Mailchimp Content Style Guide — Voice and tone: https://styleguide.mailchimp.com/voice-and-tone/
-- Mailchimp Content Style Guide — Writing for accessibility: https://styleguide.mailchimp.com/writing-for-accessibility/
-- gov.br — Guia de edição de serviços, escrevendo para o seu usuário: https://www.gov.br/pt-br/guia-de-edicao-de-servicos-do-gov.br/escrevendo-para-o-seu-usuario
-- Lei 15.263/2025 (Política Nacional de Linguagem Simples), copy hosted by Previc: https://www.gov.br/previc/pt-br/acesso-a-informacao-1/acoes-e-programas/simplifica-previc-1/Lei%20n%2015.263%2C%20de%2014%20de%20novembro%202025
-
-The StatCounter, W3C and GOV.UK clear-language pages could not be fetched directly in this session (network policy or redirects); their figures and thresholds were taken from search results that quote them and should be rechecked on the pages before they are changed.
+Verified in Chrome on `/patrimonio/metas`, a nonexistent route and the notifications drawer, in the light and dark themes. Without the plate and with the paper in the surface color, the illustrations sit on the card without forming a square in either theme. The image does not start a drag (`dragstart` canceled), does not enter selection and does not intercept clicks. The integrity review of 27 October 2026 is described under State illustrations.

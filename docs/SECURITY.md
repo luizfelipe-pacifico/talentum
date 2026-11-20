@@ -1,6 +1,6 @@
 # Security
 
-This document is the normative security and privacy reference for Talentum. It covers the threat model, authentication and sessions, authorization and CSRF, action codes, rate limiting, CORS and response headers, Electron hardening, the local API boundary, secrets management, file and content handling, supply chain and release integrity, and the controls that are verified by regression tests. Financial features must not be distributed until their essential controls are implemented and tested. Every statement carries a status: **Current** (implemented and verifiable in the code), **Planned** (decided but not implemented), or **Open** (no decision yet, or a known gap or conflict). The mandatory pre-commit and pre-push security gate lives in `CLAUDE.md` and is not repeated here.
+This document is the normative security and privacy reference for Talentum. It covers the threat model, authentication and sessions, authorization and CSRF, action codes, rate limiting, CORS and response headers, Electron hardening, the local API boundary, secrets management, file and content handling, supply chain and release integrity, the controls that are verified by regression tests, and the offensive security review run before every commit and push. Financial features must not be distributed until their essential controls are implemented and tested. Statements carry the status labels defined in [README.md](README.md#status-labels). This document owns the mandatory [pre-commit and pre-push security gate](#mandatory-pre-commit-and-pre-push-security-gate) and the [incident response](#incident-response); `CLAUDE.md` makes them binding for AI agents and links here.
 
 ## Contents
 
@@ -23,15 +23,15 @@ This document is the normative security and privacy reference for Talentum. It c
 - [Vercel deployment isolation](#vercel-deployment-isolation)
 - [Supply chain, CI and release integrity](#supply-chain-ci-and-release-integrity)
 - [Verified controls and their tests](#verified-controls-and-their-tests)
+- [Mandatory pre-commit and pre-push security gate](#mandatory-pre-commit-and-pre-push-security-gate)
 - [Incident response](#incident-response)
 - [Checklists](#checklists)
 - [Open items](#open-items)
+- [Offensive security review (before every commit and push)](#offensive-security-review-before-every-commit-and-push)
 
 ## Status conventions
 
-- **Current**: present in the code today; where possible, a regression test is named.
-- **Planned**: a decided requirement that the code does not implement yet. It must not be described to users as available.
-- **Open**: no decision exists, or code and intent disagree. Each one is listed in [Open items](#open-items).
+The labels are defined in [README.md](README.md#status-labels). Where possible, a **Current** control names its regression test, and every **Open** item is listed in [Open items](#open-items).
 
 The rules in this document are mandatory regardless of status: a **Planned** control is a requirement that blocks the feature it protects from shipping.
 
@@ -222,7 +222,7 @@ Status of each control in `electron/main.cjs` and `electron/preload.cjs`:
 - **Current**: the local Next.js backend is the only process that reaches SQLite; the renderer calls documented route handlers in `src/app/api`.
 - **Current**: `src/middleware.ts` rejects every `/api` request whose `Host` is not `localhost`, `127.0.0.1` or `[::1]`, blocking DNS rebinding.
 - **Current**: Docker Compose publishes the local app only on `127.0.0.1`.
-- **Current**: every route except `/api/action-codes` (bootstrap) and `/api/health/live` (infrastructure probe without application data) requires a local action code.
+- **Current**: every route except `/api/action-codes` (bootstrap) and `/api/health/live` requires a local action code. The liveness probe is a documented exception (`CLAUDE.md`, Architecture rules): it returns no application data, the interface never calls it, and only the Compose health check and `pnpm dev:all` use it.
 - **Planned**: a per-session ephemeral secret shared only between Electron and the local backend. Today any loopback process can request action codes, so the action code does not authenticate the caller.
 - **Planned**: origin control on the local API (no `Origin` check today).
 - **Planned**: a random port instead of the fixed port 3000.
@@ -258,18 +258,7 @@ Status: **Current**.
 
 ### Variables
 
-| Name | Where | Purpose |
-| --- | --- | --- |
-| `SESSION_SIGNING_SECRET` | Worker secret | derives (via SHA-256) the AES-GCM key that encrypts the PKCE verifier and nonce stored in `auth_transactions`; sessions themselves are opaque hashed tokens, not signed |
-| `TOKEN_HASH_PEPPER` | Worker secret | pepper for the SHA-256 hashes of action codes, access tokens, refresh tokens, `state`, `nonce`, download grants and rate-limit bucket keys |
-| `BFF_SHARED_SECRET` | Worker secret | authenticates the BFF through the `X-Talentum-BFF` header; also the source of the action codes' `context_hash` |
-| `GOOGLE_CLIENT_ID` | Worker secret (may be a plain variable; it is public) | OAuth client identifier and expected ID-token audience |
-| `GOOGLE_CLIENT_SECRET` | Worker secret | OAuth client secret for the code exchange |
-| `APP_ENV`, `ALLOWED_ORIGIN`, `PUBLIC_WEB_URL` | `wrangler.jsonc` `vars`; overridden in `.dev.vars` locally | environment name, intended CORS origin (unused today), public site used to build the OAuth redirect URI |
-| `CLOUDFLARE_API_BASE_URL` | root `.env` and Vercel runtime | Worker URL as seen by the BFF on the host or in production |
-| `DOCKER_CLOUDFLARE_API_BASE_URL` | root `.env` | Worker URL as seen from the `talentum-web` container |
-| `CLOUDFLARE_BFF_SHARED_SECRET` | root `.env` and Vercel runtime | must equal the Worker's `BFF_SHARED_SECRET`; a mismatch makes every Worker route answer `BFF_REQUIRED` |
-| `DATABASE_URL`, `DOCKER_DATABASE_URL` | root `.env` | local SQLite location on the host and inside the container |
+The single list of variables, with kind, purpose and location in every environment, is in [ARCHITECTURE.md §3.7](ARCHITECTURE.md#37-configuration-variables-names-and-locations). The three Worker secrets (`SESSION_SIGNING_SECRET`, `TOKEN_HASH_PEPPER`, `BFF_SHARED_SECRET`) and `GOOGLE_CLIENT_SECRET` are secrets; `CLOUDFLARE_BFF_SHARED_SECRET` is the BFF's copy of `BFF_SHARED_SECRET` and is just as secret.
 
 ### Generating and rotating values
 
@@ -336,7 +325,7 @@ Without a documented recovery strategy, E2EE backup must not be presented as rea
 
 - **Current**: `.gitignore` ignores `.env*` (except `.env.example`), `.dev.vars*` (except the example), SQLite files and journals, dumps, backups, private key and keystore formats, logs, traces, `.wrangler/`, `.vercel/`, build output and caches. `.dockerignore` excludes `.env*`, databases and `temp/` from image contexts.
 - **Current**: examples use unmistakable placeholders only.
-- **Current**: versioned Git hooks in `.githooks/` run `pnpm typecheck` and `pnpm test` before every commit and push (install with `pnpm hooks:install`). They do not scan for secrets; the manual gate in `CLAUDE.md` covers that.
+- **Current**: versioned Git hooks in `.githooks/` run `pnpm typecheck` and `pnpm test` before every commit and push (install with `pnpm hooks:install`). They do not scan for secrets; the manual [security gate](#mandatory-pre-commit-and-pre-push-security-gate) covers that.
 - **Planned**: CI secret scanning on every diff and, periodically, on the full history. There is no CI in the repository.
 - **Planned**: branch protection that blocks merges when the scanner finds a secret.
 - **Planned** (recommended): Dependabot or Renovate, SAST, dependency analysis and CodeQL.
@@ -344,7 +333,7 @@ Without a documented recovery strategy, E2EE backup must not be presented as rea
 
 ### Audit of 2026-09-05
 
-Status: **Current** as a historical record. A local scan for sensitive names, private keys and known token formats was run on the worktree and history. No real textual credential was found. Matches in `icon-badge.svg` and historical PNGs were classified as incidental sequences inside encoded or binary images. A pattern scan reduces risk but replaces neither a dedicated CI scanner nor GitHub secret protection.
+Status: **Historical**. A local scan for sensitive names, private keys and known token formats was run on the worktree and history. No real textual credential was found. Matches in `icon-badge.svg` and historical PNGs were classified as incidental sequences inside encoded or binary images. A pattern scan reduces risk but replaces neither a dedicated CI scanner nor GitHub secret protection.
 
 ### Release integrity
 
@@ -371,9 +360,58 @@ Status: **Current**. Verified in October 2026; each item has a test in `tests/re
 | the interface does not cite internal documentation; the layout guide exists only in development | `ui-shell.test.mjs` |
 | error pages offer recovery without diagnostics | `error-pages.test.mjs` |
 
+## Mandatory pre-commit and pre-push security gate
+
+Rule. This is the owner of the gate; `CLAUDE.md` makes it binding for AI agents and links here. Run it together with the [offensive security review](#offensive-security-review-before-every-commit-and-push).
+
+Never commit or push until every step below has completed successfully. This gate is mandatory even when the user asks to commit immediately, the repository is private, GitHub push protection is enabled, or the change appears documentation-only.
+
+1. Inspect `git status --short --ignored`, the complete staged file list, and `git diff --cached`. Confirm every file is necessary, intentional and safe to publish permanently.
+2. Verify `.gitignore` before staging. Ignore local secrets, credentials, databases, journals, dumps, backups, logs, caches, build outputs, temporary files, editor state and provider-generated local state.
+3. Scan tracked, untracked-to-be-added and staged content for secrets and sensitive data with the strongest locally available scanner plus targeted searches. GitHub scanning is a secondary control and does not recognize every secret or risky file.
+4. Review source, configuration, migrations, fixtures, tests, documentation, generated artifacts, images and screenshots manually. A successful regex scan is not approval.
+5. Check staged changes for personal, financial and operational data: real names, personal email addresses, phone numbers, documents, addresses, account or card data, Pix keys, statements, balances, transactions, IP addresses, device identifiers, internal paths, account metadata and production records.
+6. Confirm examples contain only clearly synthetic values. Do not “anonymize” real customer or financial data by changing only a few fields.
+7. Confirm the commit excludes anything unnecessary for cloning, building, testing, documenting or deploying the project. If a file does not need version control, do not commit it merely because it is not confidential.
+8. Stop before commit or push when a finding is ambiguous. Classify it, remove it, ignore it or obtain explicit user direction; never assume exposure is harmless.
+9. After staging, repeat the staged diff and sensitive-data scan. Only then may an explicitly authorized commit or push proceed.
+10. Report which checks ran, any limitations and the exact classes of files excluded.
+
+Treat the following as prohibited unless a documented, reviewed exception proves the specific value is public and necessary:
+
+- passwords, passphrases, recovery codes, cookies, session identifiers, API keys, access tokens, refresh tokens, OAuth secrets, webhook secrets and signing secrets;
+- private keys, seed phrases, certificates containing private material, keystores and SSH credentials;
+- database connection strings, credentials embedded in URLs, cloud service-account files, CLI credential stores, package-manager auth files and registry tokens;
+- `.env*` and `.dev.vars*` with real values, Terraform state, Wrangler local state, deployment caches and provider configuration containing credentials;
+- production databases, SQLite `-wal`/`-shm` files, dumps, backups, exported tables, raw statements, uploaded documents and real fixtures;
+- logs, crash reports, traces, terminal transcripts, screenshots and generated reports containing identity, infrastructure, request headers, tokens or customer data;
+- personal, financial, authentication, authorization or security telemetry not deliberately approved for public disclosure;
+- internal hostnames, private network topology, privileged endpoints, vulnerability details that enable exploitation, or operational metadata unnecessary to build and operate the open-source project.
+
+Public identifiers such as a Cloudflare D1 `database_id`, Worker name or public service URL are not authentication secrets by themselves. Commit them only when the application configuration requires them; never infer that adjacent values such as account tokens, API tokens or shared secrets are also public.
+
+Store Cloudflare production secrets with encrypted Worker secret bindings and local development secrets only in ignored `.dev.vars` or `.env` files. Commit example files with variable names and unmistakably synthetic placeholders only.
+
+Authoritative references:
+
+- [GitHub — Push protection](https://docs.github.com/en/code-security/concepts/secret-security/push-protection)
+- [GitHub — Secret scanning scope and limitations](https://docs.github.com/en/code-security/reference/secret-security/secret-scanning-scope)
+- [GitHub — Removing sensitive data from a repository](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository)
+- [Cloudflare — Environment variables and secrets](https://developers.cloudflare.com/workers/local-development/environment-variables/)
+- [Cloudflare — Worker secrets](https://developers.cloudflare.com/workers/configuration/secrets/)
+- [OWASP — Secrets Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html)
+
 ## Incident response
 
-A suspected exposure requires: stopping the affected distribution, preserving evidence without copying personal data, revoking credentials, fixing the cause, communicating the impact clearly and documenting preventive measures. For secrets already committed or pushed, follow the incident steps in `CLAUDE.md`: stop publication, revoke or rotate first, assess exposure without repeating the value, remove it and coordinate history cleanup when required, add a preventive rule, check forks, caches, CI logs and artifacts, and document the response without recording the secret.
+A suspected exposure requires: stopping the affected distribution, preserving evidence without copying personal data, revoking credentials, fixing the cause, communicating the impact clearly and documenting preventive measures. If sensitive data has already been committed or pushed:
+
+1. stop further publication and do not merely delete the value in a later commit;
+2. revoke or rotate the credential first;
+3. assess exposure and notify the user without repeating the value;
+4. remove it from current files and, when required, coordinate Git history cleanup;
+5. add a preventive ignore rule or scanner check;
+6. verify forks, caches, CI logs, release artifacts and provider logs as applicable;
+7. document the incident response without recording the secret.
 
 ## Checklists
 
@@ -394,10 +432,10 @@ A suspected exposure requires: stopping the affected distribution, preserving ev
 - [ ] No financial data, statement, account, balance, transaction or Pix key is in D1.
 - [ ] No token is persisted in plain text; only hash, expiry, consumption and revocation.
 - [ ] Cookies are `Secure`, `HttpOnly` and use a `SameSite` value suited to the BFF flow.
-- [ ] Private routes apply authentication, authorization, rate limiting and `Cache-Control: no-store`.
+- [ ] Private routes apply authentication, authorization, rate limiting and `Cache-Control: no-store` (rate limits on private routes are **Planned**).
 - [ ] Ephemeral codes have a hash, a short TTL and single use, and never enter audit or analytics.
 - [ ] CORS accepts only explicitly authorized origins (**Planned**: no CORS today).
-- [ ] Logs and events contain no secrets, public email, raw IP or financial content.
+- [ ] Logs and events contain no secrets, public email, raw IP or financial content (the Worker does not log today; `security_events`/`audit_events` writes are **Planned**).
 - [ ] Remote migrations are reviewed and applied by the backend operator, never by a frontend.
 
 ## Open items
@@ -405,12 +443,316 @@ A suspected exposure requires: stopping the affected distribution, preserving ev
 1. **CSRF on `GET /api/auth/refresh`**: the BFF route rotates tokens and sets cookies on a `GET` with no origin check; it relies only on `SameSite=Lax`, which allows cross-site top-level navigations. Decide whether to make it a `POST` with an origin check or to require a same-site fetch signal.
 2. **Missing `Origin` accepted**: `sameOrigin()` returns `true` when the `Origin` header is absent, so BFF mutations fall back to `SameSite=Lax` alone.
 3. **Logout with an expired access token**: the Worker requires a valid access token for logout, so the refresh family is not revoked server-side when the access token has expired.
-4. **Domain conflict for the OAuth redirect**: `apps/web/src/site.ts` uses `https://talentum-tech.vercel.app`, while `cloudflare/wrangler.jsonc` sets `PUBLIC_WEB_URL` and `ALLOWED_ORIGIN` to `https://talentum.vercel.app`. The Worker builds the production redirect URI from `PUBLIC_WEB_URL`, so the registered redirect and the published site must be reconciled.
-5. **Worker action-code retention**: consumed and expired rows stay in `action_codes`; decide on a purge job or deletion on consume.
-6. **Action-code context binding**: `context_hash` is the same for every caller (hash of the BFF secret); binding to session or origin is not implemented in either backend.
+4. **Domain conflict for the OAuth redirect**: the production redirect URI depends on the undecided domain; see [ARCHITECTURE.md §3.4](ARCHITECTURE.md#34-domain).
+5. **Worker action-code retention**: consumed and expired rows are never purged; the decision is owned by [DATABASE.md](DATABASE.md#open-items) (item 4).
+6. **Action-code context binding**: `context_hash` is the same for every caller (hash of the BFF secret), and local codes are issued to any loopback caller; binding to session or origin is not implemented in either backend, and the local binding depends on the Planned random port and per-run secret.
 7. **`Cache-Control` gaps**: the `403` from the local `/api/system/status` and the BFF route handlers do not set `Cache-Control: no-store`.
 8. **Download grants not enforced**: grants are written to D1 but never validated; the BFF redirects to the artifact URL directly.
 9. **Vercel package allowlist**: no CI or manifest exists, and `Dockerfile.web` copies the whole repository; decide how the Vercel upload is restricted.
 10. **Local app CSP**: decide the CSP for the local app and Electron renderer (the local app sends none today).
 11. **Forwarded IP trust**: the BFF trusts the first `X-Forwarded-For` value; this is correct behind Vercel's proxy but not when the BFF is exposed directly (for example, outside Compose's loopback binding).
 12. **E2EE backup key recovery**: no recovery mechanism has been decided.
+13. **Security-event recording**: refresh-token reuse revokes the family and session but writes nothing to `security_events`, and `audit_events` is never written, so download grants are recorded but not audited.
+14. **Rate-limit coverage**: only `codes` (30/min) and `login` (10/min) per IP exist; callback, refresh, download grants, private routes and the local API have none, and the values are not calibrated with telemetry.
+
+## Offensive security review (before every commit and push)
+
+Rule (mandatory manual step; `CLAUDE.md`, "Security is tested before every commit and push"); none of it runs automatically yet. It complements, and does not replace, the [secret and personal-data gate](#mandatory-pre-commit-and-pre-push-security-gate) and the [Checklists](#checklists) above. That gate asks "is anything sensitive leaving the machine?"; this review asks "how would an attacker abuse what this change adds or touches?". Run it as the attacker would: try to break the change, record what you tried, fix what breaks before sending.
+
+### Scope: map the diff to surfaces
+
+List what changes, then review only the surfaces it touches plus anything they call:
+
+```sh
+git diff --cached --stat                  # before a commit
+git diff --stat origin/main...HEAD        # before a push
+```
+
+| Paths touched | Surface | Existing rules |
+| --- | --- | --- |
+| `src/app/api/**`, `src/server/**`, `src/middleware.ts` | local API | [Local API boundary](#local-api-boundary), [Action codes](#action-codes) |
+| `electron/**` | Electron shell | [Electron hardening](#electron-hardening) |
+| `cloudflare/src/**`, `cloudflare/migrations/**`, `cloudflare/wrangler*.jsonc` | Worker and D1 | [Authentication](#authentication), [Rate limiting and abuse protection](#rate-limiting-and-abuse-protection) |
+| `apps/web/**` | landing page and BFF | [Authorization and CSRF](#authorization-and-csrf), [CORS, response headers and CSP](#cors-response-headers-and-csp) |
+| future CSV/OFX/PDF importers | file parsers | [Files, AI and hostile content](#files-ai-and-hostile-content) |
+| `prisma/**` | local schema | [DATABASE.md](DATABASE.md) |
+| `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `Dockerfile*`, `compose.yaml`, `.githooks/**`, future `.github/**` | supply chain and CI | [Supply chain, CI and release integrity](#supply-chain-ci-and-release-integrity) |
+
+A documentation-only diff still gets the secret gate; it skips steps 1 to 3 below only when no example, command or configuration in it can be executed.
+
+### Step 1: threat-model the diff with STRIDE
+
+Answer the four threat-modeling questions for the change: what are we working on, what can go wrong, what are we doing about it, did we do a good enough job. For "what can go wrong", walk STRIDE over every touched surface and write one line per category, even if the answer is "not applicable because…":
+
+| STRIDE | Property | Questions specific to Talentum |
+| --- | --- | --- |
+| Spoofing | authentication | Can another loopback process or a web page call the local API as if it were the renderer? Can a caller reach the Worker without the BFF secret, or choose its own rate-limit IP? Can a forged `state` or ID token complete a login? |
+| Tampering | integrity | Can input change a field the user must not control (`profileId`, `userId`, amounts, release IDs)? Is every Worker query bound with `prepare(...).bind(...)`? Can an import file alter rows outside its own import? |
+| Repudiation | accountability | Would a login, refresh-reuse, download grant or destructive local action leave a trace? (`security_events` and `audit_events` exist but are not written: **Planned**.) |
+| Information disclosure | confidentiality | Does any response, log, error, cache or the client bundle carry financial values, tokens, emails, raw IPs, stack traces or internal paths? Is `Cache-Control: no-store` set on private responses? |
+| Denial of service | availability | Can one caller exhaust the action-code map, D1 rows, the rate-limit table, memory or CPU (huge body, huge import, regex backtracking)? Is there a size limit and a timeout? |
+| Elevation of privilege | authorization | Can the renderer reach Node or IPC beyond the three window functions? Can a session read or create another user's grant? Can a `GET` change state? |
+
+Record each threat that is not already mitigated as a finding in the report (step 6).
+
+### Step 2: checklist by surface
+
+Commands assume the local app on port 3000 (`pnpm dev`), the landing page/BFF on port 3100 (`pnpm --dir apps/web dev` or `pnpm docker:up`) and the Worker on port 8787 (`pnpm cloudflare:dev`). Run probes only against your own local instances, never against production or third-party hosts. Keep any action code or token in a shell variable; never echo it, paste it into a report or commit it.
+
+#### Local API (`src/`)
+
+- [ ] Every new route consumes an action code bound to its method and path before doing anything else, except the two documented exceptions.
+- [ ] Every query is scoped by the local `profileId`; no ID from the request body or URL is trusted without that scope.
+- [ ] Input is parsed with a `zod` schema with explicit maximum lengths; unknown fields are rejected or ignored, never persisted.
+- [ ] Errors use the generic `{error:{code,message}}` shape with `Cache-Control: no-store`; no stack, SQL or path leaks.
+- [ ] Responses return counts or the minimum the screen needs, never more financial data than it renders.
+
+Probes (expected result in the comment; any other result is a finding):
+
+```sh
+BASE=http://127.0.0.1:3000
+issue() { curl -s -X POST "$BASE/api/action-codes" -H 'Content-Type: application/json' \
+  -d "{\"method\":\"$1\",\"path\":\"$2\"}" | node -pe 'JSON.parse(require("fs").readFileSync(0)).actionCode'; }
+
+# missing code -> 403 INVALID_ACTION_CODE
+curl -s -o /dev/null -w '%{http_code}\n' "$BASE/api/local-summary"
+
+# single use: first 200, replay 403
+CODE=$(issue GET /api/local-summary)
+curl -s -o /dev/null -w '%{http_code}\n' -H "X-Action-Code: $CODE" "$BASE/api/local-summary"
+curl -s -o /dev/null -w '%{http_code}\n' -H "X-Action-Code: $CODE" "$BASE/api/local-summary"
+
+# binding: a code issued for another path or method -> 403
+CODE=$(issue GET /api/dashboard)
+curl -s -o /dev/null -w '%{http_code}\n' -H "X-Action-Code: $CODE" "$BASE/api/local-summary"
+
+# race: one code, 20 parallel uses -> exactly one 200 and nineteen 403
+CODE=$(issue GET /api/local-summary)
+seq 20 | xargs -P 20 -I{} curl -s -o /dev/null -w '%{http_code}\n' \
+  -H "X-Action-Code: $CODE" "$BASE/api/local-summary" | sort | uniq -c
+
+# DNS rebinding: foreign Host -> 403 HOST_NOT_ALLOWED
+curl -s -o /dev/null -w '%{http_code}\n' -H 'Host: attacker.example' "$BASE/api/health/live"
+
+# bootstrap abuse: the issuer must refuse to issue a code for itself -> 400
+curl -s -o /dev/null -w '%{http_code}\n' -X POST "$BASE/api/action-codes" \
+  -H 'Content-Type: application/json' -d '{"method":"POST","path":"/api/action-codes"}'
+
+# cross-origin page: today 200 (Open: no Origin check on the local API)
+curl -s -o /dev/null -w '%{http_code}\n' -X POST "$BASE/api/action-codes" \
+  -H 'Origin: https://attacker.example' -H 'Content-Type: application/json' \
+  -d '{"method":"GET","path":"/api/local-summary"}'
+```
+
+On 2026-11-20 every probe above returned the expected result against `next dev`, including exactly one success in the race. The last probe documents a known gap rather than a pass: a web page the user visits can request action codes from the loopback API (see [Local API boundary](#local-api-boundary)). A change that adds a write route or returns more data raises the impact of that gap and must be weighed against it. The issuer has no rate limit (**Planned**); a flood such as `ab -n 5000 -c 50 -p body.json -T application/json "$BASE/api/action-codes"` (with `body.json` holding a valid request) shows how far the in-memory map grows in 60 seconds.
+
+#### Electron (`electron/`)
+
+Checked against the Electron security checklist (item numbers in parentheses):
+
+- [ ] No dangerous option appears; the command below must print nothing:
+
+  ```sh
+  grep -rnE "nodeIntegration:\s*true|contextIsolation:\s*false|sandbox:\s*false|webSecurity:\s*false|allowRunningInsecureContent|enableBlinkFeatures|experimentalFeatures|<webview|ignore-certificate-errors|setCertificateVerifyProc|loadURL\(['\"]file:" electron src
+  ```
+
+- [ ] Context isolation, sandbox and no Node integration stay on (2, 3, 4); permission handler still denies everything (5).
+- [ ] Navigation and new windows stay blocked (13, 14); every `shell.openExternal` call still passes the `https:` plus host-allowlist check (15).
+- [ ] Every new IPC handler validates the sender frame (17); the preload exposes no new Electron or Node API to the page (20).
+- [ ] No remote content is loaded (1); the renderer CSP is still **Planned** (7), so a change that renders untrusted HTML is blocked until it exists.
+- [ ] Electron is on a supported release (16): `pnpm outdated electron`.
+- [ ] Fuses (19): **Planned** with packaging; once a packaged binary exists, read them with `npx @electron/fuses read --app <packaged-app>`.
+
+#### Worker and D1 (`cloudflare/`)
+
+- [ ] Every route except `GET /health` sits behind the BFF secret check and the action-code check; authenticated routes resolve the session from `Authorization: Bearer` and never from a request field.
+- [ ] Every statement uses bound parameters; this must print nothing:
+
+  ```sh
+  grep -nE 'prepare\(`[^`]*\$\{' cloudflare/src/*.ts
+  ```
+
+- [ ] Rows owned by a user are read and written with the session's `user_id` in the `WHERE` clause (IDOR, see step 3).
+- [ ] A new public or expensive route gets a rate-limit bucket like `codes` and `login`; today only those two exist.
+- [ ] Single-use values (action codes, auth transactions, refresh tokens, future grants) are claimed with `UPDATE … WHERE consumed_at IS NULL` and the affected-row count is checked.
+- [ ] Migrations add no financial column, no plain-text token and no table without an opaque `id`.
+- [ ] Unauthenticated probes against the local Worker return `403 BFF_REQUIRED` with the security headers:
+
+  ```sh
+  W=http://127.0.0.1:8787
+  for p in /api/action-codes /api/me /api/releases /api/auth/refresh; do
+    curl -s -o /dev/null -w "$p %{http_code}\n" -X POST "$W$p"; done
+  curl -s -D - -o /dev/null "$W/health" | grep -iE 'cache-control|content-security-policy|referrer-policy|x-content-type-options'
+  ```
+
+Authenticated Worker behavior (replayed action codes, refresh reuse, concurrent refresh, forwarded IP trust) is exercised with mocks in `tests/regression/worker-auth.test.mjs`; extend that file rather than probing with the real BFF secret.
+
+#### Landing page and BFF (`apps/web/`)
+
+- [ ] Security headers are present on pages:
+
+  ```sh
+  curl -sI http://127.0.0.1:3100/ | grep -iE 'content-security-policy|strict-transport-security|x-frame-options|x-content-type-options|referrer-policy|permissions-policy'
+  ```
+
+- [ ] Cross-site mutations are refused: `curl -s -o /dev/null -w '%{http_code}\n' -X POST http://127.0.0.1:3100/api/auth/logout -H 'Origin: https://attacker.example'` must not succeed. Repeat without any `Origin` header: today it is accepted (**Open**, item 2 of [Open items](#open-items)). The OWASP CSRF cheat sheet treats a missing `Origin` as untrusted and recommends `Sec-Fetch-Site` as the primary signal with origin verification as fallback; adopting it is **Planned**.
+- [ ] No `GET` route changes state. `GET /api/auth/refresh` does today (**Open**, item 1); a change must not add another.
+- [ ] Every `Location` the BFF emits stays on a fixed path of the requested host, the provider URL issued by the Worker or a published artifact URL. Probe with a foreign `Host` and with absolute URLs in every query parameter, and read the `Location` header (`curl -s -o /dev/null -D - …`).
+- [ ] No server variable leaks into the client: `grep -rn "NEXT_PUBLIC_" apps/web/src` must stay empty, and after `pnpm web:build` the client bundle must not contain secret variable names: `grep -rlE "BFF_SHARED_SECRET|GOOGLE_CLIENT_SECRET|TOKEN_HASH_PEPPER|SESSION_SIGNING_SECRET" apps/web/.next/static` must print nothing.
+- [ ] Private BFF responses set `Cache-Control: no-store` (**Open**, item 7).
+
+#### File importers (CSV, OFX, PDF)
+
+Status: **Planned**; no importer exists. The first importer cannot merge without:
+
+- [ ] a byte limit checked before parsing, a row limit, a per-file timeout and parsing off the request thread (worker thread or child process);
+- [ ] type detection from content, not from the extension or the declared `Content-Type`;
+- [ ] a random internal file name; the user's file name is display-only and never part of a path;
+- [ ] idempotent re-import: importing the same file twice creates no duplicate transactions (OFX `FITID`, or a content hash for CSV);
+- [ ] a regression corpus in `tests/regression/` with synthetic files only, covering at least: empty file; BOM, UTF-16 and invalid UTF-8; one 10 MB line; more rows than the limit; unbalanced quotes and embedded separators; cells starting with `=`, `+`, `-`, `@`, tab or carriage return and their full-width forms; OFX 1.x SGML with unclosed and deeply nested tags; OFX 2.x XML with a `DOCTYPE`, external entity and entity expansion (XXE and "billion laughs"); amounts with thousands of digits, `NaN`, exponents and mixed decimal separators; impossible dates; duplicate and missing `FITID`; a PDF with JavaScript, embedded files or thousands of pages.
+- [ ] Formula characters are neutralized on CSV export, not rejected on import (negative amounts legitimately start with `-`).
+- [ ] Fuzzing: **Planned**. Property-based generation with `fast-check` (`pnpm add -D fast-check`) feeding random bytes and mutated corpus files to each parser, asserting it either returns a validated result or a typed error within the time limit, never throws, hangs or allocates without bound.
+
+#### Secrets
+
+- [ ] Run the [security gate](#mandatory-pre-commit-and-pre-push-security-gate). Until a dedicated scanner is installed, use targeted searches that print file names, never matching values:
+
+  ```sh
+  git diff --cached -U0 | grep -E '^\+' | grep -ciE 'secret|token|passw|api[_-]?key|client_secret|bearer |BEGIN [A-Z ]*PRIVATE KEY'
+  git diff --cached --name-only | xargs -r grep -lE 'AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|github_pat_|xox[abprs]-|AIza[0-9A-Za-z_-]{35}|GOCSPX-|-----BEGIN [A-Z ]*PRIVATE KEY'
+  ```
+
+  A non-zero count or a listed file is inspected privately before staging continues.
+- [ ] gitleaks: **Planned** (not installed). Install a release binary from the project's GitHub releases or use the container image, then run `gitleaks git --redact --no-banner .` (history) and `gitleaks dir --redact --no-banner .` (working tree).
+- [ ] TruffleHog: **Planned** (not installed). Install with `brew install trufflehog`, a release binary or the container image, then run `trufflehog git file://. --results=verified,unknown` and `trufflehog filesystem .`.
+
+#### Dependencies and supply chain
+
+- [ ] `pnpm audit --prod --audit-level high` passes, or each remaining advisory is triaged in the report. Run `pnpm audit` without `--prod` too: Electron, Wrangler and build tools reach the user or the deployment even though they are dev dependencies.
+- [ ] **Open**: the first run of `pnpm audit --prod` on 2026-11-20 reported 11 advisories (1 critical, 5 high, 5 moderate) in `next`, `sharp`, `zod`, `effect` and `source-map-js`. They must be triaged and upgraded or accepted with a reason before the next release.
+- [ ] Lockfile changes are intentional: `git diff --cached pnpm-lock.yaml` adds only packages the change needs; review new package names for typosquatting and new maintainers.
+- [ ] Any change to `allowBuilds` in `pnpm-workspace.yaml` (packages allowed to run install scripts) is justified in the commit.
+- [ ] Installs in CI and Docker use `pnpm install --frozen-lockfile`.
+- [ ] Dependabot alerts and version updates (`.github/dependabot.yml`), CodeQL code scanning, and GitHub secret scanning with push protection: **Planned**; enable them in the repository settings when the repository is public.
+
+#### CI
+
+Status: no CI exists (**Current**), so this applies to the first workflow that is added (**Planned**):
+
+- [ ] top-level `permissions: contents: read`, raised per job only where needed;
+- [ ] third-party actions pinned to a full commit SHA;
+- [ ] no `pull_request_target` job that checks out or runs pull-request code; secrets are never available to forks;
+- [ ] no secret printed, and `set -x` never used in a step that reads one;
+- [ ] the workflow runs `pnpm test`, `pnpm typecheck`, `pnpm audit` and a secret scanner on every pull request.
+
+### Step 3: replay, idempotency and authorization-bypass tests
+
+Each case is a test in `tests/regression/`, named after the defect it prevents, following the test-first rule in `CLAUDE.md`.
+
+| Attack | How to test | Status |
+| --- | --- | --- |
+| Action-code replay | use a consumed code again; use it on another method or path; use it after 60 s | **Current** by the local probes above; Worker by `worker-auth.test.mjs` |
+| Action-code race | the same code sent concurrently; exactly one success | local probe above; Worker relies on the atomic `UPDATE` |
+| Refresh-token reuse and race | reuse an old refresh token; two concurrent refreshes with one token | **Current** (`worker-auth.test.mjs`) |
+| OAuth callback replay | replay `code` and `state` after a successful login; send a `state` from another browser | **Current** for login CSRF (`web-bff.test.mjs`); replay of a consumed auth transaction should also be asserted |
+| IDOR on Worker rows | with session A, request `/api/me` and create download grants while changing every ID in the path or body to values owned by session B or that do not exist; expect no data from B and no row written for B | **Planned**: add when the next authenticated route changes |
+| IDOR on the local API | once more than one profile or object-by-ID routes exist, swap IDs between profiles and expect `404` without leaking existence | **Planned** (single local profile today) |
+| Write idempotency | send the same write twice with one `Idempotency-Key`: one effect, same response; the same key with a different body: rejected; concurrent duplicates: one effect | **Planned**: idempotency keys do not exist yet; download grants are created once per request today |
+| Mass assignment | send extra fields (`userId`, `profileId`, `status`, `id`) to every write route; none is persisted | **Planned** with the first local write route |
+
+### Step 4: free platform protections
+
+`CLAUDE.md` requires every free protection where it applies. Current state:
+
+| Protection | Where | Status | Notes |
+| --- | --- | --- | --- |
+| Cloudflare Turnstile | login start, download-grant creation and any future signup or post form on `apps/web`; verified in the Worker | **Planned** (not integrated) | free plan, unlimited verifications. The widget alone protects nothing: the Worker must call Siteverify with a new Worker secret, accept only `success: true` with the expected `hostname` and `action`, and treat each token as single use (valid 300 s). The `apps/web` CSP must allow the challenge origin. |
+| Worker rate-limit buckets | `codes`, `login` | **Current** | other buckets **Planned** (see [Rate limiting and abuse protection](#rate-limiting-and-abuse-protection)) |
+| Cloudflare Free Managed Ruleset | Worker hostname | **Open** | zone-level WAF rules need the Worker on a custom domain in a Cloudflare zone; a `workers.dev` hostname is not a zone the project controls (inference from the WAF docs). Decide on a custom domain first. |
+| Cloudflare rate-limiting rule | Worker hostname | **Open** | the free plan allows one rule, IP-only counting, 10 s period and 10 s mitigation. The Worker is called server-to-server by the BFF, so an IP rule at Cloudflare would count Vercel's egress IPs, not visitors; per-visitor limits belong at Vercel and in the Worker buckets. |
+| Cloudflare Bot Fight Mode | Worker hostname | **Open**, not recommended there | it applies to the whole domain, may challenge API traffic and cannot be skipped with WAF rules, so it would risk blocking the BFF. Reconsider only for a hostname that serves browsers directly. |
+| Vercel DDoS mitigation | `apps/web` | **Current** (automatic on all plans) | nothing to configure |
+| Vercel WAF custom rules and rate limiting | `apps/web` | **Planned** | Hobby allows 3 custom rules, one of them a rate-limit rule (fixed window, 10 s to 10 min, keyed by IP or JA4). Candidate: `/api/auth/*` and `/api/releases/*`. Start with the **Log** action, then switch to `429`. |
+| Vercel Attack Mode | `apps/web` | available on demand | enable during an active attack only |
+| CORS | Worker | **Current**: none sent, so browsers cannot call it cross-origin | an exact allowlist is **Planned** only if a browser ever calls the Worker directly; never reflect the request origin |
+| GitHub secret scanning, push protection, Dependabot, CodeQL | repository | **Planned** | see the supply-chain checklist above |
+
+Turning on any of these changes deployment configuration. Do it only when the user explicitly asks, then record the change here and in [ARCHITECTURE.md](ARCHITECTURE.md).
+
+### Step 5: credential exposure
+
+A credential seen by anyone or anything it was not meant for is compromised, whether it was committed, pasted in a chat, shown in a terminal, a screenshot, a CI log or a local log, and however briefly. Do not wait to find out whether it was used.
+
+1. Revoke or rotate it immediately, before cleanup, investigation or the next commit:
+   - `BFF_SHARED_SECRET` and `CLOUDFLARE_BFF_SHARED_SECRET`: generate one new value, set it with `wrangler secret put` and in the Vercel environment, redeploy both; until both match, every Worker route answers `BFF_REQUIRED`.
+   - `TOKEN_HASH_PEPPER`: rotating it invalidates every stored hash, which logs out every session and voids pending action codes and grants. Rotate anyway; a forced logout is the intended effect.
+   - `SESSION_SIGNING_SECRET`: logins in progress fail and must restart.
+   - `GOOGLE_CLIENT_SECRET`: create a new secret for the OAuth client at the provider, update the Worker secret, then delete the old one.
+   - Cloudflare, Vercel, GitHub or registry tokens: revoke in the provider dashboard and issue a new token with the narrowest scope.
+2. Then follow [Incident response](#incident-response): assess exposure without repeating the value, remove it from files and, when needed, history, check forks, caches, CI logs and artifacts, add a preventive rule, and document the response without recording the value.
+
+### Step 6: report
+
+Every commit or push ends with a report in the conversation or pull request, in this form. Severities: **Critical**, exploitable remotely or exposes financial data or credentials; **High**, exploitable with a precondition the attacker can plausibly meet; **Medium**, needs an unlikely precondition or limits impact; **Low**, defense in depth. Critical and High block the commit or push until fixed. Medium and Low may be accepted only with a reason and an entry in [Open items](#open-items).
+
+```markdown
+## Offensive security review
+
+Change: <one line>
+Surfaces touched: <local API | Electron | Worker/D1 | BFF/LP | importers | secrets | dependencies | CI>
+
+### STRIDE
+- S: <threat or "n/a because …">
+- T: …
+- R: …
+- I: …
+- D: …
+- E: …
+
+### Checks run
+- <command or test> → <result>
+- Not run: <check> because <reason>
+
+### Findings
+| Severity | Finding | Status |
+| --- | --- | --- |
+| High | <what, where, how to reproduce without secrets> | fixed in this change / accepted: <reason, Open item n> |
+
+### Limitations
+- <tools not installed, environments not available>
+```
+
+### Coverage of the reference lists
+
+Use this map to confirm the review did not skip a category that the change could hit.
+
+| Reference | Where this review covers it |
+| --- | --- |
+| OWASP Top 10 2025: A01 Broken Access Control, A07 Authentication Failures | step 2 (local API, Worker, BFF), step 3 (IDOR, replay) |
+| A02 Security Misconfiguration, A04 Cryptographic Failures | step 2 (headers, Electron options, Worker secrets), step 4 |
+| A03 Software Supply Chain Failures, A08 Software or Data Integrity Failures | step 2 (dependencies, CI) |
+| A05 Injection, A06 Insecure Design, A10 Mishandling of Exceptional Conditions | step 1, step 2 (bound statements, importers, generic errors) |
+| A09 Security Logging and Alerting Failures | step 1 (repudiation); audit tables are **Planned** |
+| OWASP API Security Top 10 2023: API1 and API3 object and property authorization, API5 function authorization | step 3 (IDOR, mass assignment) |
+| API2 authentication, API4 resource consumption, API6 sensitive business flows | step 2 (Worker), step 4 (Turnstile, rate limits) |
+| API7 SSRF, API10 unsafe consumption of APIs | step 2 (Worker): the only outbound calls are to the OAuth provider and its JWKS; any new outbound URL must be fixed server-side, never taken from input |
+| API8 misconfiguration, API9 inventory | step 2 (headers, CORS); the route inventory is the scope table above |
+| ASVS 5.0 chapters V1 to V16 (V17 WebRTC does not apply) | V2, V4, V8 in step 3; V5 in importers; V6, V7, V9, V10 in Worker and BFF; V3, V12, V13 in headers and Electron; V11, V14 in secrets and step 5; V15 in dependencies; V16 in step 1. Target level 2 for anything touching financial data or sessions. |
+| CWE Top 25 (2025) | XSS (79), SQL injection (89), CSRF (352), missing or incorrect authorization (862, 863, 639), path traversal (22), code injection (94), unrestricted upload (434), deserialization (502), input validation (20), information exposure (200), SSRF (918), unbounded allocation (770): steps 2 and 3. Memory-safety entries apply only through native dependencies (`sharp`, Prisma engines, Electron) and are covered by dependency updates. |
+| RFC 9700 | already met by the web flow (PKCE S256, exact redirect, rotating refresh tokens, no implicit or password grant); recheck when OAuth code changes, and apply it to desktop OAuth when it is built |
+
+### Sources
+
+Researched in November 2026; revisit when a new edition appears.
+
+- [OWASP Top 10](https://owasp.org/www-project-top-ten/) and the [2025 edition](https://top10.owasp.org/2025)
+- [OWASP ASVS 5.0](https://asvs.owasp.org/) and its [chapter list](https://github.com/OWASP/ASVS/tree/v5.0.0/5.0/en)
+- [OWASP API Security Top 10 2023](https://api-security.owasp.org/editions/2023/en/0x11-t10)
+- OWASP cheat sheets: [Threat Modeling](https://cheatsheetseries.owasp.org/cheatsheets/Threat_Modeling_Cheat_Sheet.html), [CSRF Prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html), [File Upload](https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html), [Secrets Management](https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html)
+- [OWASP CSV Injection](https://community.owasp.org/attacks/CSV_Injection)
+- [Electron security checklist](https://www.electronjs.org/docs/latest/tutorial/security)
+- [CWE Top 25 (2025)](https://cwe.mitre.org/top25/archive/2025/2025_cwe_top25.html)
+- [RFC 9700, OAuth 2.0 Security Best Current Practice](https://www.rfc-editor.org/rfc/rfc9700.html)
+- Cloudflare: [Turnstile server-side validation](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/), [Turnstile plans](https://developers.cloudflare.com/turnstile/plans/), [WAF managed rules](https://developers.cloudflare.com/waf/managed-rules/), [rate limiting rules](https://developers.cloudflare.com/waf/rate-limiting-rules/), [Bot Fight Mode](https://developers.cloudflare.com/bots/get-started/bot-fight-mode/)
+- Vercel: [Firewall](https://vercel.com/docs/vercel-firewall), [WAF rate limiting](https://vercel.com/docs/vercel-firewall/vercel-waf/rate-limiting)
+- [pnpm audit](https://pnpm.io/cli/audit), [Dependabot configuration](https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuring-dependabot-version-updates), [gitleaks](https://github.com/gitleaks/gitleaks), [TruffleHog](https://github.com/trufflesecurity/trufflehog)
