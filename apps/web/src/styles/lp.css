@@ -67,7 +67,9 @@
 
   color-scheme: light;
   --lp-page: 1200px;
-  --lp-prose: 68ch;
+  /* Em "ch" da Montserrat, larga, 60ch rendem cerca de 72 caracteres de texto
+     corrido por linha; 68ch passavam de 80. */
+  --lp-prose: 60ch;
 
   position: relative;
   min-height: 100vh;
@@ -93,9 +95,10 @@
   pointer-events: none;
 }
 
-/* Claro é o tema padrão do projeto: a landing page é sempre clara.
-   Ela não segue a preferência do sistema nem o seletor de tema do aplicativo,
-   para que a página pública tenha uma única aparência combinada. */
+/* A landing page tem uma única aparência: uma mescla fixa de seções claras
+   (pergaminho) e escuras (ébano), com o herói escuro. Ela não segue a
+   preferência de tema do sistema e não tem seletor de tema; cada seção
+   define a própria tinta para o fundo que tem. */
 
 .lp-root *,
 .lp-root *::before,
@@ -274,16 +277,16 @@ html:has(.lp-root) {
   font-size: 0.92em;
 }
 
+/* A citação se destaca pelo tamanho da serifa, sem faixa colorida ao lado. */
 .lp-quote {
-  border-left: 3px solid var(--lp-amber);
-  padding-left: 20px;
-  max-width: 62ch;
+  max-width: 34ch;
 }
 
 .lp-quote p {
   font-family: var(--lp-display);
-  font-size: clamp(20px, 2.4vw, 27px);
-  line-height: 1.42;
+  font-size: clamp(22px, 2.6vw, 30px);
+  line-height: 1.35;
+  text-wrap: balance;
 }
 
 .lp-quote-inline {
@@ -296,10 +299,12 @@ html:has(.lp-root) {
 
 /* ── Estrutura ────────────────────────────────────────────────── */
 
+/* Em tela cheia no celular deitado, o conteúdo não entra embaixo do entalhe:
+   o fundo vai até a borda e o texto respeita a área segura. */
 .lp-wrap {
   width: min(100%, var(--lp-page));
   margin: 0 auto;
-  padding-inline: 24px;
+  padding-inline: max(24px, env(safe-area-inset-left)) max(24px, env(safe-area-inset-right));
 }
 
 .lp-root section[id],
@@ -500,7 +505,8 @@ html:has(.lp-root) {
   gap: 8px;
   min-height: 44px;
   padding: 0 14px;
-  border: 1px solid rgb(241 236 227 / 30%);
+  border: 1px solid transparent;
+  background: rgb(241 236 227 / 10%);
   border-radius: var(--lp-radius-md);
   font-size: 14px;
   font-weight: 600;
@@ -578,6 +584,25 @@ html:has(.lp-root) {
   }
 }
 
+/* A 320px a marca e o botão de seções se sobrepunham: o botão fica só com o
+   ícone, quadrado de 44px, e o nome segue para o leitor de tela. */
+@media (max-width: 379px) {
+  .lp-nav-menu-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .lp-nav-menu summary {
+    width: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 559px) {
   .lp-header-repo-label {
     position: absolute;
@@ -602,12 +627,14 @@ html:has(.lp-root) {
 
 /* ── Botões e chips ───────────────────────────────────────────── */
 
+/* O botão secundário se separa do fundo por um degrau de tom, sem contorno:
+   a LP não desenha caixas de 1px (DESIGN-SYSTEM, superfícies da LP). */
 .lp-root .lp-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: transparent;
-  border: 1px solid var(--lp-line-strong);
+  background: var(--lp-sunken);
+  border: 1px solid transparent;
   border-radius: var(--lp-radius-md);
   padding: 12px 20px;
   font-size: 14px;
@@ -618,8 +645,8 @@ html:has(.lp-root) {
 }
 
 .lp-root .lp-btn:hover {
-  border-color: var(--lp-amber-strong);
-  color: var(--lp-amber-text);
+  background: #e5dece;
+  color: var(--lp-ink);
   text-decoration: none;
 }
 
@@ -657,9 +684,9 @@ html:has(.lp-root) {
   align-items: center;
   gap: 7px;
   width: fit-content;
-  border: 1px solid var(--lp-line-strong);
   border-radius: var(--lp-radius-sm);
   padding: 6px 12px;
+  background: var(--lp-sunken);
   font-size: 13px;
   line-height: 20px;
   font-weight: 600;
@@ -667,7 +694,6 @@ html:has(.lp-root) {
 }
 
 .lp-chip-warn {
-  border-color: var(--lp-warn);
   background: var(--lp-warn-s);
   color: var(--lp-warn);
 }
@@ -681,6 +707,13 @@ html:has(.lp-root) {
   font-size: 15px;
   line-height: 24px;
   margin-top: 24px;
+}
+
+/* Avisos e a faixa dos pilares ocupam a largura toda; o texto não passa de
+   uma medida confortável de leitura. */
+.lp-root .lp-callout > span,
+.lp-root .lp-band > span {
+  max-width: 64ch;
 }
 
 .lp-callout i {
@@ -830,7 +863,7 @@ html:has(.lp-root) {
 }
 
 .lp-art-hero {
-  width: min(100%, 420px);
+  width: min(100%, 500px);
 }
 
 .lp-art-tall {
@@ -917,7 +950,7 @@ html:has(.lp-root) {
 
 .lp-panel h3 {
   font-family: var(--lp-display);
-  font-size: 20px;
+  font-size: 21px;
   line-height: 28px;
   font-weight: 600;
   color: #fffdf8;
@@ -996,8 +1029,18 @@ html:has(.lp-root) {
   color: var(--lp-ink2);
 }
 
+/* As quatro dores são texto corrido em duas colunas, sem caixa: o ícone e o
+   título bastam para separar uma da outra. */
 .lp-problem-list {
-  margin-top: 28px;
+  margin-top: 56px;
+  row-gap: 40px;
+  column-gap: clamp(32px, 5vw, 72px);
+}
+
+.lp-problem-list .lp-card {
+  background: none;
+  padding: 0;
+  border-radius: 0;
 }
 
 /* ── Etapas ───────────────────────────────────────────────────── */
@@ -1017,9 +1060,7 @@ html:has(.lp-root) {
   grid-template-columns: 32px minmax(0, 1fr);
   column-gap: 16px;
   row-gap: 4px;
-  background: var(--lp-bg);
-  border-radius: var(--lp-radius-md);
-  padding: 20px;
+  padding-block: 12px;
 }
 
 .lp-step i {
@@ -1030,9 +1071,10 @@ html:has(.lp-root) {
 }
 
 .lp-step h3 {
-  font-size: 17px;
+  font-family: var(--lp-display);
+  font-size: 21px;
   line-height: 28px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .lp-step p {
@@ -1047,11 +1089,15 @@ html:has(.lp-root) {
     max-width: none;
   }
 
+  .lp-root .lp-steps {
+    column-gap: 32px;
+  }
+
   .lp-step {
     grid-template-columns: minmax(0, 1fr);
     align-content: start;
     row-gap: 10px;
-    padding: 24px 20px;
+    padding-block: 0;
   }
 
   .lp-step i {
@@ -1142,6 +1188,10 @@ html:has(.lp-root) {
   color: var(--lp-amber-text);
 }
 
+.lp-root .lp-checks .lp-checks-planned i {
+  color: var(--lp-ink2);
+}
+
 .lp-root .lp-checks-tight {
   margin-top: 8px;
   gap: 8px;
@@ -1167,7 +1217,7 @@ html:has(.lp-root) {
 
 .lp-carousel-track {
   display: flex;
-  transition: transform 560ms cubic-bezier(0.77, 0, 0.175, 1);
+  transition: transform 420ms cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 .lp-plate {
@@ -1203,7 +1253,7 @@ html:has(.lp-root) {
 }
 
 .lp-plate-caption p {
-  font-size: 17px;
+  font-size: 16px;
   line-height: 28px;
   max-width: 44ch;
 }
@@ -1222,21 +1272,33 @@ html:has(.lp-root) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--lp-line-strong);
+  border: 0;
   border-radius: 50%;
-  background: var(--lp-surface);
+  background: var(--lp-sunken);
   color: var(--lp-ink);
   cursor: pointer;
-  transition: border-color 160ms ease, color 160ms ease, transform 160ms var(--lp-ease-out);
+  transition: background 160ms ease, transform 160ms var(--lp-ease-out);
 }
 
 .lp-round:hover {
-  border-color: var(--lp-amber-strong);
-  color: var(--lp-amber-text);
+  background: #e5dece;
 }
 
 .lp-round:active {
   transform: scale(0.95);
+}
+
+/* A 320px os oito pontos e as duas setas não cabiam com folga, e o flex
+   espremia as setas abaixo de 44px. As setas não encolhem; o espaço sai do
+   intervalo entre elas. */
+.lp-round {
+  flex: none;
+}
+
+@media (max-width: 380px) {
+  .lp-carousel-controls {
+    gap: 4px;
+  }
 }
 
 .lp-root .lp-dots {
@@ -1301,14 +1363,11 @@ html:has(.lp-root) {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: var(--lp-bg);
-  border-radius: var(--lp-radius-md);
-  padding: 24px;
 }
 
 .lp-pillar-letter {
   font-family: var(--lp-display);
-  font-size: 30px;
+  font-size: 44px;
   line-height: 1;
   font-weight: 700;
   color: var(--lp-amber-text);
@@ -1383,10 +1442,15 @@ html:has(.lp-root) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--lp-line-strong);
   border-radius: 50%;
-  font-size: 11px;
-  color: var(--lp-amber);
+  font-size: 13px;
+  background: var(--lp-sunken);
+  color: var(--lp-amber-text);
+}
+
+.lp-timeline-done .lp-timeline-dot {
+  background: var(--lp-ok);
+  color: var(--lp-on-amber);
 }
 
 .lp-state {
@@ -1397,13 +1461,12 @@ html:has(.lp-root) {
   font-weight: 600;
   padding: 1px 8px;
   border-radius: var(--lp-radius-sm);
-  border: 1px solid var(--lp-line-strong);
+  background: var(--lp-sunken);
   color: var(--lp-ink2);
 }
 
-.lp-state-now {
-  border-color: var(--lp-amber-strong);
-  color: var(--lp-amber-text);
+.lp-timeline-done .lp-state {
+  color: var(--lp-ok);
 }
 
 .lp-download {
@@ -1616,72 +1679,19 @@ html:has(.lp-root) {
   transition: transform 220ms var(--lp-ease-out);
 }
 
-/* ── Galeria de gravuras ──────────────────────────────────────── */
-
-.lp-root .lp-gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 18px;
-}
-
-/* Gravuras não são links: a peça se apresenta parada, sem brilho nem
-   elevação no hover. */
-.lp-gallery-item {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: var(--lp-bg);
-  border-radius: var(--lp-radius-lg);
-  padding: 24px 22px 22px;
-  overflow: hidden;
-}
-
-.lp-gallery-art {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 168px;
-  color: var(--lp-walnut);
-}
-
-.lp-gallery-art .lp-art {
-  width: min(100%, 190px);
-}
-
-.lp-gallery-item h3 {
-  font-family: var(--lp-display);
-  font-size: 20px;
-  line-height: 28px;
-  font-weight: 600;
-}
-
-.lp-gallery-item p {
-  font-size: 15px;
-  line-height: 24px;
-  color: var(--lp-ink2);
-}
-
-.lp-gallery-numeral {
-  font-size: 13px;
-  line-height: 20px;
-  font-weight: 600;
-  color: var(--lp-amber-text);
-}
-
 /* ── Retorno ao topo ──────────────────────────────────────────── */
 
 .lp-to-top {
   position: fixed;
-  right: 24px;
-  bottom: 24px;
+  right: max(24px, env(safe-area-inset-right));
+  bottom: max(24px, calc(env(safe-area-inset-bottom) + 12px));
   z-index: 11;
   width: 46px;
   height: 46px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--lp-line-strong);
+  border: 0;
   border-radius: 50%;
   background: var(--lp-surface);
   color: var(--lp-ink);
@@ -1690,7 +1700,7 @@ html:has(.lp-root) {
   opacity: 0;
   transform: translateY(12px);
   pointer-events: none;
-  transition: opacity 220ms ease, transform 220ms ease, border-color 160ms ease, color 160ms ease;
+  transition: opacity 200ms var(--lp-ease-out), transform 200ms var(--lp-ease-out), color 160ms ease;
 }
 
 .lp-to-top-on {
@@ -1700,7 +1710,6 @@ html:has(.lp-root) {
 }
 
 .lp-to-top:hover {
-  border-color: var(--lp-amber-strong);
   color: var(--lp-amber-text);
 }
 
@@ -1793,16 +1802,16 @@ html:has(.lp-root) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--lp-line-strong);
+  border: 0;
   border-radius: var(--lp-radius-md);
-  background: transparent;
+  background: var(--lp-sunken);
   min-height: 44px;
   padding: 0 16px;
   font-size: 14px;
   font-weight: 600;
   color: var(--lp-ink2);
   cursor: pointer;
-  transition: border-color 160ms ease, color 160ms ease, background 160ms ease, transform 160ms var(--lp-ease-out);
+  transition: color 160ms ease, background 160ms ease, transform 160ms var(--lp-ease-out);
 }
 
 .lp-shots-tab:active {
@@ -1814,8 +1823,8 @@ html:has(.lp-root) {
 }
 
 .lp-shots-tab:hover {
-  border-color: var(--lp-amber-strong);
-  color: var(--lp-amber-text);
+  background: #e5dece;
+  color: var(--lp-ink);
 }
 
 .lp-shots-tab-on {
@@ -1825,6 +1834,7 @@ html:has(.lp-root) {
 }
 
 .lp-shots-tab-on:hover {
+  background: var(--lp-amber-hover);
   color: var(--lp-on-amber);
 }
 
@@ -1835,7 +1845,7 @@ html:has(.lp-root) {
 
 .lp-shots-track {
   display: flex;
-  transition: transform 560ms cubic-bezier(0.77, 0, 0.175, 1);
+  transition: transform 420ms cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 /* A captura é a imagem mais forte da página: a tela real do produto. Ela
@@ -1859,7 +1869,6 @@ html:has(.lp-root) {
   display: block;
   width: 100%;
   height: auto;
-  border: 1px solid var(--lp-line);
   border-radius: var(--lp-radius-md);
   background: var(--lp-sunken);
 }
@@ -1878,15 +1887,15 @@ html:has(.lp-root) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--lp-line-strong);
   border-radius: var(--lp-radius-md);
+  background: var(--lp-sunken);
   color: var(--lp-amber-text);
   font-size: 18px;
 }
 
 .lp-shot-slide h3 {
   font-family: var(--lp-display);
-  font-size: 20px;
+  font-size: 21px;
   line-height: 28px;
   font-weight: 600;
   margin-bottom: 4px;
@@ -1905,28 +1914,6 @@ html:has(.lp-root) {
   justify-content: center;
   gap: 16px;
   margin-top: 12px;
-}
-
-/* ── Ajustes da galeria ───────────────────────────────────────── */
-
-.lp-root .lp-gallery {
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-}
-
-.lp-gallery-art {
-  height: 180px;
-  min-height: 0;
-}
-
-.lp-gallery-art .lp-art {
-  max-height: 100%;
-  width: auto;
-}
-
-.lp-gallery-item figcaption {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
 }
 
 /* ── Rodapé jurídico e janela modal ───────────────────────────── */
@@ -2199,13 +2186,13 @@ html:has(.lp-root) {
 }
 
 .lp-header .lp-btn {
-  border-color: rgb(241 236 227 / 30%);
+  background: rgb(241 236 227 / 10%);
   color: #f1ece3;
 }
 
 .lp-header .lp-btn:hover {
-  border-color: var(--lp-amber);
-  color: #e7c39c;
+  background: rgb(241 236 227 / 18%);
+  color: #fffdf8;
 }
 
 .lp-hero {
@@ -2226,24 +2213,28 @@ html:has(.lp-root) {
 }
 
 .lp-hero .lp-btn {
-  border-color: rgb(241 236 227 / 30%);
+  background: rgb(241 236 227 / 10%);
   color: #f1ece3;
 }
 
 .lp-hero .lp-btn:hover {
-  border-color: var(--lp-amber);
-  color: #e7c39c;
+  background: rgb(241 236 227 / 18%);
+  color: #fffdf8;
 }
 
-.lp-hero .lp-btn-primary,
+.lp-hero .lp-btn-primary {
+  background: var(--lp-amber-strong);
+  color: var(--lp-on-amber);
+}
+
 .lp-hero .lp-btn-primary:hover {
+  background: var(--lp-amber-hover);
   color: var(--lp-on-amber);
 }
 
 .lp-hero .lp-chip-warn {
-  border-color: rgb(217 169 62 / 55%);
-  background: rgb(217 169 62 / 12%);
-  color: #d9a93e;
+  background: rgb(217 169 62 / 14%);
+  color: #e0b453;
 }
 
 .lp-root .lp-hero .lp-hero-meta {
@@ -2266,6 +2257,148 @@ html:has(.lp-root) {
 @media (prefers-reduced-motion: reduce) {
   .lp-shots-meter {
     display: none;
+  }
+}
+
+/* ── O que já funciona: áreas com estado ──────────────────────── */
+/* Cada área é uma linha de texto com o estado ao lado, não um cartão: o
+   estado é a informação nova, então ele fica à vista e com palavra, nunca só
+   com cor (WCAG 1.4.1). */
+
+.lp-root .lp-areas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 36px clamp(32px, 5vw, 72px);
+}
+
+@media (min-width: 1000px) {
+  .lp-root .lp-areas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.lp-area {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: 16px;
+  row-gap: 12px;
+  align-items: start;
+}
+
+.lp-area > .bi {
+  font-size: 24px;
+  margin-top: 3px;
+  color: var(--lp-amber-text);
+}
+
+.lp-area h3 {
+  margin-bottom: 6px;
+}
+
+.lp-area p {
+  font-size: 16px;
+  line-height: 26px;
+  color: var(--lp-ink2);
+  max-width: 60ch;
+}
+
+.lp-area-state {
+  grid-column: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: var(--lp-radius-sm);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+  background: var(--lp-sunken);
+  color: var(--lp-ink2);
+}
+
+.lp-area-state-pronto {
+  background: #e6ede2;
+  color: var(--lp-ok);
+}
+
+/* --lp-warn sobre --lp-warn-s dá 4,2:1; o tom mais escuro passa AA. */
+.lp-area-state-parcial {
+  background: var(--lp-warn-s);
+  color: #6f5713;
+}
+
+/* ── Princípios do bloco escuro, sem caixa ────────────────────── */
+
+.lp-slab-cards {
+  row-gap: 32px;
+  column-gap: clamp(32px, 4vw, 56px);
+}
+
+.lp-slab-cards .lp-panel {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* ── Telas baixas ─────────────────────────────────────────────── */
+/* Notebook de 1366 × 768, janela de 1024 × 700 e TV a 960 × 540: o herói
+   encolhe o respiro e a gravura para que o título, o texto e a ação caibam
+   na primeira tela. */
+
+@media (min-width: 1000px) and (max-height: 760px) {
+  .lp-hero {
+    padding-block: 40px 48px;
+  }
+
+  .lp-hero-grid {
+    row-gap: 24px;
+  }
+
+  .lp-art-hero {
+    width: min(100%, 360px);
+  }
+}
+
+/* ── Toque e controle remoto ──────────────────────────────────── */
+/* Sem ponteiro que paire, o :hover gruda depois do toque. Os estados de
+   pairar voltam ao repouso; o toque continua respondendo pelo :active. */
+
+@media (hover: none) {
+  .lp-root .lp-btn:hover {
+    background: var(--lp-sunken);
+  }
+
+  .lp-header .lp-btn:hover,
+  .lp-hero .lp-btn:hover {
+    background: rgb(241 236 227 / 10%);
+    color: #f1ece3;
+  }
+
+  .lp-root .lp-btn-primary:hover,
+  .lp-hero .lp-btn-primary:hover {
+    background: var(--lp-amber-strong);
+    color: var(--lp-on-amber);
+  }
+
+  .lp-round:hover,
+  .lp-shots-tab:hover {
+    background: var(--lp-sunken);
+    color: inherit;
+  }
+
+  .lp-shots-tab-on:hover {
+    background: var(--lp-amber-strong);
+    color: var(--lp-on-amber);
+  }
+
+  .lp-to-top:hover {
+    color: var(--lp-ink);
+  }
+
+  .lp-root .lp-nav a:hover,
+  .lp-header .lp-nav a:hover {
+    background: none;
   }
 }
 

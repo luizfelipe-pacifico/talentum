@@ -48,9 +48,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, [narrow, navOpen]);
 
-  // A landing page é uma página pública inteira: ela não usa sidebar nem topbar
-  // do aplicativo. Ponte temporária de pré-visualização em /lp.
-  if (pathname === '/lp' || pathname.startsWith('/lp/')) return <>{children}</>;
   const meta = pageMeta(pathname);
   const tabs = tabsFor(pathname);
   const activeTab = findActiveTab(pathname);

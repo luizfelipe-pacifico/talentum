@@ -14,10 +14,7 @@ import {
   PlateCompass,
   PlateHourglass,
   PlateLedger,
-  PlateMap,
   PlateOwl,
-  PlateQuill,
-  PlateTemple,
   PlateVault,
   Rosette,
 } from './art';
@@ -64,99 +61,116 @@ const STEPS = [
   {
     icon: 'bi-file-earmark-arrow-up',
     title: 'Importar',
-    text: 'Você arrasta o extrato em OFX ou PDF. O arquivo é lido dentro do seu computador e não sai dele em momento algum.',
+    text: 'Você escolhe o extrato do banco em OFX ou CSV. O arquivo é lido dentro do seu computador, você vê a prévia antes de gravar e pode desfazer a importação inteira.',
   },
   {
     icon: 'bi-diagram-3',
     title: 'Organizar',
-    text: 'Regras locais classificam a maior parte dos lançamentos, agrupam recorrências e reconhecem transferências entre suas próprias contas.',
+    text: 'Cada lançamento entra com conta, data e valor. A classificação automática por regras de estabelecimento é planejada; hoje você define a categoria na conciliação.',
   },
   {
     icon: 'bi-check2-circle',
     title: 'Conciliar',
-    text: 'Só o que ficou duvidoso chega até você, em cartões de decisão rápida. Confirmar leva um toque, e o valor original nunca é sobrescrito.',
+    text: 'O que ainda não tem categoria vai para uma fila. Você confirma, categoriza ou liga a uma conta recorrente, e o valor original nunca é sobrescrito.',
   },
   {
     icon: 'bi-calculator',
     title: 'Calcular',
-    text: 'Faturas abertas, contas recorrentes e débitos previstos saem do saldo. O que resta é o dinheiro que você pode gastar sem criar um problema.',
+    text: 'Contas a vencer, recorrências e débitos previstos até o fim do período saem do saldo. O que resta é o dinheiro que você pode gastar sem criar um problema.',
   },
   {
     icon: 'bi-signpost-split',
     title: 'Planejar',
-    text: 'Com o número certo na mão, meta deixa de ser desejo e aporte deixa de ser palpite. Cada decisão passa a ter uma conta por trás.',
+    text: 'Com o número certo na mão, meta deixa de ser desejo e aporte deixa de ser palpite. Orçamento, metas e patrimônio são as próximas etapas.',
   },
 ];
 
+/* Capturas do aplicativo rodando com banco novo, sem nenhum dado: o que
+   aparece é o estado vazio de verdade, não uma montagem. */
 const TELAS: Shot[] = [
   {
-    id: 'inicio',
+    id: 'dashboard',
     icon: 'bi-speedometer2',
-    title: 'Início',
+    title: 'Dashboard',
     src: '/telas/dashboard.webp',
-    alt: 'Tela inicial do Talentum com os indicadores zerados e o banco local vazio',
+    alt: 'Dashboard do Talentum sem dados, com a mensagem “Sua base financeira ainda está vazia” e os botões Importar extrato e Cadastrar posição atual',
     caption:
-      'A posição do dia em poucos segundos de leitura. Como nenhuma conta foi cadastrada, todos os indicadores mostram zero e a tela chama a primeira importação.',
+      'Sem dados, o dashboard não mostra zeros nem números de exemplo. Ele diz que a base está vazia e oferece os dois jeitos de começar.',
+  },
+  {
+    id: 'importar',
+    icon: 'bi-file-earmark-arrow-up',
+    title: 'Importar extrato',
+    src: '/telas/importar.webp',
+    alt: 'Tela de importação do Talentum pedindo o arquivo do banco, com a área para arrastar o arquivo e o botão Escolher arquivo',
+    caption:
+      'Aceita CSV e OFX. O arquivo é lido no seu computador, e nada é gravado antes de você conferir a prévia da leitura.',
   },
   {
     id: 'extratos',
     icon: 'bi-receipt',
     title: 'Extratos',
     src: '/telas/extratos.webp',
-    alt: 'Tela de extratos do Talentum, ainda sem nenhum lançamento importado',
+    alt: 'Tela de extratos do Talentum sem lançamentos, com o botão Importar extrato',
     caption:
-      'O lugar onde os lançamentos aparecem depois da importação, com filtros por período, conta, categoria e origem do lote que os trouxe.',
+      'Depois da importação, os lançamentos aparecem aqui com filtros por período, conta, categoria e importação de origem.',
   },
   {
     id: 'conciliacao',
     icon: 'bi-check2-square',
     title: 'Conciliação',
     src: '/telas/conciliacao.webp',
-    alt: 'Tela de conciliação do Talentum com a fila de pendências vazia',
-    caption:
-      'A fila do que a automação não teve confiança para decidir sozinha. Aqui, fila vazia é sucesso, não falta de conteúdo.',
-  },
-  {
-    id: 'patrimonio',
-    icon: 'bi-columns-gap',
-    title: 'Patrimônio',
-    src: '/telas/patrimonio.webp',
-    alt: 'Tela de patrimônio do Talentum, sem ativos cadastrados',
-    caption:
-      'Os quatro pilares e a simulação do próximo aporte, que só ganham números depois que você cadastra a sua posição atual.',
+    alt: 'Tela de conciliação do Talentum com a mensagem “Tudo conciliado”',
+    caption: 'A fila do que ainda precisa da sua decisão. Fila vazia quer dizer que não há nada pendente.',
   },
 ];
 
-const AREAS = [
+/* Estado de cada área no repositório, conferido com docs/ROADMAP.md e com o
+   mapa de rotas de docs/PRODUCT.md. Atualize junto com eles. */
+type Estado = 'pronto' | 'parcial' | 'planejado';
+
+const ESTADO: Record<Estado, { label: string; icon: string }> = {
+  pronto: { label: 'Funciona no código', icon: 'bi-check2-circle' },
+  parcial: { label: 'Em parte', icon: 'bi-circle-half' },
+  planejado: { label: 'Planejado', icon: 'bi-circle' },
+};
+
+const AREAS: { icon: string; title: string; text: string; estado: Estado }[] = [
   {
     icon: 'bi-speedometer2',
-    title: 'Início',
-    text: 'Saldo livre, média de gastos, alertas do dia, progresso das metas e a situação da carteira, tudo em uma tela.',
+    title: 'Dashboard',
+    text: 'Saldo consolidado, Saldo Livre de Risco com projeção diária, entradas e saídas do mês, média diária e gastos por categoria. Alertas de vencimento vêm depois.',
+    estado: 'parcial',
   },
   {
-    icon: 'bi-credit-card',
-    title: 'Extratos, cartões e benefícios',
-    text: 'Importação de PDF e OFX, lista inteligente de lançamentos, faturas, recorrências, anuidade, cashback, milhas e pontos.',
+    icon: 'bi-receipt',
+    title: 'Extratos',
+    text: 'Importação de OFX e CSV com prévia, lançamentos repetidos descartados, desfazer importação e histórico de cada edição. Cartões, faturas e PDF são planejados.',
+    estado: 'parcial',
   },
   {
     icon: 'bi-check2-square',
     title: 'Conciliação',
-    text: 'Triagem rápida do que ficou incerto, ajuste de juros e descontos, conferência de fatura e lançamento expresso de dinheiro.',
+    text: 'Fila do que ficou sem categoria: confirmar, categorizar, ligar a uma conta recorrente, registrar juro ou desconto, parear transferência entre contas suas e reverter.',
+    estado: 'pronto',
+  },
+  {
+    icon: 'bi-clock-history',
+    title: 'Histórico',
+    text: 'Linha do tempo das importações, edições e decisões, com filtro e reversão. Backup cifrado e exportação ainda são planejados.',
+    estado: 'parcial',
   },
   {
     icon: 'bi-pie-chart',
     title: 'Patrimônio e metas',
-    text: 'Caixinhas de objetivo com cálculo de viabilidade, destinação do superávit e orientação de aporte pelos quatro pilares.',
+    text: 'Caixinhas de objetivo com cálculo de viabilidade e orientação de aporte pelos quatro pilares.',
+    estado: 'planejado',
   },
   {
     icon: 'bi-newspaper',
     title: 'Invest',
-    text: 'Notícias de economia filtradas pelos ativos que você tem, com resumo objetivo e crédito sempre visível para a fonte.',
-  },
-  {
-    icon: 'bi-clock-history',
-    title: 'Histórico e perfil',
-    text: 'Linha do tempo com pontos de restauração, exportação em formatos abertos, backup, missões, níveis e conquistas.',
+    text: 'Notícias de economia filtradas pelos ativos que você tem, com resumo e crédito sempre visível para a fonte.',
+    estado: 'planejado',
   },
 ];
 
@@ -234,45 +248,6 @@ const PLATES: Plate[] = [
   },
 ];
 
-const COLECAO = [
-  {
-    numeral: 'XII',
-    title: 'O frontão',
-    text: 'Construir para durar exige base, coluna e cornija. Um orçamento também.',
-    art: <PlateTemple className="lp-art" />,
-  },
-  {
-    numeral: 'XI',
-    title: 'A carta',
-    text: 'A rota do mês: por onde o dinheiro entra, por onde passa e onde ele termina.',
-    art: <PlateMap className="lp-art" />,
-  },
-  {
-    numeral: 'XIII',
-    title: 'A pena',
-    text: 'Todo lançamento corrigido guarda o valor original. A memória não se apaga.',
-    art: <PlateQuill className="lp-art" />,
-  },
-  {
-    numeral: 'VIII',
-    title: 'O arco',
-    text: 'A passagem entre o presente apertado e o futuro planejado tem chave de abóbada.',
-    art: <PlateArch className="lp-art" />,
-  },
-  {
-    numeral: 'X',
-    title: 'O talento',
-    text: 'A moeda pesada que dá nome ao projeto: valor confiado, não valor recebido.',
-    art: <PlateCoins className="lp-art" />,
-  },
-  {
-    numeral: 'IX',
-    title: 'A coruja',
-    text: 'O saber que levanta voo ao entardecer, quando o mês já pode ser lido inteiro.',
-    art: <PlateOwl className="lp-art" />,
-  },
-];
-
 /* Marca vetorial gerada por scripts/gerar-marca.mjs: nítida em qualquer
    densidade e com cerca de 1 KB. */
 function BrandMark({ fundo = 'claro' }: { fundo?: 'claro' | 'escuro' }) {
@@ -341,8 +316,8 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                 {notice}
                 <div className="lp-cta-row">
                   <a className="lp-btn lp-btn-primary" href="/api/auth/start">
-                    Entrar e baixar
-                    <Icon name="bi-download" />
+                    Entrar com Google
+                    <Icon name="bi-arrow-right" />
                   </a>
                   <a className="lp-btn" href={REPO} target="_blank" rel="noreferrer noopener">
                     Ler o código
@@ -351,17 +326,17 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                 </div>
                 <p className="lp-chip lp-chip-warn">
                   <Icon name="bi-cone-striped" />
-                  Em construção: ainda não existe instalador público
+                  Pré-alpha: ainda não há instalador para baixar
                 </p>
                 <ul className="lp-hero-meta">
                   <li>
-                    <Icon name="bi-windows" /> Windows e Linux
+                    <Icon name="bi-pc-display" /> Windows e Linux, planejados
                   </li>
                   <li>
-                    <Icon name="bi-hdd" /> SQLite no seu dispositivo
+                    <Icon name="bi-hdd" /> Dados financeiros no seu computador
                   </li>
                   <li>
-                    <Icon name="bi-git" /> Auditável por qualquer pessoa
+                    <Icon name="bi-git" /> Código aberto, licença MIT
                   </li>
                 </ul>
               </div>
@@ -388,9 +363,9 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                 <Reveal delay={140}>
                   <p className="lp-lede">
                     Faturas, assinaturas, débitos automáticos e metas futuras competem pelo mesmo dinheiro. Enquanto
-                    isso, registrar tudo à mão cria uma rotina que quase ninguém sustenta por mais de três semanas.
-                    O resultado é sempre o mesmo: a pessoa trabalha, ganha, paga as contas e mesmo assim termina o mês
-                    sem saber para onde o dinheiro foi.
+                    isso, registrar tudo à mão cria uma rotina difícil de manter. O resultado costuma ser o mesmo: a
+                    pessoa trabalha, ganha, paga as contas e mesmo assim termina o mês sem saber para onde o dinheiro
+                    foi.
                   </p>
                 </Reveal>
                 <Reveal delay={200}>
@@ -468,7 +443,7 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                           <td>R$ 4.000,00</td>
                         </tr>
                         <tr>
-                          <th scope="row">Fatura aberta do cartão</th>
+                          <th scope="row">Aluguel a vencer no período</th>
                           <td>− R$ 1.200,00</td>
                         </tr>
                         <tr>
@@ -499,7 +474,7 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                 </Reveal>
                 <Reveal delay={140}>
                   <p className="lp-lede">
-                    É o dinheiro que sobra depois de considerar faturas abertas, contas recorrentes e débitos
+                    É o dinheiro que sobra depois de descontar as contas a vencer, as recorrências e os débitos
                     previstos até o fim do período. Uma única linha que substitui a falsa sensação de folga por uma
                     leitura do que realmente pode ser gasto hoje.
                   </p>
@@ -508,18 +483,16 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                   <ul className="lp-checks">
                     <li>
                       <Icon name="bi-check2" />
-                      A fórmula e o período ficam abertos na própria tela, porque um número sem explicação seria um
-                      oráculo.
-                    </li>
-                    <li>
-                      <Icon name="bi-check2" />
-                      Havendo dívida cara ou saldo negativo, o produto entra em modo de sobrevivência e pausa as
-                      sugestões de aporte.
+                      Renda que ainda não caiu não entra na conta: o número só usa o que está confirmado.
                     </li>
                     <li>
                       <Icon name="bi-check2" />
                       Cada correção sua fica registrada com antes, depois e motivo, e pode ser revertida quando você
                       quiser.
+                    </li>
+                    <li className="lp-checks-planned">
+                      <Icon name="bi-circle" />
+                      Planejado: abrir o cálculo linha a linha na própria tela, como na tabela ao lado.
                     </li>
                   </ul>
                 </Reveal>
@@ -533,13 +506,12 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
           <div className="lp-wrap">
             <div className="lp-section-head">
               <Reveal delay={80}>
-                <h2 className="lp-h-display-lg">Telas reais, banco vazio, nenhum número inventado</h2>
+                <h2 className="lp-h-display-lg">As telas de hoje, sem nenhum dado</h2>
               </Reveal>
               <Reveal delay={140}>
                 <p className="lp-lede">
-                  As imagens abaixo são capturas do aplicativo em desenvolvimento, não são ilustrações de marketing.
-                  Como nenhuma conta foi cadastrada, tudo aparece zerado: o Talentum não exibe dado fictício para
-                  parecer mais pronto do que está.
+                  Capturas do aplicativo aberto pela primeira vez, antes de qualquer importação. Cada tela vazia diz o
+                  que falta e qual é o próximo passo, em vez de mostrar valor de exemplo.
                 </p>
               </Reveal>
             </div>
@@ -555,25 +527,31 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
           <div className="lp-wrap">
             <div className="lp-section-head">
               <Reveal delay={80}>
-                <h2 className="lp-h-display-lg">Seis salas, uma casa</h2>
+                <h2 className="lp-h-display-lg">O que já funciona e o que vem depois</h2>
               </Reveal>
               <Reveal delay={140}>
                 <p className="lp-lede">
-                  Cada área resolve uma parte do ciclo, e funções globais atravessam todas elas: notificações
-                  acionáveis, importação rápida, seleção de conta e lançamento expresso de despesa em dinheiro.
+                  Seis áreas cobrem o ciclo do mês. Ao lado de cada uma está o estado dela no código hoje. “Funciona
+                  no código” quer dizer que roda a partir do repositório; o instalador ainda não existe.
                 </p>
               </Reveal>
             </div>
 
-            <div className="lp-grid lp-grid-3">
+            <ul className="lp-areas">
               {AREAS.map((area, index) => (
-                <Reveal key={area.title} as="article" delay={(index % 3) * 100} className="lp-card">
+                <Reveal key={area.title} as="li" delay={(index % 2) * 80} className="lp-area">
                   <Icon name={area.icon} />
-                  <h3 className="lp-h-display">{area.title}</h3>
-                  <p>{area.text}</p>
+                  <div>
+                    <h3 className="lp-h-display">{area.title}</h3>
+                    <p>{area.text}</p>
+                  </div>
+                  <span className={`lp-area-state lp-area-state-${area.estado}`}>
+                    <Icon name={ESTADO[area.estado].icon} />
+                    {ESTADO[area.estado].label}
+                  </span>
                 </Reveal>
               ))}
-            </div>
+            </ul>
           </div>
         </section>
 
@@ -585,9 +563,15 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                 <Reveal delay={80}>
                   <h2 className="lp-h-display-lg">Quatro colunas sustentam melhor que uma</h2>
                 </Reveal>
+                <Reveal delay={110}>
+                  <p className="lp-chip">
+                    <Icon name="bi-circle" />
+                    Planejado: etapa de patrimônio
+                  </p>
+                </Reveal>
                 <Reveal delay={140}>
                   <p className="lp-lede">
-                    Depois que o mês está sob controle, entra a parte de longo prazo. O módulo patrimonial usa como
+                    Depois que o mês está sob controle, entra a parte de longo prazo. O módulo patrimonial vai usar como
                     referência a metodologia ARCA, idealizada por <strong>Thiago Nigro (Primo Rico)</strong>, que
                     divide o patrimônio em quatro pilares com meta-base de 25% em cada um.
                   </p>
@@ -646,11 +630,17 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
               <Reveal delay={80}>
                 <h2 className="lp-h-display-lg">Modo de sobrevivência</h2>
               </Reveal>
+              <Reveal delay={110}>
+                <p className="lp-chip">
+                  <Icon name="bi-circle" />
+                  Planejado: etapa de dívidas
+                </p>
+              </Reveal>
               <Reveal delay={140}>
                 <p className="lp-lede">
                   Não faz sentido falar em alocação de carteira para quem está pagando juro de cartão. Havendo dívida
-                  cara ou saldo negativo, o produto muda de assunto: pausa as sugestões de aporte, prioriza o juro
-                  mais alto e concentra a tela na reconstrução da liquidez.
+                  cara ou saldo negativo, o produto vai mudar de assunto: pausar as sugestões de aporte, priorizar
+                  o juro mais alto e concentrar a tela na reconstrução da liquidez.
                 </p>
               </Reveal>
               <Reveal delay={200}>
@@ -686,11 +676,11 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                 <h3>Fica no seu dispositivo</h3>
                 <ul className="lp-ledger">
                   {[
-                    'Extratos e faturas importados',
+                    'Lançamentos importados dos seus extratos (o arquivo em si não é guardado)',
                     'Transações, estabelecimentos e categorias',
                     'Saldos, patrimônio, metas e hábitos',
-                    'Chaves PIX próprias, cifradas localmente',
-                    'O banco SQLite inteiro',
+                    'Suas chaves Pix, cifradas no próprio computador',
+                    'O banco de dados local inteiro',
                   ].map((item) => (
                     <li key={item} className="local">
                       <Icon name="bi-hdd-fill" />
@@ -707,8 +697,8 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                     'Identidade mínima e sessão da sua conta',
                     'Consentimentos e preferências de comunicação',
                     'Metadados de versão e download do aplicativo',
-                    'Conteúdo público da comunidade de feedback',
-                    'Um snapshot já cifrado, quando você habilitar',
+                    'Conteúdo público da comunidade de feedback (planejada)',
+                    'Uma cópia de segurança já cifrada, se você ativar (planejada)',
                   ].map((item) => (
                     <li key={item} className="cloud">
                       <Icon name="bi-cloud" />
@@ -803,54 +793,18 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
           <div className="lp-wrap">
             <div className="lp-section-head">
               <Reveal delay={80}>
-                <h2 className="lp-h-display-lg">Oito pranchas para explicar um produto</h2>
+                <h2 className="lp-h-display-lg">Oito ideias por trás do produto</h2>
               </Reveal>
               <Reveal delay={140}>
                 <p className="lp-lede">
-                  Cada figura desta coleção foi desenhada para o projeto. Navegue pelas setas, pelos pontos ou pelas
-                  teclas esquerda e direita.
+                  Cada gravura carrega um princípio que decide como o Talentum calcula, guarda e mostra o seu
+                  dinheiro.
                 </p>
               </Reveal>
             </div>
             <Reveal delay={160}>
               <PlateCarousel plates={PLATES} />
             </Reveal>
-          </div>
-        </section>
-
-        {/* ── A coleção ────────────────────────────────────────── */}
-        <section className="lp-section lp-section-sunken" id="colecao">
-          <div className="lp-wrap">
-            <div className="lp-section-head">
-              <Reveal delay={80}>
-                <h2 className="lp-h-display-lg">Um vocabulário de imagens</h2>
-              </Reveal>
-              <Reveal delay={140}>
-                <p className="lp-lede">
-                  Seis gravuras a mais, desenhadas para o projeto. Nenhuma vem de banco de imagens: elas existem para
-                  explicar uma ideia, não para preencher espaço.
-                </p>
-              </Reveal>
-            </div>
-
-            <div className="lp-gallery">
-              {COLECAO.map((peca, index) => (
-                <Reveal
-                  key={peca.title}
-                  as="figure"
-                  variant="blur"
-                  delay={(index % 3) * 110}
-                  className="lp-gallery-item"
-                >
-                  <div className="lp-gallery-art">{peca.art}</div>
-                  <figcaption>
-                    <span className="lp-gallery-numeral">Prancha {peca.numeral}</span>
-                    <h3>{peca.title}</h3>
-                    <p>{peca.text}</p>
-                  </figcaption>
-                </Reveal>
-              ))}
-            </div>
           </div>
         </section>
 
@@ -864,29 +818,32 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                 </Reveal>
                 <Reveal delay={140}>
                   <p className="lp-lede">
-                    O repositório já tem a visão consolidada, a documentação técnica, a identidade visual, a base
-                    Next.js full-stack, uma API local inicial, Prisma com SQLite, Docker e o shell do Electron. Os
-                    módulos financeiros e os serviços de borda ainda serão implementados, nesta ordem:
+                    O caminho até a primeira versão utilizável tem sete etapas. Este é o estado de cada uma no
+                    repositório hoje; o que vem depois do MVP está no{' '}
+                    <a href={`${REPO}/blob/main/docs/ROADMAP.md`} target="_blank" rel="noreferrer noopener">
+                      roteiro público
+                    </a>
+                    .
                   </p>
                 </Reveal>
                 <Reveal delay={200}>
                   <ol className="lp-timeline">
                     {[
                       { title: 'Fundação técnica e segurança', state: 'em andamento' },
-                      { title: 'Cadastro, sessão e downloads autorizados', state: 'planejado' },
-                      { title: 'Electron seguro e primeiro acesso', state: 'planejado' },
-                      { title: 'Contas, categorias e obrigações', state: 'planejado' },
-                      { title: 'Importação de OFX', state: 'planejado' },
-                      { title: 'Categorização e conciliação', state: 'planejado' },
-                      { title: 'Dashboard e Saldo Livre de Risco', state: 'planejado' },
-                    ].map((item, index) => (
-                      <li key={item.title}>
+                      { title: 'Cadastro, sessão e downloads autorizados', state: 'em andamento' },
+                      { title: 'Electron seguro e primeiro acesso', state: 'em andamento' },
+                      { title: 'Contas, categorias e obrigações', state: 'pronto' },
+                      { title: 'Importação de OFX e CSV', state: 'pronto' },
+                      { title: 'Categorização e conciliação', state: 'em andamento' },
+                      { title: 'Dashboard e Saldo Livre de Risco', state: 'em andamento' },
+                    ].map((item) => (
+                      <li key={item.title} className={`lp-timeline-${item.state === 'pronto' ? 'done' : 'now'}`}>
                         <span className="lp-timeline-dot" aria-hidden="true">
-                          {index === 0 ? <Icon name="bi-record-circle" /> : <Icon name="bi-circle" />}
+                          <Icon name={item.state === 'pronto' ? 'bi-check2' : 'bi-circle-half'} />
                         </span>
                         <span>
                           <strong>{item.title}</strong>
-                          <span className={`lp-state lp-state-${index === 0 ? 'now' : 'next'}`}>{item.state}</span>
+                          <span className="lp-state">{item.state}</span>
                         </span>
                       </li>
                     ))}
@@ -951,8 +908,7 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
             </Reveal>
             <Reveal delay={280}>
               <p className="lp-tiny lp-muted lp-center-text">
-                A licença definitiva ainda precisa ser formalizada em um arquivo <code className="lp-mono">LICENSE</code>{' '}
-                antes da primeira distribuição pública.
+                Código sob licença MIT. Os ícones vêm do Bootstrap Icons, também sob MIT.
               </p>
             </Reveal>
           </div>
@@ -985,7 +941,7 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                   <a href="#sistema">Telas do sistema</a>
                 </li>
                 <li>
-                  <a href="#arca">Quatro pilares</a>
+                  <a href="#salas">O que já funciona</a>
                 </li>
               </ul>
             </div>
@@ -993,6 +949,11 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
             <div className="lp-footer-col">
               <h3>Projeto</h3>
               <ul>
+                <li>
+                  <a href={`${REPO}/blob/main/docs/ROADMAP.md`} target="_blank" rel="noreferrer noopener">
+                    Roteiro
+                  </a>
+                </li>
                 <li>
                   <a href={REPO} target="_blank" rel="noreferrer noopener">
                     Repositório
