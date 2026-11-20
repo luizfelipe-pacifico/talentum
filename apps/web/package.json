@@ -12,7 +12,7 @@
   "dependencies": {
     "@fontsource/montserrat": "^5.3.0",
     "@fontsource/playfair-display": "^5.3.0",
-    "bootstrap-icons": "^1.13.1",
+    "bootstrap-icons": "^1.13.2",
     "next": "^15.5.29",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
