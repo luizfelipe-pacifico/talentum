@@ -40,7 +40,7 @@ test('o filtro da linha do tempo não aceita chaves do protótipo', async () => 
   assert.equal(parseTimelineQuery(new URLSearchParams('constructor=x')), null);
   assert.notEqual(parseTimelineQuery(new URLSearchParams('domain=imports')), null);
   const source = await readFile(new URL('src/server/timeline-filter.ts', root), 'utf8');
-  assert.match(source, /Object\.create\(null\)/);
+  assert.match(source, /Object\.fromEntries\(entries\)/);
 });
 
 test('taxa em porcentagem aceita símbolo e vírgula repetidos sem ambiguidade', async () => {

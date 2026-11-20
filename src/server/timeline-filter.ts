@@ -46,13 +46,14 @@ export type TimelineFilter = {
 
 /** Valida a query string. Devolve `null` quando o filtro é inválido. */
 export function parseTimelineQuery(params: URLSearchParams): TimelineFilter | null {
-  // Sem protótipo: `__proto__`, `constructor` e afins viram chaves comuns e o
-  // esquema estrito as recusa como desconhecidas.
-  const raw: Record<string, string> = Object.create(null);
+  // Um Map e depois `Object.fromEntries`: `__proto__`, `constructor` e afins
+  // viram chaves próprias comuns, que o esquema estrito recusa como desconhecidas.
+  const entries = new Map<string, string>();
   for (const [key, value] of params) {
-    if (Object.hasOwn(raw, key)) return null; // parâmetro repetido é ambíguo
-    raw[key] = value;
+    if (entries.has(key)) return null; // parâmetro repetido é ambíguo
+    entries.set(key, value);
   }
+  const raw = Object.fromEntries(entries);
   const parsed = querySchema.safeParse(raw);
   if (!parsed.success) return null;
   const { kind, domain, from, to, cursor } = parsed.data;

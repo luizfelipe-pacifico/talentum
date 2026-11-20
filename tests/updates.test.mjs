@@ -186,7 +186,9 @@ test('a rota exige código de ação e a interface nunca fala com o GitHub', asy
   assert.match(route, /fetchImpl: fetch/);
   assert.match(await read('src/app/api/updates/postpone/route.ts'), /guardWithProfile\(request\)/);
   const ui = await read('src/components/update-notice.tsx');
-  assert.ok(!ui.includes('api.github.com'), 'a interface não consulta o GitHub direto');
+  // A interface não consulta nada fora do backend local: nem fetch próprio nem endereço externo.
+  assert.doesNotMatch(ui, /\bfetch\(/);
+  assert.doesNotMatch(ui, /https:\/\//);
   assert.match(ui, /getJson<Check>\('\/api\/updates'\)/);
   assert.match(ui, /pathname\.startsWith\('\/extratos\/importar'\)/, 'não aparece durante a importação');
   assert.match(ui, /name="nova-versao"/);
