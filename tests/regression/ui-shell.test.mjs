@@ -76,3 +76,20 @@ test('o guia de layout interno só existe em desenvolvimento', async () => {
   const settings = await read('src/components/demo-pages.tsx');
   assert.match(settings, /process\.env\.NODE_ENV === 'development' && <Link className="btn-link" href="\/layout-guide">/);
 });
+
+test('div ou span com aria-label tem papel ARIA, senão o leitor de tela ignora o nome', async () => {
+  // Achado do Biome (a11y/useAriaPropsSupportedByRole): os controles da janela
+  // tinham aria-label numa <div> genérica, que não pode receber nome acessível.
+  const dirs = ['src/components', 'src/app', 'apps/web/src/components', 'apps/web/src/app'];
+  const offenders = [];
+  for (const dir of dirs) {
+    const files = await readdir(new URL(dir, root), { recursive: true });
+    for (const file of files.filter((name) => name.endsWith('.tsx'))) {
+      const source = await read(`${dir}/${file}`);
+      for (const [tag] of source.matchAll(/<(?:div|span)\b[^>]*\baria-label=[^>]*>/g)) {
+        if (!/\brole=/.test(tag)) offenders.push(`${dir}/${file}: ${tag.slice(0, 80)}`);
+      }
+    }
+  }
+  assert.deepEqual(offenders, []);
+});

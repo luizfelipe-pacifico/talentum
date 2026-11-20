@@ -30,6 +30,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => media.removeEventListener('change', update);
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: closes the drawer whenever the route changes; pathname is the trigger, not a value read inside
   useEffect(() => {
     setNavOpen(false);
   }, [pathname]);
@@ -213,7 +214,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               <i className="bi bi-chevron-down" style={{ fontSize: 11, color: 'var(--ink2)' }} />
             </Link>
 
-            <div className="window-controls" aria-label="Controles da janela">
+            {/* biome-ignore lint/a11y/useSemanticElements: fieldset groups form fields; these are window buttons outside any form */}
+            <div className="window-controls" role="group" aria-label="Controles da janela">
               <button type="button" onClick={() => window.talentumWindow?.minimize()} aria-label="Minimizar" title="Minimizar">
                 <i className="bi bi-dash-lg" />
               </button>

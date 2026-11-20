@@ -37,7 +37,8 @@ export function Onboarding({ step }: { step: Step }) {
     } catch { setError('Não foi possível carregar o primeiro acesso.'); }
   }
 
-  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // biome-ignore lint/correctness/useExhaustiveDependencies: loads the draft once on mount; load is recreated on every render
+  useEffect(() => { void load(); }, []);
 
   async function save(next: Step, answers: Record<string, string | boolean | number | null> = {}) {
     if (!payload?.onboarding) return;
@@ -79,26 +80,26 @@ export function Onboarding({ step }: { step: Step }) {
       <label className="field">Moeda<select value={currency} onChange={(event) => setCurrency(event.target.value)}><option value="BRL">Real brasileiro (BRL)</option></select></label>
       <label className="field">Fuso horário<input value={timezone} onChange={(event) => setTimezone(event.target.value)} /></label>
       <label className="check-row"><input type="checkbox" checked={privacyAccepted} onChange={(event) => setPrivacyAccepted(event.target.checked)}/><span>Entendi que os dados financeiros permanecem no dispositivo.</span></label>
-      <button className="btn btn-primary" disabled={saving || !privacyAccepted || !timezone} onClick={() => save('accounts', { displayName, currency, timezone, privacyAccepted })}>Salvar e continuar</button>
+      <button type="button" className="btn btn-primary" disabled={saving || !privacyAccepted || !timezone} onClick={() => save('accounts', { displayName, currency, timezone, privacyAccepted })}>Salvar e continuar</button>
     </>}
 
     {step === 'accounts' && <>
       <h2 className="h-display-lg">Instituições e contas</h2>
       <p className="muted">Cadastre as contas que deseja considerar. Você também pode seguir agora e retornar depois.</p>
-      <div className="row-tight"><Link className="btn btn-primary" href="/contas/nova">Cadastrar conta</Link><button className="btn btn-neutral" disabled={saving} onClick={() => save('position')}>Continuar</button></div>
+      <div className="row-tight"><Link className="btn btn-primary" href="/contas/nova">Cadastrar conta</Link><button type="button" className="btn btn-neutral" disabled={saving} onClick={() => save('position')}>Continuar</button></div>
     </>}
 
     {step === 'position' && <>
       <h2 className="h-display-lg">Posição atual</h2>
       <p className="muted">Um extrato pode preencher parte da fotografia sem digitação. Nenhum arquivo é enviado à nuvem.</p>
-      <div className="row-tight"><Link className="btn btn-primary" href="/extratos/importar">Importar extrato</Link><button className="btn btn-neutral" disabled={saving} onClick={() => save('review')}>Revisar agora</button></div>
+      <div className="row-tight"><Link className="btn btn-primary" href="/extratos/importar">Importar extrato</Link><button type="button" className="btn btn-neutral" disabled={saving} onClick={() => save('review')}>Revisar agora</button></div>
     </>}
 
     {step === 'review' && <>
       <h2 className="h-display-lg">Revise sua base</h2>
       <p className="muted">Você pode concluir mesmo sem contas; nesse caso, o Dashboard continuará no estado vazio e não inventará valores.</p>
       <dl className="review-list"><div><dt>Moeda</dt><dd>{currency}</dd></div><div><dt>Fuso</dt><dd>{timezone}</dd></div><div><dt>Privacidade</dt><dd>{privacyAccepted ? 'Confirmada' : 'Pendente'}</dd></div></dl>
-      <div className="row-tight"><Link className="btn btn-neutral" href="/onboarding/perfil">Corrigir</Link><button className="btn btn-primary" disabled={saving || !privacyAccepted} onClick={complete}>Concluir primeiro acesso</button></div>
+      <div className="row-tight"><Link className="btn btn-neutral" href="/onboarding/perfil">Corrigir</Link><button type="button" className="btn btn-primary" disabled={saving || !privacyAccepted} onClick={complete}>Concluir primeiro acesso</button></div>
     </>}
   </section>;
 }

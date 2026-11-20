@@ -51,6 +51,7 @@ This file is versioned and public. It contains working style, preferences, decis
 - "Garanta que está tudo feito e correto" means: re-verify against the code, run the full test suite, scan for broken links and stale references, and only then report.
 - Verify subagent output before relaying it. Spot-check key claims against the code.
 - Report limitations honestly: what was not tested, what could not be verified from the repository.
+- Automated tests are not enough: every interface or local API change is also tested by hand through Claude in Chrome on the isolated local server, as a person would use it (`CLAUDE.md`, Quality).
 
 ## Design and UX philosophy
 
@@ -113,6 +114,11 @@ Keep this section short and current so a session started after `/clear` can resu
 
 Add newest entries at the top. Format: date, what happened, the lesson.
 
+- **2026-11-20** The maintainer made manual testing through the Claude in Chrome extension on localhost mandatory, in addition to the existing tests, "para testar de maneira manual o que um usuário faria". Lesson: after the automated suite, open the isolated server (`pnpm test:manual`, fresh database) and use the changed flows like a person, never against the real local database; report the flows tested.
+- **2026-11-20** The first run of the new Playwright suite on the merged MVP found that every screen opened at `127.0.0.1` showed "Não foi possível consultar o banco local": a security fix compared the browser `Origin` with `request.url`, which `next dev` builds as `localhost`. The BFF had the same defect earlier. Lesson: compare `Origin` with the requested `Host`, never with `request.url`; and run `pnpm test:e2e` before merging security fixes, because unit tests that read source code did not catch it.
+- **2026-11-20** For the Biome and Playwright work the maintainer asked to push a branch, open a pull request and merge it without waiting for review ("Pode fazer sem eu validar"). Lesson: when that is requested, use branch → PR → merge instead of pushing to `main` directly; the hooks, the gate and the end-to-end tests still run first.
+
+- **2026-11-20** While Biome and Playwright were being added, the maintainer said "vai fazendo commit e push para a main enquanto vai executando". Lesson: on long tasks, commit and push each coherent, verified step to `main` as it is finished (gate, hooks and end-to-end tests first) instead of one large commit at the end.
 - **2026-11-20** `core.bare=true` kept appearing in the shared `.git/config` and broke the main worktree. Cause: the hooks regression test ran `git init` while inheriting `GIT_DIR` from the pre-commit hook, which reinitialized the real repository as bare. Lesson: any test that runs git must strip `GIT_*` variables, because the suite also runs inside hooks; check `git config core.bare` after commits when worktrees are shared.
 
 - **2026-11-20** The maintainer asked for an explicit rule about what must not be exposed in this file. Lesson: this file is public; the list now lives in `CLAUDE.md`, and details of the maintainer's machine and personal setup were removed from it.

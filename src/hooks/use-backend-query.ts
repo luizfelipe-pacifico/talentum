@@ -21,6 +21,7 @@ export function useBackendQuery<T>(path: string): QueryState<T> {
     setAttempt((current) => current + 1);
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: attempt is the retry trigger; changing it refetches
   useEffect(() => {
     const controller = new AbortController();
     let active = true;

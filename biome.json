@@ -1,0 +1,65 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "includes": ["**", "!.claude", "!design", "!public", "!apps/web/public", "!apps/web/src/components/lp/icons.tsx", "!**/*.css"]
+  },
+  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 140 },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "jsxQuoteStyle": "double",
+      "semicolons": "always",
+      "trailingCommas": "all",
+      "arrowParentheses": "always"
+    }
+  },
+  "assist": { "enabled": true, "actions": { "source": { "organizeImports": "off" } } },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "performance": { "noImgElement": "off" },
+      "suspicious": { "noImplicitAnyLet": "off" },
+      "correctness": { "usePlaywrightValidDescribeCallback": "off" }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["apps/web/src/components/lp/art.tsx", "src/components/layout-guide.tsx"],
+      "linter": { "rules": { "suspicious": { "noArrayIndexKey": "off" } } }
+    },
+    {
+      "includes": ["src/app/layout.tsx", "apps/web/src/components/lp/icon.tsx"],
+      "linter": { "rules": { "security": { "noDangerouslySetInnerHtml": "off" } } }
+    },
+    {
+      "includes": ["apps/web/src/components/lp/carousel.tsx"],
+      "linter": { "rules": { "a11y": { "useSemanticElements": "off", "noNoninteractiveTabindex": "off" } } }
+    },
+    {
+      "includes": ["src/components/state-art.tsx", "apps/web/src/components/lp/state-art.tsx"],
+      "linter": { "rules": { "a11y": { "noStaticElementInteractions": "off" } } }
+    },
+    {
+      "includes": ["cloudflare/src/index.ts"],
+      "linter": { "rules": { "suspicious": { "useIterableCallbackReturn": "off" } } }
+    },
+    {
+      "includes": ["src/server/import/**", "tests/regression/offensive-review-findings.test.mjs"],
+      "linter": { "rules": { "suspicious": { "noControlCharactersInRegex": "off" } } }
+    },
+    {
+      "includes": ["src/components/import-wizard.tsx"],
+      "linter": { "rules": { "a11y": { "noStaticElementInteractions": "off" }, "suspicious": { "noArrayIndexKey": "off" } } }
+    },
+    {
+      "includes": ["tests/e2e/**"],
+      "linter": { "rules": { "correctness": { "usePlaywrightValidDescribeCallback": "error" } } }
+    },
+    {
+      "includes": ["tests/**"],
+      "linter": { "rules": { "suspicious": { "noTemplateCurlyInString": "off" } } }
+    }
+  ]
+}
