@@ -1,6 +1,6 @@
 # Talentum Architecture
 
-This document is the single source for how Talentum is built and how it runs: the product shape, the two runtime layers (the public Web layer and the local Electron layer), the cross-layer runtime flows, the action-code protocol, every backend contract (cloud and local), Cloudflare setup and deployment, operations, and the shared API conventions. Every statement of state is marked **Current** (implemented and verifiable in the repository), **Planned** (intended, not implemented) or **Open** (an unresolved decision or a conflict between code and documentation). Security policy, secret handling and threat rules live in [SECURITY.md](SECURITY.md); table-level schemas live in [DATABASE.md](DATABASE.md); product scope and screens live in [PRODUCT.md](PRODUCT.md).
+This document is the single source for how Talentum is built and how it runs: the product shape, the two runtime layers (the public Web layer and the local Electron layer), the cross-layer runtime flows, the action-code protocol, every backend contract (cloud and local), Cloudflare setup and deployment, operations, and the shared API conventions. Statements carry the status labels defined in [README.md](README.md#status-labels). Security policy, secret handling and threat rules live in [SECURITY.md](SECURITY.md); table-level schemas live in [DATABASE.md](DATABASE.md); product scope and screens live in [PRODUCT.md](PRODUCT.md).
 
 ## Contents
 
@@ -67,7 +67,14 @@ Normative rules (apply to both layers):
 ```text
 apps/
   web/                 @talentum/web: public LP + BFF (Next.js, port 3100). No Electron, Prisma, SQLite or financial domain.
-src/                   local Next.js app: UI pages (src/app), local API (src/app/api), server code (src/server), client helpers (src/lib)
+src/                   local Next.js app (product UI and local API)
+  app/                 App Router pages and layouts; route handlers in app/api
+  components/          components owned by the local app
+  hooks/               React hooks
+  lib/                 client helpers (API client, formatting, charts)
+  server/              server-only code: database, action codes, metrics
+  types/               shared TypeScript types
+  middleware.ts        loopback Host check for /api
 electron/              main.cjs (window, navigation, permissions, IPC) and preload.cjs
 prisma/                schema.prisma + 11 migrations (local SQLite only)
 cloudflare/            Worker (src/index.ts), D1 migrations, wrangler.jsonc (tracked working config), wrangler.example.jsonc, .dev.vars.example
@@ -80,6 +87,8 @@ tests/                 node:test suites; tests/regression/ holds regression test
 LICENSE                open-source license
 .claude/               agent skills and tooling
 docs/                  normative documentation and ADRs (docs/decisions/)
+README.md, CLAUDE.md, AGENTS.md   project overview, AI agent rules, pointer for other agents
+package.json, pnpm-workspace.yaml root scripts, dependencies, build allowances and overrides
 Dockerfile             local app image (Ubuntu 24.04 base)
 Dockerfile.web         LP/BFF image (node:22-bookworm-slim)
 compose.yaml           talentum-local (127.0.0.1:3000) and talentum-web (127.0.0.1:3100)
@@ -114,7 +123,7 @@ Every functional frontend request follows this protocol:
 4. The backend validates and consumes the code atomically, then authenticates, authorizes, rate-limits and validates the action.
 5. The code is discarded and never enters history, logs, URLs or analytics.
 
-The issuing route is the only exception to the rule. The code contains no `userId`, email, IP or business meaning. It reduces replay and binds intent to a call, but it does **not** replace access tokens, refresh tokens, authorization, CSRF protection, idempotency keys, validation or rate limiting.
+The issuing route is the exception to the rule, together with infrastructure liveness probes (`GET /api/health/live` locally, `GET /health` on the Worker), which return no application data and are never called by the interface. The code contains no `userId`, email, IP or business meaning. It reduces replay and binds intent to a call, but it does **not** replace access tokens, refresh tokens, authorization, CSRF protection, idempotency keys, validation or rate limiting.
 
 Both issuers accept only `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, only paths starting with `/api/`, and refuse to issue a code for `/api/action-codes` itself (`400 INVALID_ACTION_TARGET`). A missing, expired, reused or mismatched code returns `403 INVALID_ACTION_CODE`.
 
@@ -126,7 +135,7 @@ Both issuers accept only `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, only paths sta
 | Consumption | record deleted on consume; expired records swept on each issue/consume | atomic `UPDATE … SET consumed_at` guarded by `consumed_at IS NULL AND expires_at > now`; rows are kept, not deleted |
 | Rate limit on issuing | none | 30 per minute per client IP (`codes` bucket) |
 
-**Current limitation.** The Worker's `context_hash` is the hash of the BFF shared secret, identical for every caller, so codes are effectively bound to "issued for the BFF" plus method and path, not to a session or origin. Binding to the session or origin context is **Planned**. The local in-memory store serves only a single-process local backend; before any distributed execution it must be replaced by an atomic mechanism appropriate to the provider (**Planned**).
+**Current limitation.** Codes are bound to method and path only, not to a session or origin; the details and the planned binding are in [SECURITY.md](SECURITY.md#action-codes). The local in-memory store serves only a single-process local backend; before any distributed execution it must be replaced by an atomic mechanism appropriate to the provider (**Planned**).
 
 **Binding to path, not query string (Current, local).** The local code is bound to **method and path**, without the query. It identifies the contract (`GET /api/transactions`), not the filter values. The reason is correctness: the backend validates the code against the request `pathname`, so binding it to the whole URL would make every filtered listing fail. It does not weaken protection: the code exists against replay, while filters, ownership and `profileId` scoping are still validated by the backend on every request. Client and backend apply the same rule in `actionCodePath` (`src/lib/api-client.ts`) and `requireActionCode` (`src/server/http.ts`). Dynamic segments are part of the path, so a code issued for one batch does not serve another.
 
@@ -138,7 +147,7 @@ Manually validated call (local): issue a code for `GET /api/system/status`, send
 
 **Current.**
 
-- `pnpm dev` kills any previous process on port 3000, waits for the port to be released, removes `.next` and starts Next.js at `http://127.0.0.1:3000`.
+- `pnpm dev` kills any previous process on port 3000, waits for the port to be released, applies `prisma migrate deploy`, removes `.next` and starts Next.js at `http://127.0.0.1:3000`.
 - `pnpm dev:all` probes `GET /api/health/live` and only then opens the Electron window at `http://localhost:3000` (falling back to `http://127.0.0.1:3000`; `TALENTUM_URL` overrides both). When a local backend already responds (from Docker or a `pnpm dev` in another terminal), the window attaches to it and does not stop it when closed; when nothing responds, the script starts the server and stops both processes together.
 - The server listens only on IPv4 loopback; `localhost` reaches it through address-family fallback.
 - Implemented and verifiable: persistent onboarding, profile, institutions, accounts, balance history and own Pix keys, categories, income sources, obligations and merchant rules (CRUD only), CSV and OFX statement import with batch undo, the transaction listing, detail, edit and history, the reconciliation queue with reversible decisions, the dashboard (all nine elements, including the cash projection and monthly cash flow) and the local timeline with reversal. Cards, net worth, goals, news and gamification remain empty-state screens: they show no fictitious data, only the empty state. `src/lib/demo-data.ts` holds only navigation and theme configuration, never financial data, and area screens that are still placeholders confirm emptiness through `GET /api/local-summary`.
@@ -427,19 +436,19 @@ The cloud API never receives statements, transactions, balances or portfolios in
 
 ### 3.7 Configuration variables (names and locations)
 
-Values are never written in documentation or version control; secret-handling policy is in [SECURITY.md](SECURITY.md).
+This table is the single list of configuration variables. Values are never written in documentation or version control; secret-handling policy (where secrets live, generation and rotation) is in [SECURITY.md](SECURITY.md#secrets-management).
 
 | Variable | Kind | Local location | Production location |
 | --- | --- | --- | --- |
 | `DB` (binding), `database_name`, `database_id` | D1 binding (ID is not a secret) | `cloudflare/wrangler.jsonc` (tracked) | same |
-| `APP_ENV` | plain var (declared, currently unused by code) | `cloudflare/wrangler.jsonc` | same |
+| `APP_ENV` | plain var: environment name (declared, currently unused by code) | `cloudflare/wrangler.jsonc` | same |
 | `PUBLIC_WEB_URL` | plain var; base of the OAuth redirect URI | overridden in `cloudflare/.dev.vars` | `cloudflare/wrangler.jsonc` |
-| `ALLOWED_ORIGIN` | plain var (declared, currently unused) | overridden in `cloudflare/.dev.vars` | `cloudflare/wrangler.jsonc` |
+| `ALLOWED_ORIGIN` | plain var: intended CORS origin (declared, currently unused) | overridden in `cloudflare/.dev.vars` | `cloudflare/wrangler.jsonc` |
 | `SESSION_SIGNING_SECRET` | secret; derives the AES-GCM key that encrypts the PKCE verifier and nonce in `auth_transactions` (sessions are opaque hashed tokens, not signed) | `cloudflare/.dev.vars` | Worker secret |
-| `TOKEN_HASH_PEPPER` | secret; pepper for hashes of tokens, codes, state, nonce and rate-limit keys | `cloudflare/.dev.vars` | Worker secret |
-| `BFF_SHARED_SECRET` | secret; authenticates the BFF to the Worker | `cloudflare/.dev.vars` | Worker secret |
-| `GOOGLE_CLIENT_ID` | OAuth client identifier (public; may be a plain var) | `cloudflare/.dev.vars` | Worker secret or var |
-| `GOOGLE_CLIENT_SECRET` | secret | `cloudflare/.dev.vars` | Worker secret |
+| `TOKEN_HASH_PEPPER` | secret; pepper for the SHA-256 hashes of action codes, access and refresh tokens, `state`, `nonce`, download grants and rate-limit bucket keys | `cloudflare/.dev.vars` | Worker secret |
+| `BFF_SHARED_SECRET` | secret; authenticates the BFF to the Worker through `X-Talentum-BFF` (compared as SHA-256 digests); also the source of the action codes' `context_hash` | `cloudflare/.dev.vars` | Worker secret |
+| `GOOGLE_CLIENT_ID` | OAuth client identifier and expected ID-token audience (public; may be a plain var) | `cloudflare/.dev.vars` | Worker secret or var |
+| `GOOGLE_CLIENT_SECRET` | secret; used in the code exchange | `cloudflare/.dev.vars` | Worker secret |
 | `CLOUDFLARE_API_BASE_URL` | BFF server runtime: Worker URL | root `.env` | Vercel runtime env |
 | `CLOUDFLARE_BFF_SHARED_SECRET` | BFF server runtime: must equal `BFF_SHARED_SECRET` | root `.env` | Vercel runtime env |
 | `DOCKER_CLOUDFLARE_API_BASE_URL` | Worker URL seen from the `talentum-web` container | root `.env` | not used |
@@ -455,11 +464,11 @@ None of the BFF variables uses the `NEXT_PUBLIC_` prefix. The LP calls its own B
 
 ### 3.8 Cloudflare setup and deployment
 
-Commands below are PowerShell as originally written; on Linux/macOS use the equivalent shell commands (for example `cp` instead of `Copy-Item`, `curl` instead of `Invoke-RestMethod`).
+Commands below are POSIX shell; on Windows PowerShell use the equivalents (`Copy-Item` for `cp`, `Invoke-RestMethod` for `curl`).
 
 **Step 1: authenticate Wrangler.** From the repository root:
 
-```powershell
+```sh
 pnpm exec wrangler login
 pnpm exec wrangler whoami
 ```
@@ -468,7 +477,7 @@ The first command opens the Cloudflare account authorization in the browser; the
 
 **Step 2: create the production D1 database** (only when the database does not exist yet):
 
-```powershell
+```sh
 pnpm exec wrangler d1 create talentum-cloud-production
 ```
 
@@ -478,13 +487,13 @@ Keep the returned `database_id`. The database identifier is not a credential, bu
 
 **Step 4: prepare local secrets.**
 
-```powershell
-Copy-Item -LiteralPath cloudflare/.dev.vars.example -Destination cloudflare/.dev.vars
+```sh
+cp cloudflare/.dev.vars.example cloudflare/.dev.vars
 ```
 
 Fill in every name listed in `cloudflare/.dev.vars.example`: `SESSION_SIGNING_SECRET`, `TOKEN_HASH_PEPPER`, `BFF_SHARED_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, plus the local overrides `PUBLIC_WEB_URL` and `ALLOWED_ORIGIN` (during `wrangler dev` they make the login callback return to the local LP, not the published domain). Generate each of the three random secrets independently, with at least 32 random bytes, running once per variable:
 
-```powershell
+```sh
 node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
 ```
 
@@ -492,7 +501,7 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'
 
 **Step 5: apply and verify migrations locally.**
 
-```powershell
+```sh
 pnpm run cloudflare:migrations:list:local
 pnpm run cloudflare:migrations:apply:local
 pnpm exec wrangler d1 execute talentum-cloud-production --local --config cloudflare/wrangler.jsonc --command "SELECT name FROM sqlite_schema WHERE type = 'table' ORDER BY name"
@@ -501,22 +510,22 @@ pnpm run cloudflare:dev
 
 In another terminal, check the connection:
 
-```powershell
-Invoke-RestMethod http://localhost:8787/health
+```sh
+curl http://localhost:8787/health
 ```
 
 The expected response contains `status: ok` and `service: talentum-cloud-api`.
 
 **Step 6: review and apply in production.** Always list pending migrations before changing the remote database:
 
-```powershell
+```sh
 pnpm run cloudflare:migrations:list:remote
 pnpm run cloudflare:migrations:apply:remote
 ```
 
 **Step 7: register remote secrets.** Register each secret interactively; never pass the value on the command line:
 
-```powershell
+```sh
 pnpm exec wrangler secret put SESSION_SIGNING_SECRET --config cloudflare/wrangler.jsonc
 pnpm exec wrangler secret put TOKEN_HASH_PEPPER --config cloudflare/wrangler.jsonc
 pnpm exec wrangler secret put BFF_SHARED_SECRET --config cloudflare/wrangler.jsonc
@@ -528,7 +537,7 @@ The OAuth client secret must stay secret; the public client identifier may be a 
 
 **Step 8: deploy and validate the Worker.**
 
-```powershell
+```sh
 pnpm run cloudflare:deploy
 ```
 
@@ -562,16 +571,7 @@ Do not use `pnpm run build` there: it builds the local product's Next.js. Do not
 
 ### 3.9 Operations
 
-**Pre-publication checklist** (the status of each control is noted):
-
-- no financial data, statement, account, balance, transaction or Pix key is in D1 (Current by design: no such table exists in D1);
-- no token is persisted in cleartext, only hash, expiry, consumption and revocation (Current);
-- cookies are `Secure`, `HttpOnly` and `SameSite` suited to the BFF flow (Current: `Lax`, `__Host-` prefix);
-- private routes apply authentication, authorization and `Cache-Control: no-store` (Current); rate limits on private routes (Planned);
-- ephemeral codes are hashed, short-lived, single-use and never enter audit or analytics (Current);
-- CORS accepts only explicitly authorized origins (Planned: no CORS headers are sent and `ALLOWED_ORIGIN` is unused);
-- logs and events contain no secrets, public email, raw IP or financial content (Current: the Worker does not log; `security_events`/`audit_events` writes are Planned);
-- remote migrations are reviewed and applied by operators, never by the frontend (Current).
+**Pre-publication checklist:** run the [checklist before publishing the Worker](SECURITY.md#before-publishing-the-worker) in SECURITY.md, which notes the status of each control.
 
 **Acceptance criteria for the Web layer:**
 
@@ -816,20 +816,15 @@ Public messages must not include local paths, SQL queries, internal names, token
 
 ## 6. Open items
 
-1. **Production domain.** `apps/web/src/site.ts` uses `talentum-tech.vercel.app`; `cloudflare/wrangler.jsonc` `PUBLIC_WEB_URL`/`ALLOWED_ORIGIN` and older documentation use `talentum.vercel.app`, which belongs to another project. The OAuth redirect and origin allowlist depend on the choice; fix code, config and the OAuth client together.
+Security gaps of both layers (Vercel deploy isolation, action-code binding and retention, the local per-run secret, security-event recording, rate-limit coverage, BFF origin checks and the local app CSP) are owned by [SECURITY.md](SECURITY.md#open-items) and listed only there.
+
+1. **Production domain.** `apps/web/src/site.ts` uses `talentum-tech.vercel.app`; `cloudflare/wrangler.jsonc` `PUBLIC_WEB_URL`/`ALLOWED_ORIGIN` and older documentation use `talentum.vercel.app`, which belongs to another project. The OAuth redirect and origin allowlist depend on the choice; fix code, config and the OAuth client together (§3.4).
 2. **Repository layout.** Whether to migrate to the earlier `apps/desktop` + `packages/*` + `workers/` target layout or keep the current layout is undecided.
-3. **Vercel deploy isolation is unproven.** The Vercel project settings are not versioned and there is no deploy manifest; `Dockerfile.web` copies the whole repository into its build stage.
-4. **Worker action-code binding.** `context_hash` is the same for every caller (hash of the BFF secret); binding to session or origin is documented as intended but not implemented. Consumed and expired `action_codes` rows are never deleted; a cleanup policy is undefined.
-5. **Local action codes.** In development and Docker they are issued to any loopback caller and are not bound to a session or a per-run secret. The packaged app sets a per-run bootstrap secret, but its delivery to the renderer is unverified: `main.cjs` puts it only in the spawned server's environment while the preload reads the renderer's `process.env`. A packaged smoke test must confirm that action codes can be issued.
-6. **Unused Worker variables.** `ALLOWED_ORIGIN` (no CORS) and `APP_ENV` are declared but not read by code.
-7. **Security event recording.** Refresh-token reuse revokes the family and session but writes nothing to `security_events`; `audit_events` is never written, so download grants are recorded but not audited.
-8. **Rate-limit coverage.** Only `codes` (30/min) and `login` (10/min) per IP exist; callback, refresh, download grants and private routes have none. Values are not calibrated with telemetry.
-9. **BFF origin checks.** `sameOrigin()` accepts requests without an `Origin` header (relying on `SameSite=Lax`), and `GET /api/auth/refresh` rotates cookies without an origin check.
-10. **Error shape consistency.** BFF form routes return bare-string errors while other routes use `{error:{code,message}}`; no response has a correlation identifier.
-11. **Local app CSP.** The local app sends no Content Security Policy, although the Electron boundary requires a restrictive one.
-12. **Release pipeline.** CI exists (`.github/workflows/ci.yml` runs Prisma generate/validate, typecheck, tests and the local, LP and Worker builds) and packaging is configured with `electron-builder`, but no workflow builds installers, nothing signs them and nothing publishes to GitHub Releases; no packaged build has been validated end to end.
-13. **Worker adapters and timeouts.** Google and D1 calls are inline without adapters or explicit timeouts, contrary to normative rule 7.
-14. **D1 location.** Left to Cloudflare's automatic choice until latency is measured and a decision is recorded.
-15. **Dashboard currency consistency.** `GET /api/dashboard` sums every active account, while the projection route keeps only `BRL` accounts; the verdict and the projection can diverge with a non-BRL account.
-16. **Migration gate coverage.** The destructive-migration preflight runs in `pnpm dev`/`pnpm dev:all` only (not in the Docker image or the packaged app), and no code creates the `DatabaseBackup` rows it requires.
-17. **Import limits.** `PARSE_TIMEOUT_MS` is declared in `src/server/import/limits.ts` but not enforced, the parser runs in the request process rather than an isolated worker, and the file-size ceiling is checked after `request.formData()` has already buffered the multipart body.
+3. **Unused Worker variables.** `ALLOWED_ORIGIN` (no CORS) and `APP_ENV` are declared but not read by code.
+4. **Error shape consistency.** BFF form routes return bare-string errors while other routes use `{error:{code,message}}`; no response has a correlation identifier.
+5. **Release pipeline.** CI exists (`.github/workflows/ci.yml` runs Prisma generate/validate, typecheck, tests and the local, LP and Worker builds) and packaging is configured with `electron-builder`, but no workflow builds installers, nothing signs them and nothing publishes to GitHub Releases; no packaged build has been validated end to end.
+6. **Worker adapters and timeouts.** Google and D1 calls are inline without adapters or explicit timeouts, contrary to normative rule 7.
+7. **D1 location.** Left to Cloudflare's automatic choice until latency is measured and a decision is recorded.
+8. **Dashboard currency consistency.** `GET /api/dashboard` sums every active account, while the projection route keeps only `BRL` accounts; the verdict and the projection can diverge with a non-BRL account.
+9. **Migration gate coverage.** The destructive-migration preflight runs in `pnpm dev`/`pnpm dev:all` only (not in the Docker image or the packaged app), and no code creates the `DatabaseBackup` rows it requires.
+10. **Import limits.** `PARSE_TIMEOUT_MS` is declared in `src/server/import/limits.ts` but not enforced, the parser runs in the request process rather than an isolated worker, and the file-size ceiling is checked after `request.formData()` has already buffered the multipart body.

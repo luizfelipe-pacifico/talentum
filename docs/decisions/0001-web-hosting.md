@@ -26,7 +26,7 @@ The most direct path to native Next.js features, and it reduces incompatibility 
 
 Use **Vercel only for the landing page and its minimal session BFF**. Use Cloudflare Workers for the backend, D1 for structured cloud data and GitHub Releases for installers. Cloudflare Pages and R2 will not be used.
 
-The original decision named `talentum.vercel.app` as the landing page domain. **Open:** the landing page code now uses `talentum-tech.vercel.app`, while the Worker configuration and earlier documents still use `talentum.vercel.app`; the canonical domain must be decided and aligned (tracked in [ROADMAP.md](../ROADMAP.md)).
+The original decision named `talentum.vercel.app` as the landing page domain. **Open:** the landing page code now uses `talentum-tech.vercel.app`, while the Worker configuration and earlier documents still use `talentum.vercel.app`; the canonical domain must be decided and aligned (tracked in [ARCHITECTURE.md §3.4](../ARCHITECTURE.md#34-domain)).
 
 No Electron code, local backend, Prisma/SQLite, parser or financial domain may enter the Vercel build/deploy context. The separation must be guaranteed by an isolated project/repository or by a deploy package created from an allowlist and verified in CI. Only the authorized pipeline produces the Windows/Linux installers and publishes them to GitHub Releases.
 

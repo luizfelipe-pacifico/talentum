@@ -10,7 +10,7 @@
   **Seu piloto automático financeiro, local-first e open-source.**
 https://talentum-tech.vercel.app
 
-  [![Status: planejamento ativo](https://img.shields.io/badge/status-planejamento%20ativo-B8773D)](#estado-do-projeto)
+  [![Status: pré-alpha](https://img.shields.io/badge/status-pr%C3%A9--alpha-B8773D)](#estado-do-projeto)
   [![Plataformas: Windows e Linux](https://img.shields.io/badge/plataformas-Windows%20%7C%20Linux-1A110A)](#arquitetura)
   [![Dados: local-first](https://img.shields.io/badge/dados-local--first-5C4033)](#privacidade-por-princípio)
   [![Contribuições: bem-vindas](https://img.shields.io/badge/contribuições-bem--vindas-4A4A4A)](#como-contribuir)
@@ -22,7 +22,7 @@ https://talentum-tech.vercel.app
 O Talentum nasce para quem quer cuidar melhor do dinheiro, mas não tem tempo para alimentar planilhas ou classificar cada compra manualmente. O aplicativo pretende importar extratos, organizar transações, antecipar compromissos e transformar dados financeiros em próximos passos claros — mantendo os dados sensíveis no dispositivo do usuário.
 
 > [!IMPORTANT]
-> O projeto está em fase inicial. As telas e capacidades descritas abaixo representam a visão do produto; o que já está implementado e verificável está listado em [Estado do projeto](#estado-do-projeto). Tudo o que não aparece lá ainda não existe.
+> O projeto está em pré-alpha. Já funcionam, sobre o banco local: importação de extratos CSV e OFX, contas e chaves Pix próprias, primeiro acesso, conciliação, histórico com reversão e o dashboard lido do SQLite; na web, o login com Google na landing page e a página de downloads protegida; e a janela Electron protegida. As áreas descritas abaixo são a visão do produto. O que está pronto e o que está planejado em cada parte fica em [`docs/PRODUCT.md`](./docs/PRODUCT.md) e [`docs/ROADMAP.md`](./docs/ROADMAP.md).
 
 ## O problema que queremos resolver
 
@@ -32,7 +32,7 @@ O Talentum propõe um fluxo de baixa fricção:
 
 ```mermaid
 flowchart LR
-    A[Importar<br/>PDF ou OFX] --> B[Organizar e<br/>categorizar]
+    A[Importar<br/>CSV ou OFX] --> B[Organizar e<br/>categorizar]
     B --> C{Há dúvida?}
     C -- Sim --> D[Conciliar<br/>com um toque]
     C -- Não --> E[Calcular o<br/>saldo livre]
@@ -44,8 +44,9 @@ flowchart LR
 
 | | Área | Para que serve |
 | :---: | --- | --- |
-| <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/icons/speedometer2.svg" width="22" alt=""> | **Início** | Resume saldo livre, média de gastos, alertas, progresso e situação da carteira em poucos segundos. |
-| <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/icons/credit-card.svg" width="22" alt=""> | **Extratos, cartões e benefícios** | Importa PDF/OFX, organiza lançamentos, acompanha faturas, recorrências, anuidade, cashback, milhas e pontos. |
+| <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/icons/house.svg" width="22" alt=""> | **Início** | Ponto de partida sem números financeiros: aviso de privacidade e atalhos para importar um extrato ou cadastrar contas. |
+| <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/icons/speedometer2.svg" width="22" alt=""> | **Dashboard** | Mostra o Saldo Livre de Risco, o saldo consolidado, os gastos do mês e a média diária, só depois que os dados locais confirmam cada valor. |
+| <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/icons/credit-card.svg" width="22" alt=""> | **Extratos, cartões e benefícios** | Importa CSV e OFX (PDF numa etapa posterior), organiza lançamentos, acompanha faturas, recorrências, anuidade, cashback, milhas e pontos. |
 | <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/icons/check2-square.svg" width="22" alt=""> | **Conciliação financeira** | Resolve classificações incertas, confere faturas e registra juros, descontos ou gastos em dinheiro. |
 | <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/icons/pie-chart.svg" width="22" alt=""> | **Patrimônio e metas** | Acompanha objetivos, sugere a destinação do superávit e orienta novos aportes pelos quatro pilares. |
 | <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/icons/newspaper.svg" width="22" alt=""> | **Invest** | Reúne notícias econômicas, prioriza ativos da carteira, produz resumos e preserva o crédito da fonte. |
@@ -102,18 +103,17 @@ flowchart TB
         O[Google OAuth]
         W[Cloudflare Workers]
         D[(Cloudflare D1)]
-        AI[Workers AI]
+        AI[Workers AI<br/>planejado]
         O --> W --> D
-        W --> AI
+        W -.-> AI
     end
 
-    N -. autenticação e resumos .-> W
-    S -. backup cifrado<br/>AES-256-GCM .-> D
+    N -. planejado: autenticação e resumos .-> W
 ```
 
 - Extratos, transações, estabelecimentos, saldos e carteira ficam no SQLite local.
-- A nuvem mantém apenas identidade, metadados essenciais e, quando habilitado, um snapshot já criptografado no dispositivo.
-- O backup previsto usa AES-256-GCM e deve seguir um modelo de conhecimento zero.
+- A nuvem mantém apenas identidade mínima, sessões, versões publicadas e autorizações de download; nunca recebe valores financeiros.
+- O backup cifrado no dispositivo (AES-256-GCM) está planejado, com provedor e recuperação de chave ainda em aberto; ele não será anunciado como "conhecimento zero" antes de uma auditoria.
 - O usuário poderá exportar os próprios dados em formatos abertos, como JSON e CSV.
 
 ## Arquitetura
@@ -124,12 +124,13 @@ O aplicativo desktop será uma experiência full-stack local. O Electron abre e 
 | --- | --- | --- |
 | Desktop | Electron | Empacotamento e janela nativa para Windows e Linux |
 | Aplicação | Next.js, React e TypeScript | Interface, renderização e API local |
-| Estilo | Tailwind CSS | Sistema visual responsivo |
+| Estilo | CSS próprio com tokens | Sistema visual responsivo nos temas claro e escuro |
 | Dados | Prisma ORM e SQLite | Persistência local tipada |
-| Importação | PDF.js e parser OFX | Extração local de extratos e faturas |
+| Importação | Parsers CSV e OFX (PDF depois) | Extração local de extratos e faturas |
 | Identidade | Google OAuth 2.0 | Conta única para landing page e aplicativo |
-| Borda | Cloudflare Workers e D1 | Sessão, metadados mínimos, proxy e backup cifrado |
-| IA | Cloudflare Workers AI | Resumos objetivos de notícias sem exigir modelos pesados no computador |
+| Site público | Next.js na Vercel | Landing page e BFF mínimo de sessão, isolados do app desktop |
+| Borda | Cloudflare Workers e D1 | Login, sessões, versões publicadas e autorizações de download |
+| IA (planejada) | Cloudflare Workers AI | Resumos de notícias públicas, nunca com dados financeiros |
 
 ## Identidade visual
 
@@ -159,7 +160,7 @@ Ainda não implementados por pertencerem a etapas posteriores: importação de P
 
 ### Roadmap inicial
 
-O plano completo, com MVP, macrofeatures posteriores, dependências e critérios de conclusão, está em [`docs/ROADMAP.md`](./docs/ROADMAP.md). O primeiro release concentra-se em cadastro/download, Electron seguro, persistência local, importação OFX, conciliação e Saldo Livre de Risco.
+O plano completo, com MVP, macrofeatures posteriores, dependências e critérios de conclusão, está em [`docs/ROADMAP.md`](./docs/ROADMAP.md). O primeiro release concentra-se em cadastro/download, Electron seguro, persistência local, importação CSV e OFX, conciliação e Saldo Livre de Risco.
 
 ## Desenvolvimento local
 
@@ -187,7 +188,7 @@ pnpm hooks:install
 
 | Comando | Ação |
 | --- | --- |
-| `pnpm dev` | Limpa o cache do Next.js, libera a porta 3000 e inicia o servidor local |
+| `pnpm dev` | Libera a porta 3000, aplica as migrações locais, limpa o cache do Next.js e inicia o servidor local |
 | `pnpm dev:all` | Abre o Electron em `http://localhost:3000`; reaproveita um servidor já no ar, seja do Docker ou de um `pnpm dev` em outro terminal |
 | `pnpm docker:up` | Constrói e inicia o app local em `localhost:3000` e a LP em `localhost:3100` |
 | `pnpm docker:up:detached` | Inicia os dois serviços em segundo plano e aguarda os healthchecks |
@@ -216,6 +217,7 @@ A documentação técnica fica em `docs/`, em inglês, concentrada em poucos doc
 - [`DESIGN-SYSTEM.md`](./docs/DESIGN-SYSTEM.md): marca, tokens dos dois temas, tipografia, ilustrações de estado e QA visual.
 - [`ROADMAP.md`](./docs/ROADMAP.md): MVP e sequência planejada de todas as macrofeatures.
 - [`BEST_PRACTICES.md`](./docs/BEST_PRACTICES.md): organização do repositório, práticas de engenharia e guia completo de desenvolvimento.
+- [`MEMORY-AI.md`](./docs/MEMORY-AI.md): como o mantenedor trabalha, para agentes de IA.
 - [`decisions/`](./docs/decisions/): registros de decisões de arquitetura (ADRs).
 
 ## Como contribuir

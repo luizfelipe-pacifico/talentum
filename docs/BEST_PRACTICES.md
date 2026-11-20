@@ -1,6 +1,6 @@
 # Best Practices and Development Guide
 
-This document is the single development reference for Talentum: how the repository is organized, the engineering and documentation rules every change follows, and the practical guide to installing, configuring, running, testing and contributing to the project. It must evolve with the product requirements, architecture and technology stack. Statements of state are marked **Current** (verifiable in the repository), **Planned** (agreed but not implemented) or **Open** (undecided or in conflict). The architecture itself is described in [ARCHITECTURE.md](ARCHITECTURE.md), security rules in [SECURITY.md](SECURITY.md), the local schema in [DATABASE.md](DATABASE.md), interface rules in [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md), product scope in [PRODUCT.md](PRODUCT.md) and delivery order in [ROADMAP.md](ROADMAP.md).
+This document is the single development reference for Talentum: how the repository is organized, the engineering and documentation rules every change follows, and the practical guide to installing, configuring, running, testing and contributing to the project. It must evolve with the product requirements, architecture and technology stack. Statements carry the status labels defined in [README.md](README.md#status-labels). The architecture itself is described in [ARCHITECTURE.md](ARCHITECTURE.md), security rules in [SECURITY.md](SECURITY.md), the local schema in [DATABASE.md](DATABASE.md), interface rules in [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md), product scope in [PRODUCT.md](PRODUCT.md) and delivery order in [ROADMAP.md](ROADMAP.md).
 
 ## Contents
 
@@ -45,40 +45,7 @@ Status: **Current** (pre-alpha).
 
 ## Project organization
 
-Status: **Current** for the tree below. The repository has no `packages/` directory and no `turbo.json`.
-
-```text
-talentum/
-├── src/                     # Local Next.js application (product UI and local API)
-│   ├── app/                 # App Router pages, layouts, and route handlers (app/api)
-│   ├── components/          # Components owned by the local application
-│   ├── hooks/               # React hooks
-│   ├── lib/                 # Client-side utilities (API client, formatting, charts)
-│   ├── server/              # Server-only code: database, action codes, metrics
-│   ├── types/               # Shared TypeScript types
-│   └── middleware.ts        # Request middleware
-├── apps/
-│   └── web/                 # Public landing page (@talentum/web); no Electron, Prisma or financial domain
-├── electron/                # Electron main and preload processes
-├── prisma/                  # Prisma schema and local SQLite migrations
-├── cloudflare/              # Cloudflare Worker, D1 migrations, and Wrangler config
-├── design/                  # Source artwork for the state illustrations
-├── public/                  # Static assets served by the local application
-├── scripts/                 # Dev, typecheck, migration preflight, desktop packaging, palette validation and asset generation
-├── tests/                   # Node test suite; regression tests in tests/regression/
-├── .githooks/               # Versioned pre-commit and pre-push hooks
-├── .github/                 # CI workflow, CONTRIBUTING, CODE_OF_CONDUCT and SECURITY policy
-├── .claude/                 # Claude Code agents and skills for this project
-├── docs/                    # Architecture, decisions, guides, and project policies
-├── README.md                # Project overview and onboarding
-├── LICENSE                  # Open-source license
-├── CLAUDE.md                # Claude Code working rules
-├── AGENTS.md                # Codex and agent working rules; defers to CLAUDE.md
-├── package.json             # Root scripts and dependencies
-├── pnpm-workspace.yaml      # pnpm build allowances and dependency overrides
-├── compose.yaml, Dockerfile*  # Container build and local run
-└── .gitignore               # Files excluded from version control
-```
+Status: **Current**. The directory tree, with the responsibility of each top-level path, is in [ARCHITECTURE.md §1.4](ARCHITECTURE.md#14-repository-layout). The repository has no `packages/` directory and no `turbo.json`; `.github/` holds the CI workflow (`.github/workflows/ci.yml`) and the community files, and `LICENSE` is at the root.
 
 ### Organization rules
 
@@ -114,11 +81,11 @@ There are two common ways to group source code, and the right choice depends on 
 
 ## Documentation rules
 
-Status: **Current** rule.
+Rule.
 
 - Documentation is part of the change: every material change updates the affected document in the same change set (see `CLAUDE.md`).
 - Documents are few and comprehensive. Extend an existing document before creating a new one; create a new one only for a genuinely new responsibility, and update `docs/README.md` whenever a document is added, removed, renamed or changes responsibility.
-- File names in `docs/` are uppercase English: `README.md`, `ARCHITECTURE.md`, `SECURITY.md`, `DATABASE.md`, `DESIGN-SYSTEM.md`, `PRODUCT.md`, `ROADMAP.md`, `BEST_PRACTICES.md` and `MEMORY-AI.md`.
+- File names in `docs/` are uppercase English: `README.md`, `ARCHITECTURE.md`, `SECURITY.md`, `DATABASE.md`, `DESIGN-SYSTEM.md`, `PRODUCT.md`, `ROADMAP.md`, `BEST_PRACTICES.md`, `MEMORY-AI.md` and `ARCA-VISION.md`.
 - ADRs live in `docs/decisions/` and are named `NNNN-kebab-case.md` with a sequential four-digit number (for example `0001-web-hosting.md`). Record meaningful alternatives and consequences there.
 - Content is written in English. Portuguese UI copy, route segments and code identifiers are quoted exactly as they appear in code.
 - Mark every statement of state as **Current**, **Planned** or **Open**; never present planned work as implemented.
@@ -192,7 +159,7 @@ Status: **Current**.
 | `cloudflare/.dev.vars.example` | Worker variable names with synthetic placeholders | yes |
 | `cloudflare/wrangler.jsonc` | `DB` binding, D1 `database_id` and public variables | yes |
 
-Variables in `.env` (names only; values never appear in documentation):
+The full list of variables, with kind, purpose and location in every environment, is in [ARCHITECTURE.md §3.7](ARCHITECTURE.md#37-configuration-variables-names-and-locations). What matters for local development (names only; values never appear in documentation):
 
 - `DATABASE_URL` is the host SQLite database, resolved relative to `prisma/`. The default used by the dev script is `file:../temp/talentum-local.db`, that is `temp/talentum-local.db` at the repository root, which Git ignores.
 - `DOCKER_DATABASE_URL` is the path inside the `talentum-local` container and must point into the `talentum-data` volume. Both exist because the host `temp/` directory does not exist inside the image; changing it without changing the Compose volume leaves the database outside the volume, and the data does not survive container recreation.
@@ -331,7 +298,7 @@ The statement importer is tested in layers:
 | `import-inspect.test.mjs` | full inspection and security limits | no |
 | `import-e2e.test.mjs` | real HTTP flow and security controls | **yes** |
 
-The dashboard, accounts and colour validation have their own suites:
+The dashboard, accounts and color validation have their own suites:
 
 | File | Layer | Needs a running server? |
 | --- | --- | --- |
@@ -361,7 +328,7 @@ Use only synthetic names, institutions, documents, accounts and values. Do not s
 
 ## Bug fixes and regression tests
 
-Status: **Current** and mandatory, exactly as in `CLAUDE.md`. Every bug fix follows this order, without exception:
+Rule (mandatory; this section is the owner, and `CLAUDE.md` points here). Every bug fix follows this order, without exception:
 
 1. Write a regression test that reproduces the bug and name it after the defect.
 2. Run it and confirm it fails for the reason described. A test that passes before the fix does not reproduce the bug.
@@ -375,14 +342,14 @@ Regression tests live in `tests/regression/` and run with `pnpm test`. The whole
 
 Status: **Current**.
 
-`.githooks/pre-commit` and `.githooks/pre-push` run `pnpm typecheck` and `pnpm test` and block the operation on any failure. Install them once per clone with `pnpm hooks:install`, which sets `core.hooksPath` and marks both hooks executable. Git silently skips a hook without the executable bit and only prints a `hint`, so the hooks are versioned as `100755` and `tests/regression/git-hooks-executable.test.mjs` keeps them that way. To confirm the installation, `git config --get core.hooksPath` must print `.githooks`. Never bypass them with `--no-verify`. The mandatory pre-commit and pre-push security gate in `CLAUDE.md` applies in addition to the hooks.
+`.githooks/pre-commit` and `.githooks/pre-push` run `pnpm typecheck` and `pnpm test` and block the operation on any failure. Install them once per clone with `pnpm hooks:install`, which sets `core.hooksPath` and marks both hooks executable. Git silently skips a hook without the executable bit and only prints a `hint`, so the hooks are versioned as `100755` and `tests/regression/git-hooks-executable.test.mjs` keeps them that way. To confirm the installation, `git config --get core.hooksPath` must print `.githooks`. Never bypass them with `--no-verify`. The mandatory [security gate in SECURITY.md](SECURITY.md#mandatory-pre-commit-and-pre-push-security-gate) applies in addition to the hooks.
 
 ## Automated quality
 
 - **Current:** type checking (`pnpm typecheck`, also exposed as `pnpm lint`), the Node test suite and the Git hooks above.
-- **Current:** continuous integration in `.github/workflows/ci.yml`, on pushes to `main` and `feat/conclusao-mvp` and on pull requests, with read-only `contents` permission. On Ubuntu 24.04 with Node 22.13.0 and pnpm 11.1.2 it runs `pnpm install --frozen-lockfile`, `prisma:generate`, `prisma:validate`, `typecheck`, `test`, `build`, `web:typecheck`, `web:build`, `cloudflare:build` and `cloudflare:test`.
+- **Current:** continuous integration in `.github/workflows/ci.yml`, on pushes to `main` and on pull requests, with read-only `contents` permission. On Ubuntu 24.04 with Node 22.13.0 and pnpm 11.1.2 it runs `pnpm install --frozen-lockfile`, `pnpm audit --prod --audit-level high`, `prisma:generate`, `prisma:validate`, `typecheck`, `test`, `build`, `web:typecheck`, `web:build`, `cloudflare:build` and `cloudflare:test`. Its supply-chain hardening (actions pinned by SHA, `persist-credentials: false`) is owned by [SECURITY.md](SECURITY.md#supply-chain-ci-and-release-integrity).
 - **Planned:** reproducible formatting and linting rules (there is no formatter and no linter beyond the TypeScript compiler today).
-- **Planned:** formatting and static analysis in CI, plus CodeQL, dependency alerts and secret scanning; the current workflow has none of these.
+- **Planned:** formatting and static analysis in CI, plus CodeQL, dependency alerts and secret scanning; the current workflow has none of these beyond the `pnpm audit` step.
 - Cover business rules with unit tests and critical flows with integration or end-to-end tests.
 - Do not use coverage percentage as the only quality measure; verify meaningful behavior and edge cases.
 - Interface changes are validated in both the light and the dark theme, as required by `CLAUDE.md` and detailed in [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md).
@@ -394,7 +361,7 @@ Status: **Current**.
 - Require checks and review before merging application changes. CI exists (**Current**); making it a required status check through branch protection is a repository setting this repository cannot prove (**Open**). Until confirmed, the local hooks and reviewer verification remain the gate.
 - Resolve review conversations and avoid unrelated refactors in the same change.
 - Protect `main` against deletion, force pushes and merges that bypass required checks.
-- Documentation-only changes may go directly to `main`; all other changes must use a dedicated branch.
+- Documentation-only changes may go directly to `main`; all other changes use a dedicated branch by default. When the maintainer explicitly asks for a commit to `main`, commit there; the hooks and the security gate still apply.
 
 Suggested branch names:
 
@@ -417,7 +384,7 @@ Common types include `feat`, `fix`, `docs`, `test`, `refactor`, `chore` and `ci`
 
 Example: `feat(auth): add password recovery`.
 
-Never commit or push until the security gate in `CLAUDE.md` has completed successfully.
+Never commit or push until the [security gate in SECURITY.md](SECURITY.md#mandatory-pre-commit-and-pre-push-security-gate) and its offensive security review have completed successfully.
 
 ## Implementation flow
 
@@ -431,13 +398,13 @@ Never commit or push until the security gate in `CLAUDE.md` has completed succes
 
 ## Security
 
-The normative rules are in [SECURITY.md](SECURITY.md) and `CLAUDE.md`. Development baseline:
+The normative rules, including the pre-commit gate, are in [SECURITY.md](SECURITY.md). Development baseline:
 
 - Never commit passwords, tokens, keys, credentials or connection strings.
 - Validate all untrusted input on the server, preferably with allowlists.
 - Use parameterized queries and context-appropriate output encoding.
 - Enforce authentication and authorization on trusted systems and apply least privilege.
-- Keep dependencies current. **Planned:** dependency alerts, code scanning and secret scanning in CI.
+- Keep dependencies current. **Current:** CI fails on high or critical production advisories (`pnpm audit`). **Planned:** dependency alerts, code scanning and secret scanning in CI.
 - Never write sensitive data to logs. Rotate any exposed secret immediately.
 
 ## Configuration and operations
