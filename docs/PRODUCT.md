@@ -174,7 +174,6 @@ This is the single authoritative list of product routes. Paths and Portuguese ro
 | `/historico` | **Current** | 8 | Redacted timeline with `kind` filter, cursor and revert. |
 | `/perfil` | **Current** (placeholder) | 1 | Empty state linking to `/onboarding`. |
 | `/perfil/privacidade` | **Current** (placeholder) | 8 | States that data stays in local SQLite; encrypted backup shown as Planned. |
-| `/lp` | **Current** (development bridge) | — | Renders the landing page at the local origin during development only; must be removed before the first deploy (see [ARCHITECTURE.md](ARCHITECTURE.md)). |
 | `/layout-guide` | **Current** (development only) | — | Internal design reference; returns not found outside development. |
 
 The batch route parameter is `[loteId]` in code. The earlier sub-routes `/extratos/importar/[loteId]/mapeamento` and `/extratos/importar/[loteId]/revisao` were **not created**: mapping and preview happen inside the import wizard before any batch exists (see Feature 4).

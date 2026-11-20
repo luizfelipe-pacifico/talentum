@@ -190,6 +190,7 @@ pnpm hooks:install
 | --- | --- |
 | `pnpm dev` | Libera a porta 3000, aplica as migrações locais, limpa o cache do Next.js e inicia o servidor local |
 | `pnpm dev:all` | Abre o Electron em `http://localhost:3000`; reaproveita um servidor já no ar, seja do Docker ou de um `pnpm dev` em outro terminal |
+| `pnpm dev:web` | Inicia a landing page em `http://127.0.0.1:3100`, separada do sistema (que fica na 3000) |
 | `pnpm docker:up` | Constrói e inicia o app local em `localhost:3000` e a LP em `localhost:3100` |
 | `pnpm docker:up:detached` | Inicia os dois serviços em segundo plano e aguarda os healthchecks |
 | `pnpm docker:down` | Encerra os dois serviços sem remover o volume SQLite |

@@ -275,26 +275,36 @@ export function SectionNav({ items }: { items: { id: string; label: string }[] }
   const [ativo, setAtivo] = useState('');
   const menuRef = useRef<HTMLDetailsElement>(null);
 
+  // Ativa é a última seção do menu cujo topo já passou do meio da janela.
+  // Calculada pela posição de todas a cada rolagem: um observador que só
+  // reage a cruzamentos deixava o item antigo marcado depois de um salto por
+  // âncora para uma seção que não está no menu.
   useEffect(() => {
-    const alvos = ['topo', ...items.map((item) => item.id)]
-      .map((id) => document.getElementById(id))
+    const alvos = items
+      .map((item) => document.getElementById(item.id))
       .filter((node): node is HTMLElement => Boolean(node));
     if (!alvos.length) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // Vence a seção visível mais próxima do topo da janela.
-        const visiveis = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        const id = visiveis[0]?.target.id;
-        if (id) setAtivo(id === 'topo' ? '' : id);
-      },
-      { rootMargin: '-45% 0px -45% 0px', threshold: 0 },
-    );
+    let frame = 0;
+    const medir = () => {
+      frame = 0;
+      const meio = window.innerHeight / 2;
+      let id = '';
+      for (const alvo of alvos) if (alvo.getBoundingClientRect().top <= meio) id = alvo.id;
+      setAtivo(id);
+    };
+    const agendar = () => {
+      if (!frame) frame = window.requestAnimationFrame(medir);
+    };
 
-    for (const alvo of alvos) observer.observe(alvo);
-    return () => observer.disconnect();
+    medir();
+    window.addEventListener('scroll', agendar, { passive: true });
+    window.addEventListener('resize', agendar);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', agendar);
+      window.removeEventListener('resize', agendar);
+    };
   }, [items]);
 
   const fecharMenu = () => {
@@ -316,7 +326,7 @@ export function SectionNav({ items }: { items: { id: string; label: string }[] }
       <details className="lp-nav-menu" ref={menuRef}>
         <summary>
           <Icon name="bi-list" />
-          Seções
+          <span className="lp-nav-menu-label">Seções</span>
         </summary>
         <ul className="lp-nav-menu-list">{links(fecharMenu)}</ul>
       </details>

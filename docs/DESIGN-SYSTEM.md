@@ -434,7 +434,7 @@ Status: **Current** (rules); token values above.
 
 ### Landing page tokens
 
-Status: **Current**. `apps/web/src/styles/lp.css` defines its own `--lp-*` tokens scoped to `.lp-root`, so the sheet can be imported inside the local app (as `src/app/lp/page.tsx` does) without affecting product screens. The sheet's header comment requires that a token changed here also be changed in `globals.css` and vice versa.
+Status: **Current**. `apps/web/src/styles/lp.css` defines its own `--lp-*` tokens scoped to `.lp-root`, so the sheet never affects product screens even if it is imported elsewhere. The LP is served only by `apps/web` on port 3100; the local app on port 3000 has no `/lp` route (removed on 20 November 2026, `tests/regression/lp-own-port.test.mjs`). The sheet's header comment requires that a token changed here also be changed in `globals.css` and vice versa.
 
 | Token | Value | Notes |
 | --- | --- | --- |
@@ -449,9 +449,9 @@ Status: **Current**. `apps/web/src/styles/lp.css` defines its own `--lp-*` token
 | `--lp-radius-sm/md/lg`, `--lp-shadow-sm/md` | Same as the app | |
 | `--lp-ease-out` | `cubic-bezier(0.23, 1, 0.32, 1)` | Strong ease-out |
 | `--lp-page` | `1200px` (`1440px` at 1600 px and wider) | Page width |
-| `--lp-prose` | `68ch` | Reading width |
+| `--lp-prose` | `60ch` | Reading width; Montserrat is wide, so 60ch renders about 72 characters per line (68ch rendered over 80) |
 
-The landing page is **light-only** (**Current**): `.lp-root` and `apps/web/src/styles/base.css` set `color-scheme: light`, the site does not follow the operating system theme, and `lp.css` defines no dark tokens. See Open items.
+The landing page has **one fixed appearance** (**Rule**, maintainer decision of 20 November 2026): a mix of light (parchment) and dark (ebony) sections, with the header and the hero always dark. It has no theme selector and does not follow the operating system theme; `.lp-root` and `apps/web/src/styles/base.css` set `color-scheme: light`, and each dark section (`.lp-header`, `.lp-hero`, `.lp-slab`) sets its own ink. "Both themes" for the LP therefore means: every light section and every dark section meets contrast, and the page renders identically when the operating system is in light or in dark mode.
 
 ## Typography
 
@@ -528,7 +528,7 @@ Rules live in `src/app/globals.css` (the responsive section) and their regressio
 
 ### Landing page breakpoints
 
-Status: **Current**. Below 1000 px the header navigation collapses into the `Seções` menu; below 560 px the repository link becomes an icon; below 1100 px the five steps become rows with the icon on the left; grids use explicit column counts per width range so that four items never wrap as three plus one, nor three as two plus one; at 1600 px and wider `--lp-page` widens to 1440 px.
+Status: **Current**. Below 1000 px the header navigation collapses into the `Seções` menu; below 560 px the repository link becomes an icon; below 380 px the `Seções` button keeps only its icon (its label stays available to screen readers) because at 320 px the brand overlapped it; below 1100 px the five steps become rows with the icon on the left; grids use explicit column counts per width range so that four items never wrap as three plus one, nor three as two plus one; at 1600 px and wider `--lp-page` widens to 1440 px.
 
 ### Spacing scale
 
@@ -586,9 +586,9 @@ The StatCounter figures are monthly snapshots read from search results in Novemb
 Status: **Open**. Recorded here and in [Open items](#open-items); the CSS is not changed by this document.
 
 - **No TV adaptation.** No rule responds to viewing distance or remote input. At TV L the body text is 16 px, about 1.5% of the screen height, below the tvOS minimum of 23 pt on a 1080 pt canvas (about 2.1%); there is no 5% safe-area inset and no directional focus model.
-- **No hover capability query.** Only `pointer: coarse` exists; there is no `hover: none` or `any-hover` rule, so a hover-only affordance would go unnoticed on touch and on TV.
-- **No height-based rule.** Nothing adapts to short viewports (Desktop S at 700 px, 1366 × 768 laptops, TV S at 540 px, phones in landscape).
-- **No safe-area handling.** Neither stylesheet uses `env(safe-area-inset-*)`; content can sit under a notch or home indicator in a full-screen mobile browser.
+- **No hover capability query in the local app.** Only `pointer: coarse` exists in `globals.css`. The landing page resets hover states under `@media (hover: none)` (**Current**).
+- **No height-based rule in the local app.** Nothing adapts to short viewports (Desktop S at 700 px, 1366 × 768 laptops, TV S at 540 px, phones in landscape). The landing page tightens the hero at 1000 px and wider when the height is 760 px or less (**Current**).
+- **No safe-area handling in the local app.** `globals.css` does not use `env(safe-area-inset-*)`. The landing page sets `viewport-fit=cover` and keeps `.lp-wrap` and the back-to-top button inside the safe area (**Current**).
 - **Tablet S boundary.** At exactly 600 px the `max-width: 600px` rules apply, so a 600 px tablet gets the phone layout. Decide whether that is intended.
 - **Mobile S only measured automatically.** `pnpm test:e2e` checks horizontal scroll and text below 12 px at 320 px (and every other class) on `/`, `/dashboard`, `/extratos` and `/configuracoes`, in both themes, and passes; no visual review at 320 px is recorded yet.
 
@@ -724,7 +724,7 @@ Results table template, to copy into reports:
 | TV L       | 1920 × 1080 |                   |                   |       |
 ```
 
-The landing page is light-only today, so its dark-theme column is recorded as "not applicable (light-only, see Open items)" until that decision is made.
+For the landing page, the dark-theme column records the page rendered with the operating system in dark mode, which must be identical to the light-mode render (see Landing page tokens).
 
 ## Geometry and surfaces
 
@@ -757,7 +757,7 @@ Do not use glossy gradients, glassmorphism, neon glows or heavy drop shadows.
 
 ### Landing page surfaces
 
-The landing page separates sections and surfaces by a step in tone, not by 1 px rules or outlined boxes. Headings carry no label above them, ordered lists carry no decorative numbering, all-caps letter-spaced labels are not used, no surface casts a shadow at rest, and informative cards that are not links do not lift on hover.
+The landing page separates sections and surfaces by a step in tone, not by 1 px rules or outlined boxes. Headings carry no label above them, ordered lists carry no decorative numbering, all-caps letter-spaced labels are not used, no surface casts a shadow at rest, and informative cards that are not links do not lift on hover. Secondary buttons, chips, carousel controls and tabs are separated from the background by a tone step (`--lp-sunken` on light sections, `rgb(241 236 227 / 10%)` on dark ones), never by a 1 px outline. Lists of items (the problems, the five steps, the areas, the four pillars, the principles) are set as text on the section background, not as rows of identical boxed cards.
 
 ## Iconography and imagery
 
@@ -826,6 +826,7 @@ Under `prefers-reduced-motion: reduce`, all transitions and animations are disab
 
 - Reveal on scroll: blocks reveal once and stay revealed; the server HTML is visible and only blocks outside the viewport are hidden after hydration, so content is never invisible without JavaScript. A blur variant (`.lp-reveal-blur`) exists for image blocks.
 - The hero renders statically (no reveal) so it does not delay LCP.
+- The screenshots carousel advances on its own every 6 s only while at least 40% of it is on screen and the tab is visible; focus, the pause button and reduced motion stop it. Slides move in 420 ms with `cubic-bezier(0.77, 0, 0.175, 1)` (560 ms before 20 November 2026).
 - No continuous ambient animation (the `Role para ler` cue does not loop), no pointer-following radial glow and no grain texture.
 - Under `prefers-reduced-motion: reduce`, transitions and animations inside `.lp-root` are disabled, reveals are shown immediately, and parallax and tilt are reset to `transform: none`.
 
@@ -1088,7 +1089,7 @@ Visual QA records reviews executed on the running interface. It does not replace
 
 ### Both themes, always
 
-Every layout change is validated in the light theme **and** in the dark theme, never in only one (CLAUDE.md rule). Render both, compare contrast, legibility, borders, illustrations and states, and report the result for each theme. Theme-specific assets, such as the state illustrations, must exist for both themes and be checked in both. The landing page is currently light-only, so its checks cover the light theme; see Open items.
+Every layout change is validated in the light theme **and** in the dark theme, never in only one (CLAUDE.md rule). Render both, compare contrast, legibility, borders, illustrations and states, and report the result for each theme. Theme-specific assets, such as the state illustrations, must exist for both themes and be checked in both. The landing page has one fixed mix of light and dark sections; its checks cover every section of both kinds and confirm that the operating system theme does not change the page (Landing page tokens).
 
 ### Method
 
@@ -1137,14 +1138,12 @@ Status: **Current**.
 - **Open — semantic status token ratification.** `--ok`, `--warn`, `--err`, `--info` and their soft backgrounds exist in both themes, but the `globals.css` header still calls them proposals pending contrast validation. Validate all combinations in both themes and then mark them normative.
 - **Open — categorical chart palette.** The eight-slot categorical palette is not ratified (dashboard decision in [PRODUCT.md](PRODUCT.md)).
 - **Open — LP hover token divergence.** `--lp-amber-hover` is `#8a5629` while the app's `--amber-hover` is `#9f6533`, although `lp.css` says the tokens mirror each other. Decide whether the divergence is intended (AA on the LP) and align or document it.
-- **Open — LP dark theme.** The landing page is light-only, while the interface-validation rule requires both themes. Decide whether the LP gets a dark theme or is formally exempt.
 - **Open — orphan stylesheet.** `src/app/styles.css` is tracked but not imported anywhere; it defines unrelated tokens (`--background`, `--foreground`, `--accent`, `--muted`) and styles (system-ui font, 1.25rem radius, uppercase eyebrow) that contradict this system. Confirm it is dead and remove it, or document its purpose.
-- **Open — LP `Início` screenshot caption.** The LP screenshot and caption still describe indicators showing zero, which no longer matches the dashboard's empty state; replacement awaits a maintainer decision.
 - **Planned — `nova-versao` illustration.** Generated in both themes for the planned update notice but not used by any component yet.
 - **Open — TV adaptation.** No CSS responds to TV viewing distance or remote input: no type scaling relative to viewport height, no 5% safe-area inset, no directional focus model, no way to hide amounts on a shared screen. See Responsiveness and viewport validation.
-- **Open — hover capability.** Only `pointer: coarse` is handled; add a `hover: none` rule (or equivalent) so no affordance depends on hover on touch and TV.
-- **Open — short viewports.** No height-based rule exists for 700 px desktops, 1366 × 768 laptops, TV S (540 px) or phones in landscape.
-- **Open — safe-area insets.** Neither stylesheet uses `env(safe-area-inset-*)`.
+- **Open — hover capability (local app).** Only `pointer: coarse` is handled in `globals.css`; add a `hover: none` rule (or equivalent) so no affordance depends on hover on touch and TV. The landing page already has one.
+- **Open — short viewports (local app).** No height-based rule exists in `globals.css` for 700 px desktops, 1366 × 768 laptops, TV S (540 px) or phones in landscape. The landing page has one for its hero.
+- **Open — safe-area insets (local app).** `globals.css` does not use `env(safe-area-inset-*)`; the landing page does.
 - **Open — 600 px boundary.** A 600 px tablet takes the phone rules because `max-width: 600px` includes 600; confirm or change.
 - **Open — Mobile S visual review.** The automated checks pass at 320 px; a visual review of every screen at that width is not recorded yet.
 - **Open — mobile navigation pattern.** Seven destinations exceed a bottom tab bar; decide whether a bar with the most used areas plus the drawer would serve phones better than the drawer alone.
@@ -1314,3 +1313,33 @@ Full measurement (second round): the 22 app routes and the four dialogs and draw
 ### State illustrations in both themes, 26 October 2026
 
 Verified in Chrome on `/patrimonio/metas`, a nonexistent route and the notifications drawer, in the light and dark themes. Without the plate and with the paper in the surface color, the illustrations sit on the card without forming a square in either theme. The image does not start a drag (`dragstart` canceled), does not enter selection and does not intercept clicks. The integrity review of 27 October 2026 is described under State illustrations.
+
+### Landing page refinement, 20 November 2026
+
+Method: refinement of `apps/web` with the `impeccable` (polish, adapt), `taste-skill` (inspector before and after, at 1440, 768 and 390 px), `emil-design-eng` and animation skills, on the production build (`next build && next start`). The maintainer decided in this round that the LP keeps a fixed mix of light and dark sections with a dark hero and no theme selector, and that the LP and the system never share a local port.
+
+Content made true to the repository (`tests/regression/lp-claims-match-roadmap.test.mjs`):
+
+- Import was announced as "OFX ou PDF"; it is OFX and CSV, and PDF is Stage 7 (**Planned**).
+- The project timeline listed every MVP stage after the foundation as planned; it now follows `ROADMAP.md` (accounts and import done, the rest in progress).
+- The `LICENSE` file was described as missing; it exists (MIT).
+- Survival mode, the ARCA net-worth module and the line-by-line explanation of the Risk-Free Balance carry a **Planned** marker; the six areas show their state in words (`Funciona no código`, `Em parte`, `Planejado`).
+- The privacy list said statements stay on the device; the file content is not stored at all, only the imported entries. The encrypted copy and the feedback community are marked as planned.
+- The hero button said `Entrar e baixar` while no installer exists; it now says `Entrar com Google`, next to `Pré-alpha: ainda não há instalador para baixar`.
+- An unsourced "três semanas" claim was removed.
+- The screenshots were recaptured from the current app with a fresh database (`pnpm test:manual`): Dashboard, Importar extrato, Extratos and Conciliação in their real empty states. Patrimônio, a placeholder of a planned stage, was replaced by the import screen.
+
+Layout and craft:
+
+- Removed the duplicated "Um vocabulário de imagens" gallery (two of its six engravings repeated the carousel).
+- Replaced the 1 px outlines (secondary buttons, chips, tabs, carousel controls, timeline markers) with tone steps; unboxed the problem, step, pillar and principle cards; the six areas became a two-column list with their state.
+- Hero engraving enlarged from 420 to 500 px; hero tightened on short desktop viewports.
+- Reading measure reduced to 60ch (about 72 characters) and notices capped at 64ch.
+- The name quote lost its 3 px amber side bar (side-tab pattern); emphasis now comes from the serif size.
+- Defect found by the viewport sweep: at 320 px the brand overlapped the `Seções` button (`tests/regression/lp-header-320-overlap.test.mjs`).
+- Touch: hover states reset under `hover: none`; carousel arrows no longer shrink below 44 px at 320 px.
+- Safe area: `viewport-fit=cover`, content and the back-to-top button inside `env(safe-area-inset-*)`.
+
+Validation: the twelve viewport classes, each with the operating system in light and in dark mode (24 renders, Playwright on the production build): no horizontal scroll, no text below 13 px, hero always ebony, no console error. Interaction through the Claude in Chrome extension at desktop size on `127.0.0.1`: section navigation and its active state, the screenshot tabs, arrow keys, pause on focus, the carousel staying still while off screen, no console error; on the system, `/lp` now answers "Página não encontrada". The extension's window could not be narrowed below the desktop width, so phone and tablet sizes were checked with Playwright only.
+
+taste-skill inspector, before → after: FAIL 3 → 2, WARN 6 → 4. Fixed: outlined boxes, rows of identical cards, low contrast, the off-centre margin at 390 px and the long measure. Remaining and accepted: the hero motto wraps to four lines at 390 px (brand motto, kept as in October); fewer than four raster pictures and no video (the LP uses engravings drawn for the project and rejects stock imagery, see Imagery); the parchment palette is the brand's; 13 font sizes; the plate carousel's off-screen slides read as an "empty middle" to the inspector. The `impeccable detect` run flags Montserrat as an overused face; it is the brand's functional typeface and stays.

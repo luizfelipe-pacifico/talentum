@@ -44,9 +44,8 @@ const DOCUMENTOS: Documento[] = [
 
         <h4>3. Licença de uso e propriedade intelectual</h4>
         <p>
-          A licença definitiva do código-fonte ainda será formalizada em arquivo <code>LICENSE</code> no repositório
-          oficial. Até a sua publicação, todos os direitos permanecem reservados ao titular do projeto, ressalvados
-          os usos permitidos por lei e os direitos de terceiros sobre componentes incorporados. Marcas, nome,
+          O código-fonte é distribuído sob a licença MIT, cujo texto integral está no arquivo <code>LICENSE</code> do
+          repositório oficial, ressalvados os direitos de terceiros sobre componentes incorporados. Marcas, nome,
           identidade visual, textos e ilustrações originais deste site são protegidos pela Lei 9.610/1998 e pela Lei
           9.279/1996.
         </p>
