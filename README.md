@@ -168,7 +168,10 @@ pnpm install
 cp .env.example .env
 pnpm prisma:generate
 pnpm prisma:migrate
+pnpm hooks:install
 ```
+
+`pnpm hooks:install` é obrigatório para contribuir: ativa os hooks que bloqueiam commit e push quando o typecheck ou algum teste, inclusive os de regressão, falha. Confira com `git config --get core.hooksPath`, que deve imprimir `.githooks`.
 
 ### Comandos disponíveis
 
@@ -183,7 +186,7 @@ pnpm prisma:migrate
 | `pnpm start` | Executa a build de produção na porta 3000 |
 | `pnpm typecheck` | Verifica os tipos TypeScript |
 | `pnpm test` | Roda a suíte, inclusive os testes de regressão |
-| `pnpm hooks:install` | Ativa os hooks que rodam typecheck e testes antes de commit e push |
+| `pnpm hooks:install` | Ativa os hooks que rodam typecheck e testes antes de commit e push e garante que sejam executáveis |
 | `pnpm prisma:generate` | Gera o Prisma Client |
 | `pnpm prisma:validate` | Valida o schema Prisma |
 | `pnpm prisma:migrate` | Cria e aplica migrações SQLite locais |
@@ -220,7 +223,7 @@ Contribuições são bem-vindas desde esta fase inicial. Antes de começar:
 2. Abra uma issue descrevendo o problema, a proposta e os critérios de aceite.
 3. Crie uma branch curta, como `feat/importacao-ofx` ou `docs/privacidade`.
 4. Faça mudanças pequenas, sem dados financeiros reais ou credenciais.
-5. Execute as verificações disponíveis e descreva o resultado no pull request.
+5. Ative os hooks com `pnpm hooks:install`. Toda correção de bug começa por um teste em `tests/regression/` que falha antes da correção. Execute as verificações disponíveis e descreva o resultado no pull request.
 6. Use commits no padrão [Conventional Commits](https://www.conventionalcommits.org/).
 
 Parsers comunitários devem usar amostras sintéticas e anonimizadas. Nunca envie extratos, nomes, documentos, tokens, chaves ou bancos SQLite reais ao repositório.

@@ -37,7 +37,7 @@
     "cloudflare:test": "node --test tests/cloud-contracts.test.mjs",
     "web:typecheck": "pnpm --dir apps/web typecheck",
     "web:build": "pnpm --dir apps/web build",
-    "hooks:install": "git config core.hooksPath .githooks",
+    "hooks:install": "node scripts/install-hooks.mjs",
     "marca:gerar": "node scripts/gerar-marca.mjs",
     "estados:gerar": "node scripts/gerar-estados.mjs"
   },
