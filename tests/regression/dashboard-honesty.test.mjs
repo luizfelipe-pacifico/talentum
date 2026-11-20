@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 
 /* Regressões de honestidade dos números, encontradas no teste manual com dados
-   sintéticos. A regra de fundo é a R-29 de docs/DASHBOARD.md: ausência só pode
+   sintéticos. A regra de fundo é a R-29 de docs/PRODUCT.md: ausência só pode
    ser afirmada quando o backend confirmou. */
 
 const root = new URL('../../', import.meta.url);

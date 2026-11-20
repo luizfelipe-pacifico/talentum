@@ -7,7 +7,7 @@ const root=new URL('../',import.meta.url); const read=(path)=>readFile(new URL(p
 
 test('o servidor de desenvolvimento escuta somente no loopback',async()=>{
   const source=await read('scripts/dev.mjs');
-  // docs/HOW-IT-WORKS.md: a API local não deve ficar exposta para a rede externa.
+  // docs/ARCHITECTURE.md: a API local não deve ficar exposta para a rede externa.
   assert.match(source,/'-H',\s*'127\.0\.0\.1'/);
   assert.doesNotMatch(source,/0\.0\.0\.0|'-H',\s*'::'/);
 });

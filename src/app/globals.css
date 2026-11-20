@@ -1,5 +1,5 @@
 /* Talentum: sistema visual.
-   Tokens e classes derivados de docs/BRANDING.md. Cores semânticas ainda são
+   Tokens e classes derivados de docs/DESIGN-SYSTEM.md. Cores semânticas ainda são
    propostas: validar contraste antes de tratá-las como normativas. */
 
 :root {
@@ -43,7 +43,7 @@
 
   /* Tokens de visualização de dados. A paleta da marca é quente e quase
      monocromática: ótima como interface, inadequada como cor de série
-     (docs/DASHBOARD.md, D-5 e R-13). Estes dois passam nas verificações de
+     (docs/PRODUCT.md, D-5 e R-13). Estes dois passam nas verificações de
      contraste contra as superfícies do produto nos dois temas. */
   --data-1: #2a78d6;
   --data-recessive: #898781;
@@ -280,7 +280,7 @@ p {
 
 /* Figuras monetárias usam a sans do produto, não a serifada de display: um
    número de painel é conteúdo operacional lido todo dia, não capa editorial
-   (docs/DASHBOARD.md, R-21). Figuras proporcionais no valor; `tabular-nums`
+   (docs/PRODUCT.md, R-21). Figuras proporcionais no valor; `tabular-nums`
    fica para tabela e eixo, onde os dígitos precisam alinhar (R-22). */
 .figure {
   display: flex;
@@ -341,7 +341,7 @@ p {
   font-size: 14px;
 }
 /* Direção também é comunicada por ícone e texto: cor nunca é o único canal
-   (docs/DASHBOARD.md, R-19 e R-35). Em despesa, subir é ruim. */
+   (docs/PRODUCT.md, R-19 e R-35). Em despesa, subir é ruim. */
 .delta-up {
   color: var(--err);
 }
@@ -2452,7 +2452,7 @@ kbd {
 }
 
 /* ── Lapidação de outubro de 2026 ──────────────────────────────────
-   Refinamento, não redesenho: identidade e tokens de docs/BRANDING.md
+   Refinamento, não redesenho: identidade e tokens de docs/DESIGN-SYSTEM.md
    preservados. Cada regra responde a uma lacuna medida no teste manual. */
 
 /* Superfícies do navegador seguem a paleta. */
@@ -2553,7 +2553,7 @@ a:hover {
   }
 }
 
-/* Faixa de erro dentro do próprio componente (docs/DASHBOARD.md, R-28). */
+/* Faixa de erro dentro do próprio componente (docs/PRODUCT.md, R-28). */
 .error-strip {
   display: grid;
   gap: 12px;
@@ -2641,7 +2641,7 @@ a:hover {
    Medida em 390, 768, 1280, 1440 e 1920 px. O Electron hoje abre com no
    mínimo 1024 px, mas o layout serve a qualquer largura: abaixo de 900 px a
    barra lateral vira gaveta, abaixo de 600 px o cabeçalho cabe em uma linha
-   e as margens seguem a grade de 4 colunas de docs/BRANDING.md. */
+   e as margens seguem a grade de 4 colunas de docs/DESIGN-SYSTEM.md. */
 
 /* O rótulo "Conta ativa" tinha 9 px: abaixo do piso de 12 px. */
 .sidebar-account-label {

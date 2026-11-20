@@ -15,7 +15,7 @@ test('toda consulta do dashboard é escopada por perfil',async()=>{
     const source=await read(path);
     assert.match(source,/getLocalProfileId\(\)/,path);
     // Nenhum `where` pode existir sem profileId: é a regra de isolamento da
-    // seção 4 de docs/ESTRUTURA_DE_DADOS.md.
+    // docs/DATABASE.md.
     for(const clause of source.match(/where:\s*\{[^}]*\}/g)??[])assert.match(clause,/profileId/,`${path}: ${clause}`);
   }
 });

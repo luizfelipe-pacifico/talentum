@@ -12,14 +12,14 @@ function SectionTitle({ title }: { title: string }) {
   return <div className="card-header"><h2 className="h-display">{title}</h2></div>;
 }
 
-/* Com ilustração, a ilustração ocupa o lugar do ícone (docs/ESTADOS_VAZIOS.md). */
+/* Com ilustração, a ilustração ocupa o lugar do ícone (docs/DESIGN-SYSTEM.md). */
 function EmptyState({ icon, art, title, text, action }: { icon?: string; art?: StateArtName; title: string; text: string; action?: ReactNode }) {
   return <section className="card card-lg empty">{art ? <StateArt name={art}/> : <i className={`bi ${icon}`} aria-hidden="true"/>}<h2 className="h-display">{title}</h2><p className="muted">{text}</p>{action}</section>;
 }
 
 /* Estado de uma área que depende do banco local. "Nenhum" só aparece quando o
    backend confirma zero; com registros gravados, a tela diz quantos existem em
-   vez de fingir que a área está vazia (docs/DASHBOARD.md, R-29). */
+   vez de fingir que a área está vazia (docs/PRODUCT.md, R-29). */
 function AreaState({ state, count, empty, existing }: { state: QueryState<LocalSummary>; count: (summary: Extract<LocalSummary, { hasProfile: true }>) => number; empty: ReactNode; existing: (total: number) => ReactNode }) {
   if (state.status === 'loading') return <section className="card card-lg" aria-busy="true"><span className="skeleton skeleton-eyebrow"/><span className="skeleton skeleton-line"/></section>;
   if (state.status === 'error') return <section className="card card-lg empty error-state" role="alert"><StateArt name="falha-consulta"/><h2 className="h-display">Não foi possível consultar o banco local</h2><p className="muted">Nada é afirmado sobre esta área enquanto a consulta não responder.</p><button type="button" className="btn btn-neutral" onClick={state.retry}><i className="bi bi-arrow-clockwise" aria-hidden="true"/>Tentar novamente</button></section>;
@@ -30,7 +30,7 @@ function AreaState({ state, count, empty, existing }: { state: QueryState<LocalS
 const plural = (total: number, one: string, many: string) => `${total} ${total === 1 ? one : many}`;
 
 /* Início: porta de entrada do sistema. Não exibe número financeiro de propósito —
-   um zero sem confirmação do backend é uma afirmação falsa (docs/DASHBOARD.md, D-2). */
+   um zero sem confirmação do backend é uma afirmação falsa (docs/PRODUCT.md, D-2). */
 export function HomePage() {
   const app = useApp();
   return <div className="stack-lg">

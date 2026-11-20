@@ -1,6 +1,6 @@
 'use client';
 
-/* Ilustração de estado da LP (docs/ESTADOS_VAZIOS.md). Decorativa, com alt
+/* Ilustração de estado da LP (docs/DESIGN-SYSTEM.md). Decorativa, com alt
    vazio, sem arrastar e sem seleção; o CSS de .state-art completa o bloqueio. */
 
 export function StateArt({ name }: { name: 'nao-encontrada' | 'erro-tela' | 'sem-versoes' }) {

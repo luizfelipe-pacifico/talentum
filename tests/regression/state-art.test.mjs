@@ -2,14 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 
-/* Ilustrações dos estados vazios (docs/ESTADOS_VAZIOS.md): vetoriais, cada uma
+/* Ilustrações dos estados vazios (docs/DESIGN-SYSTEM.md): vetoriais, cada uma
    no seu lugar, impossíveis de arrastar ou selecionar como texto. */
 
 const root = new URL('../../', import.meta.url);
 const read = (path) => readFile(new URL(path, root), 'utf8');
 const files = async (dir) => readdir(new URL(dir, root)).catch(() => []);
 
-const map = await read('docs/ESTADOS_VAZIOS.md');
+const map = await read('docs/DESIGN-SYSTEM.md');
 const KEYS = [...map.matchAll(/\| `([a-z-]+)` \|$/gm)].map((m) => m[1]);
 const LP_KEYS = ['nao-encontrada', 'erro-tela', 'sem-versoes'];
 

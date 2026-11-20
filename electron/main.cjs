@@ -8,7 +8,7 @@ const url = process.env.TALENTUM_URL || 'http://localhost:3000';
 const appOrigin = new URL(url).origin;
 
 /* Links externos permitidos: abrem no navegador do sistema, nunca numa janela
-   com o preload do Talentum (docs/ARCHITECTURE-ELECTRON.md, controles 2 e 3). */
+   com o preload do Talentum (docs/ARCHITECTURE.md, Layer 2: Electron). */
 const EXTERNAL_HOSTS = new Set(['github.com', 'icons.getbootstrap.com']);
 
 function openExternalSafely(target) {

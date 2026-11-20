@@ -34,7 +34,7 @@ function resolveElectronBinary() {
 
 /* A janela carrega `localhost`, o endereço usado pela documentação e pelo fluxo
    Docker. O servidor continua escutando somente no loopback IPv4: expor a API
-   local além do loopback contraria docs/HOW-IT-WORKS.md.
+   local além do loopback contraria docs/ARCHITECTURE.md.
 
    Em distribuições onde `localhost` resolve primeiro para `::1`, o cliente faz
    o fallback para IPv4 (Happy Eyeballs, RFC 8305). O endereço IPv4 explícito

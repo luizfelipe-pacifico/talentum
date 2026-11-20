@@ -25,7 +25,7 @@ const denied = () =>
   );
 
 /* Centavos viajam como string: BigInt não é serializável em JSON e a formatação
-   pertence à renderização (docs/DASHBOARD.md, R-25). */
+   pertence à renderização (docs/PRODUCT.md, R-25). */
 const cents = (value: bigint) => value.toString();
 
 type TransactionRow = {

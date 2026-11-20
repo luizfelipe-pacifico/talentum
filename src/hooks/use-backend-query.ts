@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { getWithActionCode } from '@/lib/api-client';
 
 /* Consulta GET a um contrato do backend local, com os três estados que toda
-   tela precisa desenhar (docs/DASHBOARD.md, R-28). Não existe valor padrão:
+   tela precisa desenhar (docs/PRODUCT.md, R-28). Não existe valor padrão:
    enquanto não há resposta, a tela não afirma nada. */
 
 export type QueryState<T> =

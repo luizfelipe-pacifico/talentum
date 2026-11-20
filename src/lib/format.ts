@@ -1,7 +1,7 @@
 /* Formatação monetária.
 
    Centavos viajam como string e viram texto só aqui, na borda de apresentação
-   (docs/DASHBOARD.md, R-25). O símbolo de moeda é devolvido separado do valor
+   (docs/PRODUCT.md, R-25). O símbolo de moeda é devolvido separado do valor
    para que receba peso menor na interface (R-24). */
 
 const groupFormatter = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0, useGrouping: true });

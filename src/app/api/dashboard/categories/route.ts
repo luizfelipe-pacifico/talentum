@@ -60,7 +60,7 @@ export async function GET(request: Request) {
       period: { start: period.start.toISOString(), end: period.end.toISOString() },
       totalCents: totalCents.toString(),
       // A soma das fatias é sempre igual ao total: "Sem categoria" é uma fatia,
-      // não um descarte (docs/DASHBOARD.md, G-2).
+      // não um descarte (docs/PRODUCT.md, G-2).
       slices: slices.map((slice) => ({ name: slice.name, cents: slice.cents.toString() })),
     },
     { headers },

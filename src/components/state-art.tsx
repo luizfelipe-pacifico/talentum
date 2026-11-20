@@ -1,6 +1,6 @@
 'use client';
 
-/* Ilustração de estado vazio, de erro ou de ausência (docs/ESTADOS_VAZIOS.md).
+/* Ilustração de estado vazio, de erro ou de ausência (docs/DESIGN-SYSTEM.md).
 
    É decoração: o texto ao lado se sustenta sozinho, então a imagem tem
    alt vazio. Não pode ser arrastada nem selecionada como texto; o CSS de

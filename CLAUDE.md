@@ -2,7 +2,36 @@
 
 ## Start here
 
-Before changing the project, read `README.md`, `docs/README.md`, `docs/HOW-IT-WORKS.md`, `docs/ARCHITECTURE.md`, and `docs/BEST_PRACTICES.md`. Read the specific Web or Electron architecture for affected work, `docs/BRANDING.md` for interface work, `docs/DATA_MODEL.md` before schema work, and `docs/API.md`, `docs/AUTHENTICATION.md`, and `docs/SECURITY.md` before authentication, API, or data-handling work. Their rules are mandatory.
+Before changing the project, read `README.md`, `docs/README.md`, `docs/MEMORY-AI.md` (how the maintainer thinks and works; update it whenever you learn a new preference or receive a correction), `docs/ARCHITECTURE.md`, and `docs/BEST_PRACTICES.md`. Read the Web or Electron layer of `docs/ARCHITECTURE.md` for affected work, `docs/PRODUCT.md` for feature and route work, `docs/DESIGN-SYSTEM.md` for interface work, `docs/DATABASE.md` before schema work, and `docs/SECURITY.md` before authentication, API, or data-handling work. Their rules are mandatory.
+
+## Standing instructions from the user
+
+Whenever the user says to always do something ("sempre execute isso", "sempre faça", "always do this", or any equivalent standing instruction), add it to this file as a mandatory rule in the same turn, without asking for confirmation. Put it in the most relevant section, or in this section when none fits, write it in English, and mirror it in `AGENTS.md`. Once recorded, it binds every later session exactly like the rest of this file.
+
+## Design, responsiveness and copy are mandatory
+
+- Follow every design principle in `docs/DESIGN-SYSTEM.md` strictly and validate each interface change against all of them before calling it done. Report any principle a change does not meet.
+- Before designing any interaction, navigation or layout, research the pattern that large, widely used products (major social networks, mail, maps, banking, streaming and operating-system apps, plus Apple HIG and Material Design) use for the same task, and follow it unless there is a documented reason not to. People already know those patterns (Jakob's law): swipe gestures, tab bars such as Home, Videos and Search, pull to refresh, search placement, filters and sheets should behave the way they expect. Record the reference you followed and any deliberate deviation.
+- Responsiveness is a UX decision, not a fit-to-width exercise. For every layout, choose the best pattern for each context instead of only shrinking or wrapping it; for example, filters can sit side by side on desktop but become a dropdown or sheet on mobile, tablet and other small viewports.
+- Validate every interface change on all twelve viewport classes defined in `docs/DESIGN-SYSTEM.md`: small, medium and large mobile; small, medium and large tablet; small, medium and large desktop; and small, medium and large TV. Validate each one in the light and the dark theme, and report the result per viewport and theme.
+- In the frontend, after building or changing a layout, always run the `impeccable` skill to rework and refine that layout.
+- On the landing page (`apps/web`), always use the `impeccable` skill, the Emil Kowalski skills (`emil-design-eng` and the animation skills) and the `taste-skill` together.
+- Write every interface text following the UX writing rules in `docs/DESIGN-SYSTEM.md`: words specific enough that the reader has no doubt about what they mean or what will happen.
+- After finishing any piece of work (code, interface, copy or documentation), review it for AI slop (generic or templated layouts, filler words, vague or inflated copy, invented facts, decorative noise) and fix what you find before reporting.
+
+## Self-review loop before reporting completion
+
+- After doing anything, critically review everything you produced: correctness, the rules in this file, the design principles, UX writing, both themes, every viewport class, AI slop, tests and documentation.
+- Give the work a score from 0 to 10 and list what keeps it from a 10.
+- If the score is below 8, fix the problems and review and score again. Repeat as many times as needed, even a hundred times; never report the work as finished while the score is below 8.
+- Report completion only when the score is 8 or higher, and include the final score and the main remaining weaknesses in the report.
+
+## Illustrations humanize the interface
+
+- Use illustrations to humanize the system wherever they help the person understand a state or a step, following the illustration rules in `docs/DESIGN-SYSTEM.md`.
+- When the system needs a new flat-design illustration, generate it with Gemini through the Claude in Chrome extension, download it, and move the file from the Downloads folder into the project (`design/` for masters).
+- Always convert the downloaded image to SVG with a transparent background before using it, then generate the light and dark theme variants and validate both.
+- Never send personal, financial or user data to Gemini; prompts describe only the generic scene.
 
 ## Project context
 
@@ -35,7 +64,7 @@ Talentum is an early-stage, open-source, local-first financial application plann
 - Never render internal documentation, local paths, diagnostics, infrastructure metadata or staff identities in public UI.
 - Redact sensitive output and logs.
 - Never commit, push, migrate, deploy, release, merge, rebase or change remote resources unless explicitly requested.
-- Use Bootstrap Icons for interface icons; document any necessary exception.
+- Use Bootstrap Icons for interface icons by default. When Bootstrap Icons has no suitable symbol, install and use Lucide (`lucide-react`) for that icon, and record the exception in `docs/DESIGN-SYSTEM.md`.
 
 ## Quality
 

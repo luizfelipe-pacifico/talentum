@@ -2,7 +2,7 @@
 
    Toda chamada funcional do frontend pede antes um código opaco de uso único e
    o envia em `X-Action-Code`. A rota que emite o código é a única exceção
-   (docs/API.md e docs/SECURITY.md).
+   (docs/ARCHITECTURE.md e docs/SECURITY.md).
 
    O protocolo mora aqui para que nenhuma tela o reimplemente pela metade. */
 

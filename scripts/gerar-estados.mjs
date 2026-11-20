@@ -1,4 +1,4 @@
-/* Gera as ilustrações de estado integradas a cada fundo (docs/ESTADOS_VAZIOS.md).
+/* Gera as ilustrações de estado integradas a cada fundo (docs/DESIGN-SYSTEM.md).
 
    Os mestres em design/estados-vetor/ foram vetorizados das ilustrações flat
    e trazem uma placa e áreas de "papel" na cor #F4F1EA. Uma ilustração só

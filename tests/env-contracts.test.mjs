@@ -37,7 +37,7 @@ test('arquivos de segredo local continuam fora do Git',async()=>{
 
 test('o banco financeiro nunca é configurado no Worker',async()=>{
   // O D1 é do Worker; o SQLite é do app local. Cruzar isso quebraria o limite
-  // documentado em docs/CLOUDFLARE_SETUP.md.
+  // documentado em docs/ARCHITECTURE.md.
   assert.doesNotMatch(await read('cloudflare/wrangler.jsonc'),/DATABASE_URL|sqlite|prisma/i);
   assert.doesNotMatch(await read('cloudflare/.dev.vars.example'),/DATABASE_URL|sqlite/i);
 });

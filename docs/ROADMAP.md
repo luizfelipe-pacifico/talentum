@@ -1,266 +1,302 @@
-# Roadmap do Talentum
+# Talentum Roadmap
 
-## Status e finalidade
+This roadmap is the source of truth for Talentum's planned delivery order: the current state of the repository, the pre-MVP update notice, the MVP stages that produce the first usable release, and the later stages, each with its goal, scope, exit criteria and dependencies. The operational MVP plan (order, routes, APIs, migrations and verifiable criteria) is in [PRODUCT.md](PRODUCT.md); architecture is in [ARCHITECTURE.md](ARCHITECTURE.md). Dates are not promised until capacity and estimates are validated.
 
-Este roadmap é a fonte de verdade para a ordem de entrega planejada. Ele foi consolidado a partir do código atual e de toda a documentação do projeto em 2026-09-05. Datas não são prometidas enquanto não houver capacidade e estimativas validadas.
+## Contents
 
-Estados:
+- [Status and purpose](#status-and-purpose)
+- [Current state (pre-alpha)](#current-state-pre-alpha)
+- [Cross-cutting rules for every stage](#cross-cutting-rules-for-every-stage)
+- [Pre-MVP: new version notice](#pre-mvp-new-version-notice)
+- [MVP: first usable release](#mvp-first-usable-release)
+- [Later stages: one macro-feature per stage](#later-stages-one-macro-feature-per-stage)
+- [Dependencies between stages](#dependencies-between-stages)
+- [Out of scope without an ADR](#out-of-scope-without-an-adr)
+- [How to update this roadmap](#how-to-update-this-roadmap)
 
-- **Atual:** verificável no repositório.
-- **MVP:** necessário para provar o valor central e produzir o primeiro release utilizável.
-- **Próxima etapa:** macrofeature posterior ao MVP.
-- **Em aberto:** depende de ADR, pesquisa ou validação.
+## Status and purpose
 
-## Estado atual — pré-alpha
+This roadmap was originally consolidated from the code and all project documentation on 2026-09-05 and its status was re-verified against the repository on 2026-11-20.
 
-Existe hoje:
+States used in this document:
 
-- shell Electron mínimo;
-- scripts de desenvolvimento que esperam um servidor Next.js na porta 3000;
-- dependências-base e documentação técnica/produto;
-- identidade visual em SVG.
+- **Current:** verifiable in the repository.
+- **MVP:** required to prove the core value and produce the first usable release.
+- **Next stage:** a macro-feature after the MVP.
+- **Planned:** agreed scope not yet implemented.
+- **Open:** depends on an ADR, research or validation, or on resolving a conflict.
 
-Já existem aplicação Next.js, shell Electron, API REST local inicial, schema Prisma/SQLite, Worker publicado e D1 com o schema cloud inicial. Autenticação cloud, LP/BFF isolada, fluxo de downloads, módulos financeiros completos, testes de produto e instaladores ainda não estão concluídos. A presença de uma dependência ou scaffold não significa que a capacidade correspondente esteja implementada.
+The presence of a dependency, a table or a scaffold does not mean the corresponding capability is implemented.
 
-## Regras transversais de todas as etapas
+## Current state (pre-alpha)
 
-Cada etapa só termina quando inclui implementação, testes, migrações/contratos aplicáveis e atualização dos documentos relacionados.
+Status: **Current** (verified 2026-11-20).
 
-- frontend conversa exclusivamente com backend documentado;
-- toda chamada funcional usa código de ação opaco, efêmero, não rastreável e de uso único;
-- toda tabela persistida possui `id` e relações por foreign-key IDs;
-- dados financeiros permanecem locais e nunca entram em telemetria;
-- access token curto, refresh token rotativo, autorização server-side, rate limit e proteção contra replay;
-- secret scanning, análise de dependências, build reproduzível e revisão de licença;
-- Bootstrap Icons como família iconográfica;
-- acessibilidade por teclado, contraste e leitores de tela desde o início;
-- nenhuma etapa pode apresentar funcionalidade planejada como pronta.
+What exists today:
 
-# Pré-MVP — aviso de nova versão
+- A local Next.js application (UI plus local API) with six local API route handlers: `action-codes`, `dashboard`, `dashboard/categories`, `health/live`, `local-summary` and `system/status`.
+- Local action codes: opaque, single-use, 60-second codes issued by `/api/action-codes` and required by `dashboard`, `dashboard/categories`, `local-summary` and `system/status` (`health/live` is exempt).
+- Prisma/SQLite with nine models (`LocalProfile`, `UserPreference`, `Institution`, `Account`, `BalanceSnapshot`, `Category`, `ImportBatch`, `Transaction`, `ScheduledObligation`) created by three migrations, with money stored as `BigInt` cents.
+- A dashboard that reads real local SQLite data through `/api/dashboard`, with pure, tested metric formulas in `src/server/dashboard-metrics.ts` (consolidated balance, income, expenses, daily average, committed obligations, risk-free balance, category breakdown, month-to-date periods).
+- A hardened Electron shell (context isolation, sandbox, no Node integration, navigation and window-open guards, deny-all permissions, trusted-sender IPC) that loads the local application.
+- A Cloudflare Worker with Google OAuth/OIDC Authorization Code plus PKCE, opaque hashed sessions, refresh-token rotation with reuse detection and family revocation, logout, `/api/me`, `/api/releases`, release download grants, Worker action codes stored in D1, IP-keyed rate limits for code issuance and login, and two D1 migrations.
+- The public landing page (`apps/web`) with its BFF (auth start, callback, refresh and logout routes, download-grant form handler) and the protected `/downloads` page, served with CSP and HSTS.
+- A Node test suite of about 18 files in `tests/` (including a regression suite in `tests/regression/` and an in-memory D1 Worker harness) enforced by versioned Git hooks.
+- Brand vectors and per-theme state illustrations generated from versioned sources, and Docker images for the local application and the landing page.
 
-**Planejado.** Especificação completa em [`ATUALIZACOES.md`](./ATUALIZACOES.md).
+What does not exist yet: import (OFX/CSV/PDF), categorization, reconciliation, CRUD for accounts and categories, onboarding beyond a stub, Turnstile, CORS handling, per-user rate limits, the update notice, packaged or signed installers, CI, a `LICENSE` file and the packager ADR.
 
-O aplicativo consulta as releases do repositório oficial no GitHub e, quando existe versão estável mais nova que a instalada, abre um diálogo com a ilustração `nova-versao` e dois botões: **Baixar agora**, que baixa o instalador do Windows, confere checksum e assinatura, fecha o app e abre o instalador; e **Adiar**, que suprime o aviso daquela versão por 24 horas.
+## Cross-cutting rules for every stage
 
-Está antes do MVP por decisão do mantenedor: quem instalar a primeira versão precisa receber as correções seguintes sem procurar a LP. Depende dos instaladores assinados publicados em GitHub Releases (MVP 1 e MVP 2) para operar; até lá, o verificador não encontra versão e não exibe nada.
+A stage ends only when it includes implementation, tests, applicable migrations and contracts, and updates to the related documents.
 
-**Saída:** release nova estável gera o aviso, "Adiar" respeita 24 horas e nenhum instalador sem assinatura ou com checksum divergente é executado.
+- The frontend talks exclusively to a documented backend.
+- Every functional call uses an opaque, short-lived, untraceable, single-use action code.
+- Every persisted table has an `id`, and relations use foreign-key IDs.
+- Financial data stays local and never enters telemetry.
+- Short-lived access token, rotating refresh token, server-side authorization, rate limiting and replay protection.
+- Secret scanning, dependency analysis, reproducible builds and license review.
+- Bootstrap Icons as the icon family.
+- Keyboard accessibility, contrast and screen-reader support from the start.
+- No stage may present planned functionality as finished.
 
-# MVP — primeiro release utilizável
+## Pre-MVP: new version notice
 
-O roteiro operacional, com ordem, rotas, APIs, migrations e critérios verificáveis, está em [`ROUTING_MVP.md`](./ROUTING_MVP.md).
+Status: **Planned.** The full specification is in [PRODUCT.md](PRODUCT.md). The `nova-versao` state illustration exists; no update-check code exists.
 
-O MVP termina quando uma pessoa consegue cadastrar-se, instalar o Talentum, importar um OFX, revisar seus lançamentos e visualizar o saldo livre localmente. Ele não inclui PDF, IA, ARCA, backup cloud, gamificação ou comunidade.
+The application queries the releases of the official GitHub repository and, when a stable version newer than the installed one exists, opens a dialog with the `nova-versao` illustration and two buttons: `Baixar agora` (download now), which downloads the Windows installer, verifies checksum and signature, closes the app and opens the installer; and `Adiar` (postpone), which suppresses the notice for that version for 24 hours.
 
-## MVP 0 — Fundação técnica e segurança
+It comes before the MVP by the maintainer's decision: whoever installs the first version must receive the following fixes without looking for the landing page. It depends on signed installers published to GitHub Releases (MVP 1 and MVP 2) to operate; until then the checker finds no version and shows nothing.
 
-**Objetivo:** transformar o shell em uma base executável e verificável.
+**Exit:** a new stable release triggers the notice, `Adiar` respects 24 hours, and no installer without a signature or with a mismatched checksum is executed.
 
-- criar aplicação Next.js/TypeScript e design system responsivo;
-- separar web, renderer Electron, backend local e Worker por limites claros;
-- substituir/remover Lucide e padronizar Bootstrap Icons;
-- implementar configuração validada, erros seguros e logging redigido;
-- implementar emissão/consumo atômico do código efêmero de ação;
-- preparar lint, typecheck, testes, CI, CodeQL/dependências e secret scanning;
-- formalizar licença open-source, contribuição, código de conduta e política de segurança;
-- definir ADR de empacotamento Next.js/Electron e concluir spike Workers versus Vercel.
+## MVP: first usable release
 
-**Saída:** web e Electron iniciam em desenvolvimento, CI passa e nenhuma camada frontend acessa persistência diretamente.
+The MVP ends when a person can sign up, install Talentum, import an OFX file, review their entries and see the free balance locally. It does not include PDF, AI, ARCA, cloud backup, gamification or community. The operational route-by-route plan is in [PRODUCT.md](PRODUCT.md).
 
-Estado parcial atual: scaffold Next.js, API REST inicial, Prisma/SQLite e arquivos Docker existem; CI, testes automatizados, licença e ADR do empacotador continuam pendentes.
+### MVP 0 — Technical foundation and security
 
-## MVP 1 — Landing page, cadastro e downloads
+**Goal:** turn the shell into an executable, verifiable base.
 
-**Objetivo:** entregar o caminho público até o instalador.
+- Create the Next.js/TypeScript application and a responsive design system.
+- Separate web, Electron renderer, local backend and Worker with clear boundaries.
+- Standardize on Bootstrap Icons, with Lucide allowed only as a documented exception (done: the former Lucide dependency was removed).
+- Implement validated configuration, safe errors and redacted logging.
+- Implement atomic issuance and consumption of the short-lived action code.
+- Set up lint, typecheck, tests, CI, CodeQL/dependency analysis and secret scanning.
+- Formalize the open-source license, contribution guide, code of conduct and security policy.
+- Define the Next.js/Electron packaging ADR and complete the Workers versus Vercel spike.
 
-- LP responsiva com proposta de valor, privacidade, plataformas e licença;
-- publicar somente LP/BFF em `talentum.vercel.app`, com contexto de deploy isolado do sistema desktop;
-- OAuth/OIDC Authorization Code + PKCE;
-- access token curto, refresh token rotativo, revogação e detecção de reúso;
-- tabelas cloud de usuário, perfil, identidade, sessão, tokens, consentimento, release, artefato e concessão;
-- página protegida com botões Windows e Linux;
-- instaladores Windows/Linux produzidos fora da Vercel e publicados em GitHub Releases com checksum, assinatura e metadados no D1;
-- WAF, rate limit, Turnstile adaptativo, CSP, HSTS, CSRF e cache privado;
-- termos, privacidade, exclusão de conta e retenção mínima.
+**Exit:** web and Electron start in development, CI passes and no frontend layer accesses persistence directly.
 
-**Saída:** apenas usuário validado obtém um instalador autêntico e temporariamente autorizado.
+Partial state (**Current**): the Next.js application, local REST API, Prisma/SQLite, Docker files, layer separation, Bootstrap Icons (Lucide removed), local and Worker action codes, typecheck, the test suite with regression tests and the Git hooks exist. The Workers versus Vercel decision is recorded in [decisions/0001-web-hosting.md](decisions/0001-web-hosting.md). Still missing (**Planned**): a real linter and formatter (`pnpm lint` only runs the typecheck), CI, CodeQL and secret scanning in CI, the `LICENSE` file and community policies, and the packaging ADR.
 
-Estado parcial atual: Worker, binding D1, migration cloud inicial e endpoint de saúde estão publicados. OAuth/OIDC, sessões, códigos efêmeros, BFF da Vercel, LP, rate limit, Turnstile, releases e concessões de download permanecem pendentes na ordem definida em `ROUTING_MVP.md`.
+### MVP 1 — Landing page, sign-up and downloads
 
-## MVP 2 — Electron seguro e primeiro acesso
+**Goal:** deliver the public path to the installer.
 
-**Objetivo:** instalar, autenticar e criar o ambiente local.
+- Responsive landing page with value proposition, privacy, platforms and license.
+- Publish only the landing page and BFF on Vercel, with a deploy context isolated from the desktop system.
+- OAuth/OIDC Authorization Code plus PKCE.
+- Short access token, rotating refresh token, revocation and reuse detection.
+- Cloud tables for user, profile, identity, session, tokens, consent, release, artifact and grant.
+- Protected page with Windows and Linux buttons.
+- Windows/Linux installers produced outside Vercel and published to GitHub Releases with checksum, signature and metadata in D1.
+- WAF, rate limiting, adaptive Turnstile, CSP, HSTS, CSRF protection and private caching.
+- Terms, privacy, account deletion and minimal retention.
 
-- builds assinadas para Windows e Linux;
-- `contextIsolation`, sandbox, CSP, `nodeIntegration: false`, IPC mínimo e fuses;
-- backend local em loopback com segredo efêmero por execução;
-- login via navegador do sistema e refresh token no cofre do SO;
-- criação e migração inicial do SQLite;
-- onboarding curto apresentando importação, organização e privacidade;
-- fotografia financeira progressiva conforme [`ONBOARDING.md`](./ONBOARDING.md), com rascunho local e revisão final;
-- preferências básicas e seleção de moeda/fuso.
+**Exit:** only a validated user obtains an authentic, temporarily authorized installer.
 
-**Saída:** aplicativo instalado abre com segurança e prepara banco local sem enviar finanças à nuvem.
+Partial state (**Current**): the landing page, the BFF, Google OAuth/OIDC with PKCE, opaque sessions, refresh rotation with reuse detection, logout, `/api/me`, release listing, download grants recorded in D1, the protected `/downloads` page, Worker action codes, IP-keyed rate limits on code issuance and login, CSP and HSTS on the landing page, and the D1 cloud schema exist. **Planned:** Turnstile, CORS handling (`ALLOWED_ORIGIN` is declared but unused), per-user rate limits, WAF rules, an allowlist-verified isolated Vercel deploy context, signed installers in GitHub Releases, terms, privacy, account deletion and retention.
 
-## MVP 3 — Contas, categorias e obrigações
+**Open:** the public domain conflicts between sources. The landing page code uses `talentum-tech.vercel.app` (its comment says `talentum.vercel.app` belongs to another project), while the Worker configuration (`ALLOWED_ORIGIN`, `PUBLIC_WEB_URL`) and earlier documents use `talentum.vercel.app`. The canonical domain must be decided and both sides aligned.
 
-**Objetivo:** criar a estrutura financeira mínima.
+### MVP 2 — Secure Electron and first access
 
-- perfil local, instituições e contas;
-- múltiplas contas, rendas, chaves PIX locais cifradas e identificação de transferências próprias;
-- categorias e regras simples de estabelecimento;
-- saldos informados e snapshots;
-- contas recorrentes, vencimentos e débitos previstos;
-- CRUD completo via API local, validação e relações por IDs;
-- valores em centavos/Decimal e datas financeiras corretas.
+**Goal:** install, authenticate and create the local environment.
 
-**Saída:** usuário configura as bases necessárias para interpretar um extrato.
+- Signed builds for Windows and Linux.
+- `contextIsolation`, sandbox, CSP, `nodeIntegration: false`, minimal IPC and fuses.
+- Local backend on loopback with a per-run ephemeral secret.
+- Login through the system browser and the refresh token in the OS keychain.
+- Creation and initial migration of SQLite.
+- Short onboarding presenting import, organization and privacy.
+- Progressive financial snapshot as described in [PRODUCT.md](PRODUCT.md), with a local draft and final review.
+- Basic preferences and currency/time zone selection.
 
-## MVP 4 — Importação OFX
+**Exit:** the installed application opens securely and prepares the local database without sending finances to the cloud.
 
-**Objetivo:** eliminar digitação manual no formato mais estruturado.
+Partial state (**Current**): context isolation, sandbox, `nodeIntegration: false`, navigation and permission guards, trusted-sender IPC, loopback-only binding and automatic SQLite migration on start exist. **Planned:** signed builds, a CSP for the local application, Electron fuses, a random port and per-run secret (the shell loads a fixed `http://localhost:3000` or `TALENTUM_URL`), system-browser login with keychain storage, onboarding (the route is a stub) and preferences selection.
 
-- drag and drop/seleção de OFX;
-- validação de tipo, tamanho e conteúdo; parser isolado e limitado;
-- lote, arquivo, fingerprint, diagnóstico e progresso por IDs;
-- normalização de transações e prevenção de duplicidade;
-- descarte/retenção do original conforme política explícita;
-- fixtures exclusivamente sintéticas para diferentes instituições.
+### MVP 3 — Accounts, categories and obligations
 
-**Saída:** um OFX válido produz transações locais rastreáveis ao lote de origem.
+**Goal:** create the minimum financial structure.
 
-## MVP 5 — Categorização e conciliação
+- Local profile, institutions and accounts.
+- Multiple accounts, incomes, encrypted local Pix keys and identification of own transfers.
+- Categories and simple merchant rules.
+- Reported balances and snapshots.
+- Recurring bills, due dates and expected debits.
+- Full CRUD through the local API, validation and relations by IDs.
+- Values in cents/Decimal and correct financial dates.
 
-**Objetivo:** permitir que automação e usuário cheguem a dados confiáveis.
+**Exit:** the user configures the bases needed to interpret a statement.
 
-- categorização determinística por regras locais;
-- nível de confiança e fila de pendências;
-- smart triage para confirmar ou corrigir categoria;
-- edição segura, juros, descontos e lançamento expresso em dinheiro;
-- conferência de transações/obrigações;
-- histórico antes/depois e reversão das alterações do MVP.
+Partial state (**Current**): the `LocalProfile`, `Institution`, `Account`, `Category`, `BalanceSnapshot` and `ScheduledObligation` tables exist with relations by IDs and money in `BigInt` cents, and the dashboard reads them. **Planned:** CRUD routes and validation in the local API, the screens that create and edit these records, encrypted Pix keys, own-transfer identification and merchant rules.
 
-**Saída:** usuário corrige ambiguidades sem perder o dado original.
+### MVP 4 — OFX import
 
-## MVP 6 — Dashboard e Saldo Livre de Risco
+**Goal:** eliminate manual typing for the most structured format.
 
-**Objetivo:** provar a proposta central do Talentum.
+- Drag and drop or selection of OFX files.
+- Type, size and content validation; an isolated, bounded parser.
+- Batch, file, fingerprint, diagnostics and progress by IDs.
+- Transaction normalization and duplicate prevention.
+- Discarding or retaining the original according to an explicit policy.
+- Exclusively synthetic fixtures for different institutions.
 
-- saldo atual por conta e consolidado;
-- faturas/obrigações previstas descontadas do disponível;
-- Saldo Livre de Risco com fórmula e período explicáveis;
-- gastos por categoria, média diária e consumo do mês;
-- gráficos acessíveis e estados vazio/erro/offline;
-- alertas locais essenciais de vencimento e dado desatualizado;
-- testes unitários das fórmulas e testes ponta a ponta do fluxo OFX.
+**Exit:** a valid OFX file produces local transactions traceable to their source batch.
 
-**Saída:** primeiro release MVP para Windows e Linux, com documentação de instalação, uso, segurança e limitações.
+Partial state: the `ImportBatch` and `Transaction` tables and the `ofx-data-extractor` dependency exist (**Current**); no parser or import route exists (**Planned**).
 
-# Etapas posteriores — uma macrofeature por etapa
+### MVP 5 — Categorization and reconciliation
 
-## Etapa 7 — Importação de PDF
+**Goal:** let automation and the user reach reliable data.
 
-Parsers locais por instituição/layout, extração defensiva, confiança por campo, testes com arquivos sintéticos hostis e manutenção versionada de parsers. Open Finance não faz parte desta etapa.
+- Deterministic categorization by local rules.
+- Confidence level and a pending queue.
+- Smart triage to confirm or correct a category.
+- Safe editing, interest, discounts and quick cash entries.
+- Checking transactions against obligations.
+- Before/after history and reversal of MVP changes.
 
-## Etapa 8 — Cartões, faturas e benefícios
+**Exit:** the user corrects ambiguities without losing the original data.
 
-Cartões, fechamento/vencimento, itens de fatura, conciliação fatura-extrato, anuidade, termômetro de isenção, cashback, pontos, milhas e expiração.
+Status: **Planned.** The `/conciliacao` screens are navigable layouts only.
 
-## Etapa 9 — Orçamento e planejamento mensal
+### MVP 6 — Dashboard and Risk-Free Balance
 
-Limites por categoria, comparação planejado/realizado, projeções, média móvel, superávit e revisão mensal, sem recomendações financeiras personalizadas.
+**Goal:** prove Talentum's core proposition.
 
-## Etapa 10 — Central de notificações
+- Current balance per account and consolidated.
+- Expected bills/obligations deducted from the available amount.
+- Risk-Free Balance with an explainable formula and period.
+- Spending by category, daily average and month-to-date consumption.
+- Accessible charts and empty/error/offline states.
+- Essential local alerts for due dates and stale data.
+- Unit tests for the formulas and end-to-end tests of the OFX flow.
 
-Notificações locais acionáveis para contas, faturas, importações pendentes e orçamento; preferências, silêncio, deduplicação e acessibilidade. Push remoto exige ADR próprio.
+**Exit:** the first MVP release for Windows and Linux, with installation, usage, security and limitations documentation.
 
-## Etapa 11 — Histórico e restauração
+Partial state (**Current**): the dashboard reads SQLite and computes consolidated balance, committed obligations up to period end, risk-free balance, income, expenses, daily average, period-over-period change and category breakdown in a pure module with unit tests; empty and error state illustrations exist for both themes. **Planned:** local due-date and stale-data alerts, end-to-end tests of the OFX flow (blocked on MVP 4) and the release documentation.
 
-Timeline filtrável, eventos por domínio, pontos de restauração, desfazer/refazer seguro, snapshots antes de migração e trilha sem segredos.
+## Later stages: one macro-feature per stage
 
-## Etapa 12 — Metas e caixinhas
+Every stage below is a **Next stage** and **Planned** unless marked **Open**.
 
-Objetivos, valor-alvo, prazo, contribuições, cálculo mensal, viabilidade, progresso e sugestão de destinação do superávit.
+### Stage 7 — PDF import
 
-## Etapa 13 — Modo de sobrevivência e dívidas
+Local parsers per institution/layout, defensive extraction, per-field confidence, tests with hostile synthetic files and versioned parser maintenance. Open Finance is not part of this stage.
 
-Dívidas, juros, atrasos, prioridade por custo, plano de quitação e foco em liquidez. Exige revisão jurídica e textos claros de educação financeira.
+### Stage 8 — Cards, statements and benefits
 
-## Etapa 14 — Patrimônio e metodologia ARCA
+Cards, closing/due dates, statement items, statement-to-bank-statement reconciliation, annual fee, fee-waiver thermometer, cashback, points, miles and expiration.
 
-Ativos e snapshots, quatro pilares, faixa de 22,5%–27,5%, status de equilíbrio e simulação do próximo aporte sem sugerir vendas. Atribuição da metodologia e aviso de não recomendação são obrigatórios.
+### Stage 9 — Budget and monthly planning
 
-## Etapa 15 — Notícias econômicas
+Limits per category, planned versus actual comparison, projections, moving average, surplus and monthly review, without personalized financial recommendations.
 
-Agregação server-side por fontes permitidas, RSS/licenças, filtros gerais e crédito/link original. Dados detalhados da carteira não são enviados à cloud; personalização deve ser local ou minimizada.
+### Stage 10 — Notification center
 
-## Etapa 16 — Resumos por IA
+Actionable local notifications for bills, statements, pending imports and budget; preferences, quiet mode, deduplication and accessibility. Remote push requires its own ADR.
 
-Resumo sob demanda de conteúdo público via Workers AI, proteção contra prompt injection, avaliação de qualidade/custo e fallback sem IA. Ollama permanece opção futura após ADR.
+### Stage 11 — History and restoration
 
-## Etapa 17 — Gamificação
+Filterable timeline, events per domain, restore points, safe undo/redo, snapshots before migrations and a secret-free trail.
 
-XP por hábitos úteis, níveis, missões e badges. Pontuação evita incentivo a gasto/aporte artificial; ranking social permanece opt-in e nunca revela valores financeiros.
+### Stage 12 — Goals and savings pots
 
-## Etapa 18 — Backup E2EE e restauração
+Objectives, target value, deadline, contributions, monthly calculation, feasibility, progress and suggestions for allocating the surplus.
 
-**Em aberto.** Snapshot local cifrado com AEAD, versionamento, recuperação de chave, retenção, restauração validada e testes de desastre. O D1 pode guardar somente metadados; nenhum snapshot será armazenado nele. Um provedor apropriado precisa de ADR futuro. Não anunciar “zero knowledge” antes de auditoria.
+### Stage 13 — Survival mode and debts
 
-## Etapa 19 — Exportação, portabilidade e exclusão
+Debts, interest, arrears, priority by cost, payoff plan and a liquidity focus. Requires legal review and clear financial-education copy.
 
-Exportação JSON/CSV, documentação do schema, exclusão local/cloud, revogação de sessões, retenção e fluxo verificável de portabilidade.
+### Stage 14 — Net worth and the ARCA methodology
 
-## Etapa 20 — Comunidade de feedback
+Assets and snapshots, four pillars, the 22.5%–27.5% band, balance status and next-contribution simulation without suggesting sales. Attribution of the methodology and a no-recommendation notice are mandatory.
 
-Posts públicos, comentários/respostas, curtidas, denúncias e moderação via Worker/D1; tabelas próprias com IDs, perfil público mínimo, antispam, rate limit, Turnstile, tombstones, auditoria e política comunitária.
+### Stage 15 — Economic news
 
-## Etapa 21 — Atualizações automáticas e canais de release
+Server-side aggregation from permitted sources, RSS/licenses, general filters and credit/link to the original. Detailed portfolio data is not sent to the cloud; personalization must be local or minimized.
 
-Manifestos assinados, stable/beta, atualização diferencial quando segura, rollback, notas de versão, SBOM, proveniência e resposta a artefato comprometido.
+### Stage 16 — AI summaries
 
-## Etapa 22 — Open Finance
+On-demand summaries of public content through Workers AI, prompt-injection protection, quality/cost evaluation and a fallback without AI. Ollama remains a future option after an ADR.
 
-**Em aberto.** Pesquisa regulatória, consentimento, provedor, custo, escopos, revogação e minimização. Nenhuma credencial bancária será coletada pelo Talentum; integração só avança após threat model e ADR.
+### Stage 17 — Gamification
 
-## Etapa 23 — Sincronização multidispositivo
+XP for useful habits, levels, missions and badges. Scoring avoids incentives for artificial spending or contributions; social ranking stays opt-in and never reveals financial values.
 
-**Em aberto.** Preservar local-first com sincronização E2EE, resolução de conflitos e chaves controladas pelo usuário. Não é requisito do produto inicial.
+### Stage 18 — E2EE backup and restoration
 
-## Etapa 24 — Internacionalização e expansão de plataforma
+**Open.** Encrypted local snapshot with AEAD, versioning, key recovery, retention, validated restoration and disaster tests. D1 may store only metadata; no snapshot will be stored in it. A suitable provider needs a future ADR. Do not advertise "zero knowledge" before an audit.
 
-Idiomas, moedas, formatos regionais e avaliação de macOS. Cada plataforma exige assinatura, empacotamento e matriz de testes próprios.
+### Stage 19 — Export, portability and deletion
 
-## Etapa 25 — Webhooks e integrações orientadas a eventos
+JSON/CSV export, schema documentation, local/cloud deletion, session revocation, retention and a verifiable portability flow.
 
-**Opcional e em aberto.** Permitir webhooks de saída para eventos cloud explicitamente autorizados, como publicação de release ou atualização de feedback. Dados financeiros locais não podem ser enviados. A implementação exige endpoints cadastrados por ID, segredos por assinatura armazenados no secret store, HMAC com timestamp, proteção contra replay, allowlist de eventos, filas, retry com backoff, idempotência, circuit breaker, logs redigidos, rotação/revogação e painel para teste. Webhooks de entrada exigem ADR e threat model separados antes de serem aceitos.
+### Stage 20 — Feedback community
 
-## Dependências entre etapas
+Public posts, comments/replies, likes, reports and moderation through the Worker and D1; dedicated tables with IDs, a minimal public profile, anti-spam, rate limiting, Turnstile, tombstones, auditing and a community policy. **Current:** the D1 feedback tables exist from the initial migration; no Worker route serves them.
+
+### Stage 21 — Automatic updates and release channels
+
+Signed manifests, stable/beta channels, differential updates when safe, rollback, release notes, SBOM, provenance and a response plan for compromised artifacts.
+
+### Stage 22 — Open Finance
+
+**Open.** Regulatory research, consent, provider, cost, scopes, revocation and minimization. Talentum will never collect banking credentials; integration only proceeds after a threat model and an ADR.
+
+### Stage 23 — Multi-device synchronization
+
+**Open.** Preserve local-first with E2EE synchronization, conflict resolution and user-controlled keys. Not a requirement of the initial product.
+
+### Stage 24 — Internationalization and platform expansion
+
+Languages, currencies, regional formats and evaluation of macOS. Each platform requires its own signing, packaging and test matrix.
+
+### Stage 25 — Webhooks and event-driven integrations
+
+**Optional and Open.** Allow outgoing webhooks for explicitly authorized cloud events, such as a release publication or a feedback update. Local financial data cannot be sent. The implementation requires endpoints registered by ID, per-subscription secrets stored in the secret store, HMAC with timestamp, replay protection, an event allowlist, queues, retry with backoff, idempotency, a circuit breaker, redacted logs, rotation/revocation and a test panel. Incoming webhooks require a separate ADR and threat model before being accepted.
+
+## Dependencies between stages
 
 ```mermaid
 flowchart LR
-    F[MVP 0 Fundação] --> W[MVP 1 Web]
+    F[MVP 0 Foundation] --> W[MVP 1 Web]
     F --> E[MVP 2 Electron]
-    E --> D[MVP 3 Dados]
+    E --> D[MVP 3 Data]
     D --> O[MVP 4 OFX]
-    O --> C[MVP 5 Conciliação]
+    O --> C[MVP 5 Reconciliation]
     C --> M[MVP 6 Dashboard]
-    M --> P[PDF e cartões]
-    M --> G[Metas e patrimônio]
-    M --> H[Histórico e backup]
+    M --> P[PDF and cards]
+    M --> G[Goals and net worth]
+    M --> H[History and backup]
     W --> FB[Feedback]
-    W --> N[Notícias e IA]
+    W --> N[News and AI]
 ```
 
-## Fora do escopo enquanto não houver ADR
+## Out of scope without an ADR
 
-- compra/venda automática de investimentos;
-- recomendação individual de ativos;
-- armazenamento cloud de finanças em claro;
-- scraping que viole termos ou direitos autorais;
-- publicidade baseada em comportamento financeiro;
-- telemetria identificável ou uso do código efêmero para rastreamento;
-- plugins executando código não confiável com acesso ao banco.
+- Automatic buying or selling of investments.
+- Individual asset recommendations.
+- Cloud storage of finances in clear text.
+- Scraping that violates terms of service or copyright.
+- Advertising based on financial behavior.
+- Identifiable telemetry or use of the action code for tracking.
+- Plugins running untrusted code with database access.
 
-## Como atualizar este roadmap
+## How to update this roadmap
 
-Uma macrofeature nova ganha etapa própria, dependências, critérios de saída e documentos afetados. Mudança de ordem ou escopo registra justificativa no pull request; mudanças irreversíveis, regulatórias ou de provedor ganham ADR. Marcar uma etapa como concluída exige evidência de testes, documentação e release verificável.
+A new macro-feature gets its own stage, dependencies, exit criteria and affected documents. A change of order or scope records its justification in the pull request; irreversible, regulatory or provider changes get an ADR. Marking a stage as complete requires evidence of tests, documentation and a verifiable release. Partial-state notes are updated whenever a change lands, and must describe only what is verifiable in the repository.

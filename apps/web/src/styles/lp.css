@@ -1,7 +1,7 @@
 /* Talentum: folha da landing page.
    Tudo é prefixado com lp- e escopado em .lp-root: esta folha pode ser
    importada dentro do aplicativo desktop sem afetar nenhuma tela de produto.
-   Os tokens repetem docs/BRANDING.md; ao mudar um, mude nos dois lugares. */
+   Os tokens repetem docs/DESIGN-SYSTEM.md; ao mudar um, mude nos dois lugares. */
 
 /* Fontes de fallback com as métricas da fonte final. Enquanto Playfair e
    Montserrat carregam, o texto ocupa o mesmo espaço e nada salta quando a

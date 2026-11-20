@@ -134,7 +134,7 @@ model Transaction {
 
 /// Compromisso com valor e vencimento. Subtraendo do Saldo Livre de Risco.
 /// `status` é indispensável: sem ele, obrigação já paga continuaria sendo
-/// descontada e o veredito ficaria errado por construção (docs/DASHBOARD.md, L-1).
+/// descontada e o veredito ficaria errado por construção (docs/PRODUCT.md, L-1).
 model ScheduledObligation {
   id          String       @id @default(uuid())
   profileId   String

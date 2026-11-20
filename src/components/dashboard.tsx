@@ -11,7 +11,7 @@ import { formatCents, formatDay, formatPercent, formatPeriod } from '@/lib/forma
 
 /* Dashboard.
 
-   Regras aplicadas, de docs/DASHBOARD.md: um único veredito (R-1), explicável
+   Regras aplicadas, de docs/PRODUCT.md: um único veredito (R-1), explicável
    sem clique (R-2), no máximo seis elementos de métrica (R-3), todo número com
    comparação (R-4), quatro estados desenhados (R-28) e nenhum zero renderizado
    sem confirmação do backend (R-29). */

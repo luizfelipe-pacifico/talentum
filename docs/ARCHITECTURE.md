@@ -1,68 +1,730 @@
-# Arquitetura geral do Talentum
+# Talentum Architecture
 
-## Status
+This document is the single source for how Talentum is built and how it runs: the product shape, the two runtime layers (the public Web layer and the local Electron layer), the cross-layer runtime flows, the action-code protocol, every backend contract (cloud and local), Cloudflare setup and deployment, operations, and the shared API conventions. Every statement of state is marked **Current** (implemented and verifiable in the repository), **Planned** (intended, not implemented) or **Open** (an unresolved decision or a conflict between code and documentation). Security policy, secret handling and threat rules live in [SECURITY.md](SECURITY.md); table-level schemas live in [DATABASE.md](DATABASE.md); product scope and screens live in [PRODUCT.md](PRODUCT.md).
 
-Arquitetura-alvo planejada. O repositório ainda contém somente o shell inicial do Electron e dependências-base; os serviços descritos abaixo não devem ser considerados implementados.
+## Contents
 
-## Regra central
+- [1. Overview](#1-overview)
+- [2. Cross-layer runtime flows and the action-code protocol](#2-cross-layer-runtime-flows-and-the-action-code-protocol)
+- [3. Layer 1: Web](#3-layer-1-web)
+- [4. Layer 2: Electron](#4-layer-2-electron)
+- [5. Error format and shared API conventions](#5-error-format-and-shared-api-conventions)
+- [6. Open items](#6-open-items)
 
-Toda interface é um cliente não confiável. O navegador e o renderer do Electron nunca acessam banco, Prisma, armazenamento, OAuth ou serviços privilegiados diretamente. Toda leitura e escrita passa por um backend documentado, validado e autorizado.
+## 1. Overview
 
-Há duas arquiteturas deliberadamente separadas:
+### 1.1 Product shape
 
-- [`ARCHITECTURE-WEB.md`](./ARCHITECTURE-WEB.md): LP, cadastro, autenticação, downloads e comunidade de feedback;
-- [`ARCHITECTURE-ELECTRON.md`](./ARCHITECTURE-ELECTRON.md): aplicativo local-first, API local e integrações remotas.
+**Current.** Talentum is a local-first personal finance application. The repository contains two deliberately separated products:
 
-A Vercel hospeda exclusivamente a LP em `talentum.vercel.app` e um BFF mínimo necessário para cookies first-party. O sistema financeiro e o Electron não são implantados nem incluídos no contexto de build da Vercel. Instaladores Windows/Linux são publicados em GitHub Releases; o D1 guarda apenas metadados e concessões por ID.
+- **Web layer:** a public landing page (LP) with a minimal backend-for-frontend (BFF) in `apps/web/`, meant for Vercel, plus a Cloudflare Worker with a D1 database in `cloudflare/`. It handles sign-up/login, the protected downloads page and download grants.
+- **Electron layer:** the desktop application. A local Next.js app in `src/` serves both the user interface and the local API (route handlers in `src/app/api`, server code in `src/server`); `electron/` holds the shell (`main.cjs`, `preload.cjs`); `prisma/` holds the local SQLite schema and migrations.
+
+The two layers share nothing at runtime except the documented HTTPS contracts described below. The financial system and the Electron shell are never deployed to, or included in the build of, the Vercel project. **Planned:** Windows and Linux installers are published on GitHub Releases; D1 stores only release metadata and grants by ID.
 
 ```mermaid
 flowchart LR
-    B[Browser] -->|HTTPS| WB[Backend web]
-    WB --> CD[(Banco cloud)]
-    WB --> OS[(Artefatos)]
-    EUI[Renderer Electron] -->|API local autenticada| EB[Backend local]
-    EB --> LD[(SQLite local)]
-    EB -->|HTTPS e mínimo necessário| WB
+    B[Browser] -->|HTTPS| BFF[BFF on Vercel apps/web]
+    BFF -->|HTTPS + X-Talentum-BFF + X-Action-Code| W[Cloudflare Worker]
+    W --> CD[(D1 cloud database)]
+    W -.->|download URL| GR[(GitHub Releases)]
+    EUI[Electron renderer] -->|loopback + X-Action-Code| EB[Local Next.js backend]
+    EB --> LD[(Local SQLite)]
+    EB -.->|Planned: HTTPS, minimum necessary| W
 ```
 
-## Regras normativas
+The dashed line from the local backend to the Worker is **Planned**: the current local backend makes no network call to the cloud.
 
-1. Cada operação de frontend corresponde a um endpoint ou comando de backend documentado.
-2. Nenhuma regra de autorização existe somente no frontend.
-3. Toda tabela persistida possui `id`; relações usam chaves estrangeiras por ID.
-4. Dados financeiros primários permanecem locais; sincronização nova exige revisão de privacidade e ameaça.
-5. Dados confidenciais não são enviados ao frontend. Criptografia não torna seguro expor algo desnecessário.
-6. Mudanças em arquitetura, API, schema ou segurança atualizam a documentação no mesmo pull request.
-7. Integrações externas usam adaptadores, timeout, validação de resposta e falha segura.
+### 1.2 Local-first principle and central rule
 
-## Responsabilidades
+Every interface is an untrusted client. The browser and the Electron renderer never access a database, Prisma, storage, OAuth or any privileged service directly. Every read and write goes through a documented, validated and authorized backend contract.
 
-| Camada | Pode | Não pode |
+Normative rules (apply to both layers):
+
+1. Every frontend operation corresponds to a documented backend endpoint or command.
+2. No authorization rule exists only in the frontend.
+3. Every persisted table, including join tables, has an opaque `id`; relations use foreign keys by ID.
+4. Primary financial data stays local. Any new synchronization requires a privacy and threat review.
+5. Confidential data is not sent to the frontend. Encryption does not make it safe to expose something unnecessary.
+6. Changes to architecture, API, schema or security update the documentation in the same change set.
+7. External integrations use adapters, timeouts, response validation and fail-safe behavior. **Current state:** the Worker calls Google endpoints and D1 inline (`e.DB.prepare`) with no adapter layer and no explicit fetch timeout; adapters are **Planned**.
+
+### 1.3 Responsibilities by component
+
+| Component | May | Must not |
 | --- | --- | --- |
-| Frontend web | renderizar dados públicos e respostas autorizadas | conter segredos, consultar banco ou decidir autorização |
-| Backend web | autenticar, autorizar, limitar e persistir dados cloud | receber finanças em claro sem caso aprovado |
-| Renderer Electron | exibir estado e chamar contratos permitidos | usar Node, Prisma, filesystem ou token persistente diretamente |
-| Backend local | executar domínio, persistir finanças e integrar com cloud | confiar em entrada do renderer |
-| Processo principal | capacidades nativas mínimas via preload | expor IPC genérico ou carregar conteúdo remoto privilegiado |
+| Web frontend (LP pages) | render public data and authorized responses | hold secrets, query a database or decide authorization |
+| BFF (`apps/web` route handlers) | hold first-party session cookies, request action codes, proxy to the Worker | hold financial rules, own a database or reach local data |
+| Worker (cloud backend) | authenticate, authorize, rate-limit and persist cloud data | receive cleartext financial data without an approved case |
+| Electron renderer | display state and call allowed contracts | use Node, Prisma, the filesystem or a persistent token directly |
+| Local backend (`src/app/api`, `src/server`) | run the domain, persist finances and (Planned) integrate with the cloud | trust renderer input |
+| Electron main process | expose minimal native capabilities through the preload | expose generic IPC or load privileged remote content |
 
-## Organização-alvo
+### 1.4 Repository layout
+
+**Current** (matches the tree; there is no `packages/`, no `turbo.json`, no `.github/` and therefore no CI, and no LICENSE file):
 
 ```text
 apps/
-  web/                 LP e frontend web
-  desktop/             interface local
-electron/              main, preload e capacidades nativas
-packages/
-  contracts/           schemas compartilhados sem segredos
-  domain/              regras de negócio
-  db-local/            Prisma/SQLite e migrações
-workers/               backend Cloudflare, se a ADR for confirmada
-docs/                  fontes normativas e decisões
+  web/                 @talentum/web: public LP + BFF (Next.js, port 3100). No Electron, Prisma, SQLite or financial domain.
+src/                   local Next.js app: UI pages (src/app), local API (src/app/api), server code (src/server), client helpers (src/lib)
+electron/              main.cjs (window, navigation, permissions, IPC) and preload.cjs
+prisma/                schema.prisma + 3 migrations (local SQLite only)
+cloudflare/            Worker (src/index.ts), D1 migrations, wrangler.jsonc (tracked working config), wrangler.example.jsonc, .dev.vars.example
+design/estados-vetor/  vector sources for empty-state illustrations
+public/                static assets of the local app
+scripts/               dev, dev:all, asset generators, typecheck helpers
+tests/                 node:test suites; tests/regression/ holds regression tests
+.githooks/             versioned pre-commit and pre-push hooks
+.claude/               agent skills and tooling
+docs/                  normative documentation and ADRs (docs/decisions/)
+Dockerfile             local app image (Ubuntu 24.04 base)
+Dockerfile.web         LP/BFF image (node:22-bookworm-slim)
+compose.yaml           talentum-local (127.0.0.1:3000) and talentum-web (127.0.0.1:3100)
 ```
 
-## Documentos relacionados
+**Planned (not adopted).** The earlier target layout split the code into `apps/web`, `apps/desktop`, `packages/contracts` (shared schemas without secrets), `packages/domain` (business rules), `packages/db-local` (Prisma/SQLite and migrations) and `workers/` (Cloudflare backend). None of `apps/desktop`, `packages/` or `workers/` exists. Whether to migrate to that layout is **Open**; until a decision is recorded, extend the current canonical paths above.
 
-- [`AUTHENTICATION.md`](./AUTHENTICATION.md)
-- [`SECURITY.md`](./SECURITY.md)
-- [`DATA_MODEL.md`](./DATA_MODEL.md)
-- [`decisions/0001-web-hosting.md`](./decisions/0001-web-hosting.md)
+### 1.5 Related documents
+
+- [SECURITY.md](SECURITY.md): authentication, sessions, secrets, threat rules.
+- [DATABASE.md](DATABASE.md): local Prisma models and D1 tables.
+- [PRODUCT.md](PRODUCT.md): routes, onboarding, dashboard formulas, product scope.
+- [BEST_PRACTICES.md](BEST_PRACTICES.md): development workflow, commands, tests.
+- [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md): branding, states, visual QA.
+- [ROADMAP.md](ROADMAP.md): sequencing of planned work.
+- [decisions/0001-web-hosting.md](decisions/0001-web-hosting.md): web hosting decision.
+
+## 2. Cross-layer runtime flows and the action-code protocol
+
+### 2.1 Action-code protocol
+
+**Status: Current** in both layers (local app and Worker), with the differences noted below.
+
+Every functional frontend request follows this protocol:
+
+1. The frontend tells the backend which method and path it intends to call (`POST /api/action-codes` with `{ "method", "path" }`).
+2. The backend returns an opaque, random code valid for at most 60 seconds (`{ "actionCode", "expiresInSeconds": 60 }`).
+3. The frontend sends the real request with the code in the `X-Action-Code` header.
+4. The backend validates and consumes the code atomically, then authenticates, authorizes, rate-limits and validates the action.
+5. The code is discarded and never enters history, logs, URLs or analytics.
+
+The issuing route is the only exception to the rule. The code contains no `userId`, email, IP or business meaning. It reduces replay and binds intent to a call, but it does **not** replace access tokens, refresh tokens, authorization, CSRF protection, idempotency keys, validation or rate limiting.
+
+Both issuers accept only `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, only paths starting with `/api/`, and refuse to issue a code for `/api/action-codes` itself (`400 INVALID_ACTION_TARGET`). A missing, expired, reused or mismatched code returns `403 INVALID_ACTION_CODE`.
+
+| Aspect | Local app (`src/server/action-codes.ts`) | Worker (`cloudflare/src/index.ts`) |
+| --- | --- | --- |
+| Who may request a code | any loopback caller (after the `HOST_NOT_ALLOWED` check) | only the BFF (`X-Talentum-BFF` required) |
+| Storage | in-memory `Map` keyed by SHA-256 of the code, record `{method, path, expiresAt}` | D1 table `action_codes`, peppered hash of the code |
+| Binding | method + path | method + path + `context_hash` |
+| Consumption | record deleted on consume; expired records swept on each issue/consume | atomic `UPDATE … SET consumed_at` guarded by `consumed_at IS NULL AND expires_at > now`; rows are kept, not deleted |
+| Rate limit on issuing | none | 30 per minute per client IP (`codes` bucket) |
+
+**Current limitation.** The Worker's `context_hash` is the hash of the BFF shared secret, identical for every caller, so codes are effectively bound to "issued for the BFF" plus method and path, not to a session or origin. Binding to the session or origin context is **Planned**. The local in-memory store serves only a single-process local backend; before any distributed execution it must be replaced by an atomic mechanism appropriate to the provider (**Planned**).
+
+The local frontend implements the protocol once, in `src/lib/api-client.ts` (`getWithActionCode`), so that no screen reimplements it partially. The BFF implements it once, in `apps/web/src/server/cloudflare.ts` (`cloud()`).
+
+Manually validated call (local): issue a code for `GET /api/system/status`, send it in `X-Action-Code`, and receive `403` when reusing the same value.
+
+### 2.2 Local app startup and runtime
+
+**Current.**
+
+- `pnpm dev` kills any previous process on port 3000, waits for the port to be released, removes `.next` and starts Next.js at `http://127.0.0.1:3000`.
+- `pnpm dev:all` probes `GET /api/health/live` and only then opens the Electron window at `http://localhost:3000` (falling back to `http://127.0.0.1:3000`; `TALENTUM_URL` overrides both). When a local backend already responds (from Docker or a `pnpm dev` in another terminal), the window attaches to it and does not stop it when closed; when nothing responds, the script starts the server and stops both processes together.
+- The server listens only on IPv4 loopback; `localhost` reaches it through address-family fallback.
+- The interface is navigable; the dashboard reads real local SQLite data through `GET /api/dashboard` and `GET /api/dashboard/categories`, and area screens confirm emptiness through `GET /api/local-summary`. `src/lib/demo-data.ts` holds only navigation and theme configuration, not financial fixtures. Import, reconciliation and the other financial use cases shown on screens are not implemented yet (**Planned**); the interface must not present fixtures as the user's data.
+
+**Planned production startup:**
+
+```mermaid
+sequenceDiagram
+    participant P as Electron process
+    participant N as Local Next.js
+    participant D as SQLite
+    participant U as User
+    P->>N: start server on a controlled local port
+    N->>D: open database and validate schema version
+    P->>U: open BrowserWindow
+    U->>N: use the local interface
+```
+
+In production the process must choose an available port or use an authenticated local channel. The local API must never be exposed to the external network.
+
+### 2.3 Web sign-up, login and download
+
+**Status: Current** (implemented in the BFF and the Worker; end-to-end validation in the published environment depends on secrets and the OAuth client being configured there).
+
+1. The visitor on the LP follows a link to `GET /api/auth/start` on the BFF.
+2. The BFF requests a Worker action code, then calls Worker `POST /api/auth/start`. The Worker creates an OAuth transaction (hashed `state` and `nonce`, PKCE verifier and nonce encrypted with AES-GCM), and returns the Google authorization URL (Authorization Code + PKCE S256, `openid email profile`).
+3. The BFF sets the `__Host-talentum-oauth-state` cookie, which holds a hash binding the `state` to this browser (login-CSRF protection), and redirects to Google.
+4. Google redirects to BFF `GET /api/auth/callback`. The BFF checks the state binding, then calls Worker `POST /api/auth/callback` with `{code, state}`.
+5. The Worker consumes the transaction once, exchanges the code, verifies the ID token (RS256 signature against Google keys, issuer, audience, expiry, nonce, verified email), upserts the user, OAuth identity and public profile by ID, creates an opaque session (15-minute access token) and a refresh-token family (30-day refresh token), storing only peppered hashes.
+6. The BFF stores both tokens in `__Host-` cookies (`Secure`, `HttpOnly`, `SameSite=Lax`, path `/`) and redirects to `/downloads`.
+7. `/downloads` (server-rendered) calls Worker `GET /api/me` and `GET /api/releases` with the access token as a Bearer header. Without an access cookie, the BFF middleware redirects to `/api/auth/refresh` (when a refresh cookie exists) or `/api/auth/start`.
+8. Choosing an artifact posts a form to BFF `POST /api/releases/:releaseId/download-grants`. The Worker records a 5-minute grant (hash only) by user and artifact ID and returns the artifact's download URL; the BFF answers `303` to that URL.
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant F as LP + BFF (Vercel)
+    participant B as Worker (Cloudflare)
+    participant O as Google OAuth/OIDC
+    participant D as D1
+    participant R as GitHub Releases
+    U->>F: GET /api/auth/start
+    F->>B: action code, then POST /api/auth/start
+    B->>D: auth transaction (hashes, encrypted verifier)
+    B-->>F: authorizationUrl
+    F-->>U: redirect + state-binding cookie
+    U->>O: consent
+    O-->>F: GET /api/auth/callback?code&state
+    F->>B: POST /api/auth/callback
+    B->>O: code exchange + ID token verification
+    B->>D: user, identity, profile, session, refresh family by ID
+    B-->>F: access + refresh tokens
+    F-->>U: __Host- cookies, redirect /downloads
+    F->>B: GET /api/me, GET /api/releases
+    U->>F: POST download-grants (form)
+    F->>B: POST /api/releases/:id/download-grants
+    B->>D: grant by user and artifact ID
+    B-->>F: downloadUrl
+    F-->>U: 303 to artifact
+    U->>R: download
+```
+
+Because releases of an open-source repository are public, the grant controls the LP experience and auditing; it does not make the binary private. The LP neither contains nor runs the desktop system. **Planned:** installers signed and published by a release pipeline (no pipeline or packaging configuration exists yet).
+
+### 2.4 Feedback community
+
+**Status: Planned.** The D1 tables exist (`feedback_posts`, `feedback_comments`, `feedback_post_votes`, `feedback_comment_votes`, `feedback_reports`, `moderation_actions`), but the Worker has no feedback route and the LP has no feedback tab.
+
+1. The tab reads published posts from the Worker with cursor pagination.
+2. An authenticated user submits a post, comment, vote or report to a documented route.
+3. The backend validates session, schema, ownership, rate limit, anti-spam and content state.
+4. The action is persisted in its own table, related by IDs, and generates an audit record when needed.
+5. The response contains only public content and a minimal public profile.
+6. Moderation can hide content without destroying the trail of relations and decisions.
+
+```mermaid
+flowchart LR
+    UI[Feedback tab] -->|HTTPS via BFF| API[Worker API]
+    API --> AUTH[Authentication and authorization]
+    API --> LIMIT[Rate limit and anti-spam]
+    API --> D1[(D1)]
+    API --> MOD[Moderation and audit]
+```
+
+Anyone may read content in state `PUBLISHED`. Creating a post, commenting, voting and reporting require a session. The backend enforces ownership, moderation, limits and sanitization; the frontend never writes to D1.
+
+### 2.5 Import and reconciliation (local)
+
+**Status: Planned.** The tables exist (`ImportBatch`, `Transaction` and related models), but there is no importer or parser code. MVP import formats are CSV and OFX (see [PRODUCT.md](PRODUCT.md)); PDF is a later format. `pdfjs-dist` and `ofx-data-extractor` are installed but unused.
+
+```mermaid
+flowchart LR
+    F[CSV, OFX or later PDF] --> V[Validate type and size]
+    V --> P[Isolated parser]
+    P --> N[Normalize entries]
+    N --> C[Classify by rules]
+    C --> Q{Enough confidence?}
+    Q -- yes --> S[Save transaction]
+    Q -- no --> T[Reconciliation queue]
+    T --> A[User confirms or corrects]
+    A --> S
+    S --> H[Record history event]
+```
+
+Requirements:
+
+- compute a file fingerprint to prevent duplicate imports;
+- persist in an atomic transaction;
+- keep traceability between file, batch and entries;
+- allow undoing a batch without affecting later unrelated changes;
+- never send a statement to external AI services.
+
+### 2.6 Risk-free balance
+
+**Status: Current** for the dashboard calculation in `src/server/dashboard-metrics.ts` (formulas and criteria in [PRODUCT.md](PRODUCT.md)). The calculation starts from confirmed balances and subtracts obligations due within the period: open card statements, recurring bills and automatic debits. Uncertain future income must not increase the free balance. The formula and its inclusion criteria require tests covering boundary dates, cancellations, partial payments and duplicates.
+
+### 2.7 Net worth and contributions
+
+**Status: Planned.** Each asset is assigned to one of four pillars: Stocks, Real Estate, Cash or International Assets. The system computes each pillar's share of the considered net worth and uses the 22.5% to 27.5% range as the balance band.
+
+A contribution suggestion:
+
+1. checks whether survival mode is active;
+2. computes the eligible portfolio total;
+3. identifies pillars below the band;
+4. simulates distributing the new contribution;
+5. explains the calculation, without presenting the output as individual financial advice.
+
+### 2.8 News and summaries
+
+**Status: Planned.** The Worker fetches only allowed sources, normalizes metadata and returns links to the original content. The summarizer receives the public text of the news item, never the full portfolio or the user's financial data. AI failures must keep title, source and link available.
+
+### 2.9 Backup and restore
+
+**Status: Planned.**
+
+```mermaid
+sequenceDiagram
+    participant A as Application
+    participant C as Crypto module
+    participant W as Worker
+    participant O as Storage
+    A->>A: quiesce writes and create a consistent snapshot
+    A->>C: encrypt snapshot on the device
+    C-->>A: ciphertext + nonce + metadata
+    A->>W: send encrypted, authenticated package
+    W->>O: store opaque object
+    O-->>W: version and checksum
+    W-->>A: verifiable confirmation
+```
+
+Restore downloads the encrypted object, validates integrity, decrypts locally into a temporary destination, validates the database and only then replaces the active database in a recoverable way.
+
+### 2.10 History
+
+**Status: Planned.** Relevant events are recorded with type, instant, related entity and minimal metadata. History is a product trail and supports undo; it must not contain tokens, raw document content or unnecessary data.
+
+## 3. Layer 1: Web
+
+### 3.1 Scope
+
+The Web layer delivers the public landing page, authenticates and signs up the user and, after backend validation, releases downloads for Windows and Linux (**Current**, with installers themselves **Planned**). Authenticated users taking part in a public feedback community is **Planned**.
+
+### 3.2 Components
+
+| Component | Status | Responsibility |
+| --- | --- | --- |
+| Vercel project (`apps/web`) | Current code; hosting domain Open | LP, downloads page and minimal session BFF only; no financial module or Electron code |
+| Worker (`cloudflare/src/index.ts`) | Current | OAuth/OIDC with Google, sessions, refresh rotation, rate limiting (two buckets), releases and download grants |
+| Worker: community, audit events, Turnstile | Planned | feedback routes, `audit_events`/`security_events` writes, bot challenge |
+| D1 | Current | minimal identity, sessions, action codes, rate-limit windows, release metadata and grants; feedback tables exist unused |
+| GitHub Releases | Planned | signed Windows and Linux installers produced by a release pipeline |
+| Edge | Partial | TLS by the providers (Current); security headers in the LP and Worker (Current); WAF and Turnstile (Planned) |
+
+### 3.3 Landing page and BFF on Vercel
+
+**Current.**
+
+- `apps/web` is the package `@talentum/web` (Next.js, port 3100). Its description and dependencies exclude Electron, Prisma, SQLite, parsers and the financial domain.
+- Since `vercel.app` and `workers.dev` are different sites, the browser must not depend on a third-party refresh cookie. The BFF keeps first-party `Secure`, `HttpOnly` cookies and forwards authenticated calls to the Worker. It has no financial rule, no database and no access to local data; it exists only for the session, ephemeral codes and a controlled proxy.
+- The BFF forwards the visitor's IP to the Worker in `X-Talentum-Client-IP` (from `x-forwarded-for` or `x-real-ip`) so that rate limits count people, not the BFF server.
+- With the Worker unreachable or not configured, the BFF returns a controlled `503` (`WORKER_UNAVAILABLE` in `apps/web/src/server/worker-fetch.ts`, `WORKER_NOT_CONFIGURED` in `apps/web/src/server/cloudflare.ts`), and the LP shows the login notice for error (`?auth=erro`) or cancel (`?auth=cancelado`) from `components/lp/auth-notice.tsx`, instead of a 500 page.
+- Content Security Policy (`apps/web/src/middleware.ts`): a fresh nonce per response, propagated by the middleware to the Next.js renderer, so that only scripts emitted by the render itself run (`'nonce-…' 'strict-dynamic'`), without allowing inline scripts indiscriminately. Only with `NODE_ENV=development` does the policy add `'unsafe-eval'` to `script-src` and `ws:` to `connect-src`, required by React and `next dev` reloading; without them the development page does not hydrate. Production builds have neither. `next.config.ts` adds `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy` and HSTS.
+- LP content does not depend on JavaScript to exist: server HTML is visible from the start, and the entrance animation only hides a block after the component has hydrated and confirmed the block is off-screen.
+- In local development the LP has its own Docker image and is published only on `127.0.0.1:3100`. It does not reuse the local app image and does not include Prisma, SQLite, Electron or the financial domain at runtime.
+
+**Indexing (Current).** `apps/web/src/app/robots.ts` and `apps/web/src/app/sitemap.ts` are Next.js metadata routes served at `/robots.txt` and `/sitemap.xml`. The sitemap lists only the LP (`/`). Robots allows the site, disallows `/api/` (BFF) and `/downloads` (requires a session), and points to the sitemap. The announced domain comes from `apps/web/src/site.ts` (see the domain Open item). `tests/web-seo.test.mjs` prevents private routes from entering the sitemap. The layout declares `robots` with `index` and `follow`, canonical, Open Graph and an X card from `metadataBase`. Because the layout is dynamic (it reads the CSP nonce), Next 15 would stream metadata in the body for clients outside its bot list; `htmlLimitedBots: /.*/` in `apps/web/next.config.ts` keeps title, description and canonical always in `<head>`. LP CSS is inlined into the HTML (`experimental.inlineCss`), which the CSP already allows with `style-src 'unsafe-inline'`. Measurements and decisions are in [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md).
+
+**Deployment isolation.** The Vercel project must receive only the files needed by the LP/BFF. The Electron shell, local backend, Prisma, SQLite, parsers, financial modules, desktop tests and internal packaging files are excluded from the deploy context. Prefer an isolated deploy project/repository or an allowlisted source artifact; do not connect the whole repository root to Vercel. **Open:** the Vercel project configuration is not versioned, so the repository cannot prove which files are uploaded; and `Dockerfile.web` copies the whole repository (`COPY . .`) into its build stage (the final image keeps only the standalone LP output).
+
+### 3.4 Domain
+
+**Open.** `apps/web/src/site.ts` uses `https://talentum-tech.vercel.app`, where the LP is published; its comment notes that `talentum.vercel.app` belongs to another project (on 2026-10-25 that address answered with another project's login). `cloudflare/wrangler.jsonc` (`ALLOWED_ORIGIN`, `PUBLIC_WEB_URL`) and older documentation still use `talentum.vercel.app`. The Worker builds the OAuth redirect URI from `PUBLIC_WEB_URL`, so the production callback, the OAuth client's registered redirect and the origin allowlist all depend on this decision. Fix `site.ts`, `wrangler.jsonc` and the OAuth client in the same change set.
+
+### 3.5 Cloud API contract (Worker and BFF)
+
+**Common Worker rules (Current):**
+
+- Every route except `GET /health` requires the `X-Talentum-BFF` header matching `BFF_SHARED_SECRET`; otherwise `403 BFF_REQUIRED`. The browser therefore cannot call the Worker directly.
+- Every route except `/health` and `POST /api/action-codes` requires a valid action code (`403 INVALID_ACTION_CODE`).
+- Authenticated routes require `Authorization: Bearer <access token>`, resolved against `auth_sessions` (`401 AUTH_REQUIRED`).
+- Every JSON response carries `Cache-Control: no-store`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`, `Referrer-Policy: no-referrer` and `X-Content-Type-Options: nosniff`.
+- Rate limiting exists only in two IP-keyed buckets with one-minute windows stored in D1 `rate_limit_windows`: `codes` (30/min) and `login` (10/min). The IP is `X-Talentum-Client-IP` (from the BFF), else `CF-Connecting-IP`.
+- No CORS headers are sent; `ALLOWED_ORIGIN` is declared but unused. CORS allowlisting is **Planned**.
+- Unknown routes return `404 NOT_FOUND`; unhandled exceptions return `500 INTERNAL_ERROR`.
+
+**Worker routes (Current):**
+
+| Method | Route | Access | Protection actually applied | Response |
+| --- | --- | --- | --- | --- |
+| `GET` | `/health` | infrastructure | none; runs `SELECT 1` on D1 | `{status: "ok" \| "degraded", service: "talentum-cloud-api"}` |
+| `POST` | `/api/action-codes` | BFF only | `X-Talentum-BFF`; rate limit `codes` 30/min per IP; target validation | `{actionCode, expiresInSeconds: 60}` |
+| `POST` | `/api/auth/start` | BFF only, public user | action code; rate limit `login` 10/min per IP | `{authorizationUrl}` |
+| `POST` | `/api/auth/callback` | BFF only, OAuth transaction | action code; transaction single-use and 10-minute expiry; no rate limit | `{accessToken, accessExpiresInSeconds: 900, refreshToken, refreshExpiresInSeconds: 2592000}` |
+| `POST` | `/api/auth/refresh` | BFF only, valid refresh token | action code; single-use rotation; reuse revokes family and session (`compromise_detected_at` set; nothing written to `security_events`); no rate limit | same shape as callback |
+| `POST` | `/api/auth/logout` | authenticated | action code; Bearer session; revokes session and refresh families | `{ok: true}` |
+| `GET` | `/api/me` | authenticated | action code; Bearer session; `no-store` | `{user: {id, public_name, avatar_url}}` |
+| `GET` | `/api/releases` | authenticated | action code; Bearer session; `no-store` (no private cache) | `{releases: [{id, version, channel, artifactId, platform, architecture, sha256, signature}]}` (published only) |
+| `POST` | `/api/releases/:releaseId/download-grants` | authenticated | action code; Bearer session; artifact must belong to a published release; no rate limit | `{downloadUrl, grant, expiresInSeconds: 300}` |
+
+`/api/me` and `/api/releases` exist only on the Worker; the BFF calls them server-side from the `/downloads` page and exposes no route for them.
+
+**BFF routes (Current, `apps/web/src/app/api`):**
+
+| Method | Route | Protection | Behavior |
+| --- | --- | --- | --- |
+| `GET` | `/api/auth/start` | Worker `login` limit applies | sets the state-binding cookie, redirects to Google; on failure redirects to `/?auth=erro` |
+| `GET` | `/api/auth/callback` | state-binding cookie check (timing-safe) | missing `code`/`state` redirects to `/?auth=cancelado`; mismatch or Worker failure redirects to `/?auth=erro`; success sets session cookies and redirects to `/downloads` |
+| `GET` | `/api/auth/refresh` | refresh cookie; no origin check; no rate limit | rotates both cookies and redirects to `/downloads`; on failure clears cookies and redirects to `/api/auth/start` |
+| `POST` | `/api/auth/logout` | `sameOrigin()` (returns true when `Origin` is missing; `SameSite=Lax` then protects) | tries Worker logout, always clears cookies, `303` to `/` |
+| `POST` | `/api/releases/:releaseId/download-grants` | `sameOrigin()`; form data `artifactId` | `303` to the Worker-provided `downloadUrl`; errors `{error: "forbidden"}` (403), `{error: "invalid_artifact"}` (400), `{error: "download_unavailable"}` (Worker status) |
+
+The BFF middleware redirects `/downloads` without an access cookie to `/api/auth/refresh` or `/api/auth/start`.
+
+**Planned cloud routes (feedback; the tables exist, no route does):**
+
+| Method | Route | Access | Additional protection |
+| --- | --- | --- | --- |
+| `GET` | `/api/feedback/posts` | public | pagination and per-IP limit |
+| `POST` | `/api/feedback/posts` | authenticated | low limit + anti-spam |
+| `GET` | `/api/feedback/posts/:postId` | public | published content only |
+| `PATCH` | `/api/feedback/posts/:postId` | author/moderator | ownership validated in the backend |
+| `DELETE` | `/api/feedback/posts/:postId` | author/moderator | tombstone and audit |
+| `POST` | `/api/feedback/posts/:postId/comments` | authenticated | low limit + anti-spam |
+| `PATCH` | `/api/feedback/comments/:commentId` | author/moderator | ownership in the backend |
+| `DELETE` | `/api/feedback/comments/:commentId` | author/moderator | tombstone and audit |
+| `PUT`/`DELETE` | `/api/feedback/posts/:postId/vote` | authenticated | uniqueness and anti-bot limit |
+| `PUT`/`DELETE` | `/api/feedback/comments/:commentId/vote` | authenticated | uniqueness and anti-bot limit |
+| `POST` | `/api/feedback/reports` | authenticated | very low limit |
+
+**Other planned edge routes:**
+
+| Method | Route | Allowed data |
+| --- | --- | --- |
+| `GET` | `/news` | public filters and minimized assets, when necessary |
+| `POST` | `/summaries` | public content of the news item |
+
+The earlier candidate `POST /auth/exchange` (OAuth code plus client proof) is superseded by the Current `/api/auth/callback` flow. **Planned** for Electron sign-in: a public-client flow (see the Electron layer).
+
+**Planned protections not yet implemented:** per-user strict limit on download grants; rate limits on callback, refresh and private routes; idempotency keys on writes where a network retry could duplicate data; rate-limit values calibrated with telemetry and versioned. Listings must return only a minimal public profile, never email, OAuth subject, IP or session IDs.
+
+The cloud API never receives statements, transactions, balances or portfolios in cleartext. Frontends never import a Prisma/D1 client or use Cloudflare bindings; even public feedback goes through the API to keep moderation, pagination and caching controlled.
+
+### 3.6 Cloudflare Worker and D1
+
+**Current.** The Worker is a single module (`cloudflare/src/index.ts`) that accesses D1 only through the `DB` binding (`env.DB`), inline with prepared statements. D1 tables come only from `cloudflare/migrations` (`0001_cloud_core`, `0002_cloud_auth_runtime`); their schema is documented in [DATABASE.md](DATABASE.md).
+
+**Mandatory boundary between the databases.** All three Prisma migrations (`20260905182000_init`, `20260905214010_mvp_financial_core`, `20260911000729_mvp_scheduled_obligations`) belong only to the Electron local SQLite. They contain profiles, institutions, accounts, balances, import batches, transactions and scheduled obligations and **must never run on D1**. The browser and Electron never access D1 directly: every read or write goes through the Worker API. Do not use `prisma db push` on D1 and do not copy migrations from `prisma/migrations` into `cloudflare/migrations`.
+
+### 3.7 Configuration variables (names and locations)
+
+Values are never written in documentation or version control; secret-handling policy is in [SECURITY.md](SECURITY.md).
+
+| Variable | Kind | Local location | Production location |
+| --- | --- | --- | --- |
+| `DB` (binding), `database_name`, `database_id` | D1 binding (ID is not a secret) | `cloudflare/wrangler.jsonc` (tracked) | same |
+| `APP_ENV` | plain var (declared, currently unused by code) | `cloudflare/wrangler.jsonc` | same |
+| `PUBLIC_WEB_URL` | plain var; base of the OAuth redirect URI | overridden in `cloudflare/.dev.vars` | `cloudflare/wrangler.jsonc` |
+| `ALLOWED_ORIGIN` | plain var (declared, currently unused) | overridden in `cloudflare/.dev.vars` | `cloudflare/wrangler.jsonc` |
+| `SESSION_SIGNING_SECRET` | secret; derives the AES-GCM key that encrypts the PKCE verifier and nonce in `auth_transactions` (sessions are opaque hashed tokens, not signed) | `cloudflare/.dev.vars` | Worker secret |
+| `TOKEN_HASH_PEPPER` | secret; pepper for hashes of tokens, codes, state, nonce and rate-limit keys | `cloudflare/.dev.vars` | Worker secret |
+| `BFF_SHARED_SECRET` | secret; authenticates the BFF to the Worker | `cloudflare/.dev.vars` | Worker secret |
+| `GOOGLE_CLIENT_ID` | OAuth client identifier (public; may be a plain var) | `cloudflare/.dev.vars` | Worker secret or var |
+| `GOOGLE_CLIENT_SECRET` | secret | `cloudflare/.dev.vars` | Worker secret |
+| `CLOUDFLARE_API_BASE_URL` | BFF server runtime: Worker URL | root `.env` | Vercel runtime env |
+| `CLOUDFLARE_BFF_SHARED_SECRET` | BFF server runtime: must equal `BFF_SHARED_SECRET` | root `.env` | Vercel runtime env |
+| `DOCKER_CLOUDFLARE_API_BASE_URL` | Worker URL seen from the `talentum-web` container | root `.env` | not used |
+| `DATABASE_URL`, `DOCKER_DATABASE_URL` | local SQLite path (host, container) | root `.env` | not used (local only) |
+| `TALENTUM_STANDALONE_BUILD` | build flag for Next standalone output (Docker images) | Dockerfiles | not used |
+| `TALENTUM_URL` | Electron window URL override | shell env / `scripts/dev-all.mjs` | not used |
+
+None of the BFF variables uses the `NEXT_PUBLIC_` prefix. The LP calls its own BFF; the BFF calls the Worker; the Worker queries D1. If `CLOUDFLARE_BFF_SHARED_SECRET` and `BFF_SHARED_SECRET` differ, every Worker route answers `403 BFF_REQUIRED`.
+
+### 3.8 Cloudflare setup and deployment
+
+Commands below are PowerShell as originally written; on Linux/macOS use the equivalent shell commands (for example `cp` instead of `Copy-Item`, `curl` instead of `Invoke-RestMethod`).
+
+**Step 1: authenticate Wrangler.** From the repository root:
+
+```powershell
+pnpm exec wrangler login
+pnpm exec wrangler whoami
+```
+
+The first command opens the Cloudflare account authorization in the browser; the second must show the authenticated account.
+
+**Step 2: create the production D1 database** (only when the database does not exist yet):
+
+```powershell
+pnpm exec wrangler d1 create talentum-cloud-production
+```
+
+Keep the returned `database_id`. The database identifier is not a credential, but secrets and tokens must never go into the configuration file. D1 offers no specific South America location: let Cloudflare choose the initial location automatically, and set `--location` only after measuring real latency and recording an architecture decision.
+
+**Step 3: confirm the active configuration.** `cloudflare/wrangler.jsonc` is the tracked working configuration (name `talentum`, `main: src/index.ts`, D1 binding `DB` for `talentum-cloud-production`, `migrations_dir: migrations`, and the plain vars). Do **not** copy `cloudflare/wrangler.example.jsonc` over it: the example is a reference with a placeholder database ID, and copying it would destroy the real configuration. Only when creating a brand-new environment (a fork or a separate account) should you start a new config from the example and replace its placeholder with the `database_id` from step 2. Every script passes `--config cloudflare/wrangler.jsonc`; the Worker reaches the database only through `env.DB`.
+
+**Step 4: prepare local secrets.**
+
+```powershell
+Copy-Item -LiteralPath cloudflare/.dev.vars.example -Destination cloudflare/.dev.vars
+```
+
+Fill in every name listed in `cloudflare/.dev.vars.example`: `SESSION_SIGNING_SECRET`, `TOKEN_HASH_PEPPER`, `BFF_SHARED_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, plus the local overrides `PUBLIC_WEB_URL` and `ALLOWED_ORIGIN` (during `wrangler dev` they make the login callback return to the local LP, not the published domain). Generate each of the three random secrets independently, with at least 32 random bytes, running once per variable:
+
+```powershell
+node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
+```
+
+`cloudflare/.dev.vars` is local and ignored by Git. In development the LP reads `CLOUDFLARE_BFF_SHARED_SECRET` from the root `.env` and the Worker reads `BFF_SHARED_SECRET` from `cloudflare/.dev.vars`; **both must hold the same value**. When the LP runs in a container, point `DOCKER_CLOUDFLARE_API_BASE_URL` at `http://host.docker.internal:8787`; `compose.yaml` declares the `extra_hosts` entry that makes that name resolve on Docker for Linux.
+
+**Step 5: apply and verify migrations locally.**
+
+```powershell
+pnpm run cloudflare:migrations:list:local
+pnpm run cloudflare:migrations:apply:local
+pnpm exec wrangler d1 execute talentum-cloud-production --local --config cloudflare/wrangler.jsonc --command "SELECT name FROM sqlite_schema WHERE type = 'table' ORDER BY name"
+pnpm run cloudflare:dev
+```
+
+In another terminal, check the connection:
+
+```powershell
+Invoke-RestMethod http://localhost:8787/health
+```
+
+The expected response contains `status: ok` and `service: talentum-cloud-api`.
+
+**Step 6: review and apply in production.** Always list pending migrations before changing the remote database:
+
+```powershell
+pnpm run cloudflare:migrations:list:remote
+pnpm run cloudflare:migrations:apply:remote
+```
+
+**Step 7: register remote secrets.** Register each secret interactively; never pass the value on the command line:
+
+```powershell
+pnpm exec wrangler secret put SESSION_SIGNING_SECRET --config cloudflare/wrangler.jsonc
+pnpm exec wrangler secret put TOKEN_HASH_PEPPER --config cloudflare/wrangler.jsonc
+pnpm exec wrangler secret put BFF_SHARED_SECRET --config cloudflare/wrangler.jsonc
+pnpm exec wrangler secret put GOOGLE_CLIENT_ID --config cloudflare/wrangler.jsonc
+pnpm exec wrangler secret put GOOGLE_CLIENT_SECRET --config cloudflare/wrangler.jsonc
+```
+
+The OAuth client secret must stay secret; the public client identifier may be a plain variable instead. Register in the Google OAuth client, as the production redirect, exactly `<PUBLIC_WEB_URL>/api/auth/callback` for the production `PUBLIC_WEB_URL` (the production domain is **Open**, see the domain section).
+
+**Step 8: deploy and validate the Worker.**
+
+```powershell
+pnpm run cloudflare:deploy
+```
+
+Wrangler returns the `workers.dev` address. Validate `GET /health` there, and keep that endpoint free of database, account or dependency-version information.
+
+**Git-connected deploy.** When creating the application from this repository in the Cloudflare dashboard, choose **Workers**, not Pages, and configure:
+
+- root directory: repository root;
+- build command: `pnpm run cloudflare:build` (a `wrangler deploy --dry-run`);
+- deploy command: `pnpm run cloudflare:deploy`;
+- production branch: `main`.
+
+Do not use `pnpm run build` there: it builds the local product's Next.js. Do not use `npx wrangler deploy` without `--config`, because the Worker config lives in `cloudflare/`. `cloudflare/wrangler.jsonc` must exist in the pipeline environment and is tracked because the D1 ID is not secret; `.dev.vars`, API tokens and values set with `wrangler secret put` stay out of Git.
+
+**Step 9: connect the Vercel LP/BFF.** Register in the LP's Vercel project:
+
+- `CLOUDFLARE_API_BASE_URL`: the Worker's public URL;
+- `CLOUDFLARE_BFF_SHARED_SECRET`: exactly the same value as `BFF_SHARED_SECRET`;
+- public variables only when proven non-confidential.
+
+**Step 10: workflow for cloud schema changes.**
+
+1. Create a new numbered SQL migration in `cloudflare/migrations`.
+2. Ensure every table has an opaque `id` and relations use IDs and foreign keys.
+3. Apply to a disposable local database.
+4. Run the API tests (`pnpm cloudflare:test`, `pnpm test`) and review indexes, constraints and operational rollback.
+5. List pending remote migrations.
+6. Apply to the remote D1.
+7. Deploy the Worker compatible with the new schema.
+8. Update [DATABASE.md](DATABASE.md) and this document in the same change set.
+
+### 3.9 Operations
+
+**Pre-publication checklist** (the status of each control is noted):
+
+- no financial data, statement, account, balance, transaction or Pix key is in D1 (Current by design: no such table exists in D1);
+- no token is persisted in cleartext, only hash, expiry, consumption and revocation (Current);
+- cookies are `Secure`, `HttpOnly` and `SameSite` suited to the BFF flow (Current: `Lax`, `__Host-` prefix);
+- private routes apply authentication, authorization and `Cache-Control: no-store` (Current); rate limits on private routes (Planned);
+- ephemeral codes are hashed, short-lived, single-use and never enter audit or analytics (Current);
+- CORS accepts only explicitly authorized origins (Planned: no CORS headers are sent and `ALLOWED_ORIGIN` is unused);
+- logs and events contain no secrets, public email, raw IP or financial content (Current: the Worker does not log; `security_events`/`audit_events` writes are Planned);
+- remote migrations are reviewed and applied by operators, never by the frontend (Current).
+
+**Acceptance criteria for the Web layer:**
+
+- `/downloads` does not open without a valid session (Current: middleware redirect plus server-side `/api/me` check);
+- the frontend holds no secrets nor any persistent token readable by JavaScript (Current: `HttpOnly` cookies);
+- a deploy manifest proves that no desktop file was sent to Vercel (Open: no versioned manifest);
+- download grants expire and are audited, and public artifacts keep checksum and signature (Current: 5-minute grants recorded in D1, `sha256` and `signature` fields served; Planned: audit events and signed artifacts);
+- public feedback content never reveals email, token, IP or OAuth identifier (Planned);
+- community actions are authorized and rate-limited in the backend (Planned);
+- private responses use `Cache-Control: no-store` (Current).
+
+**Local Docker for the Web layer (Current).** `compose.yaml` service `talentum-web` builds `Dockerfile.web`, binds `127.0.0.1:3100`, reads `DOCKER_CLOUDFLARE_API_BASE_URL` and `CLOUDFLARE_BFF_SHARED_SECRET`, and health-checks `/`.
+
+## 4. Layer 2: Electron
+
+### 4.1 Goal
+
+The desktop app is local-first: it processes and stores financial data on the device. The renderer is an untrusted frontend and talks only to the local backend. Cloud services receive only the documented minimum. Salary, institutions, balances, Pix keys, statements, transactions, debts and investments stay exclusively on the device and pass only through the local API.
+
+### 4.2 Current state
+
+**Current.**
+
+- The Next.js App Router (`src/app`) provides the interface and six route handlers: `action-codes`, `dashboard`, `dashboard/categories`, `health/live`, `local-summary`, `system/status`.
+- Prisma is configured for SQLite with nine models: `LocalProfile`, `UserPreference`, `Institution`, `Account`, `BalanceSnapshot`, `Category`, `ImportBatch`, `Transaction`, `ScheduledObligation`. Money is stored as `BigInt` cents. Details in [DATABASE.md](DATABASE.md).
+- The financial tables exist, but there is no importer code; the MVP import formats are CSV and OFX (Planned). The dashboard starts empty and asks for onboarding until a local profile exists; onboarding itself is a stub (Planned, see [PRODUCT.md](PRODUCT.md)).
+- With Compose, SQLite lives at `/data/talentum-local.db` inside the persistent volume `talentum-data`; the container runs `prisma migrate deploy` before starting the server, binds `127.0.0.1:3000` and health-checks `/api/health/live`. Docker runs only the local server; the graphical Electron shell stays on the host and opens `http://localhost:3000`. `pnpm dev:all` detects a running local backend and attaches the window to it instead of competing for the port.
+- The local app sends no Content Security Policy (Planned).
+- There is no packaging configuration (no installer build); installers are Planned.
+
+```mermaid
+flowchart LR
+    UI[Renderer without Node] -->|loopback + X-Action-Code| API[Local backend]
+    UI -->|narrow IPC| PRE[Preload]
+    PRE --> MAIN[Electron main]
+    API --> DOMAIN[Domain]
+    DOMAIN --> DB[(SQLite)]
+    API -.->|Planned: HTTPS + token| CLOUD[Cloudflare backend]
+```
+
+### 4.3 Desktop shell (`electron/main.cjs`)
+
+**Current controls:**
+
+- `BrowserWindow` with `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true` and `preload.cjs`; frameless window, no application menu, single-instance lock.
+- Loads `TALENTUM_URL` or the fixed `http://localhost:3000`. A random port and an ephemeral per-run secret are **Planned**.
+- `setWindowOpenHandler` denies every new window; allowed external links (`https:` to `github.com` or `icons.getbootstrap.com`) open in the system browser.
+- `will-navigate` blocks navigation outside the local backend origin, opening allowlisted hosts externally.
+- A deny-all permission request handler refuses camera, notifications, geolocation and every other browser permission.
+- IPC is accepted only from frames whose origin is the local backend (trusted-sender check).
+
+### 4.4 Boundaries
+
+| Boundary | Rule | Status |
+| --- | --- | --- |
+| Renderer | `nodeIntegration: false`, `contextIsolation: true`, sandbox enabled | Current |
+| Renderer | restrictive CSP | Planned |
+| Preload | minimal per-method API; never exposes `ipcRenderer`, filesystem or generic shell | Current |
+| Main | validates sender on every IPC | Current |
+| Main | validates arguments, origin and destination schema on every IPC | Planned (current channels take no arguments) |
+| Local backend | binds to loopback only | Current (`127.0.0.1:3000`) |
+| Local backend | random port when feasible and an ephemeral per-run secret | Planned |
+| Local backend | rejects non-loopback `Host` (DNS rebinding) | Current |
+| SQLite | reachable only through the local backend persistence | Current |
+| Cloud | reachable only through the local backend, never from the renderer | Current (no cloud calls exist) / Planned (integration) |
+
+### 4.5 IPC
+
+**Current.** `electron/preload.cjs` adds the `electron` class to the document element and exposes, through `contextBridge`, a single object `window.talentumWindow` with three methods: `minimize()`, `toggleMaximize()` and `close()`. They send the argument-less channels `window:minimize`, `window:toggle-maximize` and `window:close`; `main.cjs` handles each only for a trusted sender. No other IPC channel exists.
+
+### 4.6 Mandatory shell controls
+
+1. Do not load remote content in a privileged window. (Current: only the local origin loads.)
+2. Deny navigation and new windows by default. (Current.)
+3. Validate an allowlist before `shell.openExternal`. (Current.)
+4. Keep `webSecurity` and deny mixed content. (Current by Electron default; not explicitly configured.)
+5. Deny unexpected permissions. (Current.)
+6. Validate sender and schema of every IPC. (Sender Current; schema Planned.)
+7. Prefer a secure custom protocol over `file://`. (Planned; the app currently loads over loopback HTTP.)
+8. Disable unused Electron features with fuses. (Planned.)
+9. Sign packages, updates and manifests. (Planned.)
+10. Never send cleartext finances to the community or the cloud backend. (Current.)
+
+### 4.7 Desktop authentication
+
+**Planned.** Electron is a public client: no embedded client secret is confidential. It will use the system browser, Authorization Code with PKCE S256, `state`, `nonce` and a registered redirect. The access token stays in memory; the rotating refresh token goes to the operating-system vault when available. Details and threat rules in [SECURITY.md](SECURITY.md).
+
+### 4.8 Local API contract
+
+**Current routes** (all under `src/app/api`):
+
+| Method | Route | Protection | Purpose |
+| --- | --- | --- | --- |
+| `POST` | `/api/action-codes` | bootstrap; Zod validation (`method` enum, `path` starting with `/api/`, max 200 chars) | issue a 60-second action code |
+| `GET` | `/api/system/status` | single-use `X-Action-Code` | check frontend/API communication (`{status, service: "talentum-local-api", timestamp}`) |
+| `GET` | `/api/dashboard` | single-use `X-Action-Code` | dashboard indicators computed from local SQLite |
+| `GET` | `/api/dashboard/categories` | single-use `X-Action-Code` | spending by category in the period |
+| `GET` | `/api/local-summary` | single-use `X-Action-Code` | per-area counts from the local database: accounts, transactions, pending transactions, open obligations and imports |
+| `GET` | `/api/health/live` | infrastructure only | health check without application data (`{status: "ok"}`) |
+
+Every route under `/api` refuses with `403 HOST_NOT_ALLOWED` any request whose `Host` is not `localhost`, `127.0.0.1` or `[::1]` (`src/middleware.ts`, `src/server/local-host.ts`), against DNS rebinding. Successful responses send `Cache-Control: no-store`.
+
+Every dashboard query is scoped by `profileId`, resolved on the server by `getLocalProfileId()`. Without a local profile the response is `{ "hasProfile": false }` and the interface leads to onboarding; no zero is returned in place of an unknown value.
+
+`GET /api/dashboard` returns the risk-free balance, the consolidated balance with the base date of the oldest informed balance (`balanceReferenceDate`), the committed total in the period with the count of estimated obligations (`committedEstimatedCount`), month spending and daily average with the change against the same interval of the previous month, and the counts of accounts with known and unknown balance, pending items and imports.
+
+`GET /api/dashboard/categories` returns the period's spending slices, already ordered, with the tail summed into `Outros` and uncategorized entries in their own slice. The sum of the slices always equals `totalCents`.
+
+`GET /api/local-summary` exists so that no screen claims "none" without backend confirmation; it returns only counts, never records, amounts or descriptions.
+
+**Monetary values travel as integer cents in a `string`** (`BigInt` is not JSON-serializable) and are formatted only at render time. The backend returns no formatted monetary text. Neither dashboard endpoint returns individual transactions, entry descriptions or file content. Formulas and criteria for each indicator are in [PRODUCT.md](PRODUCT.md).
+
+Local route handlers serve only the interface running on the same device and orchestrate use cases and local Prisma access.
+
+**Planned local routes** (they must be born together with their use cases and tests; this table does not authorize empty scaffolding):
+
+| Method | Route | Use case |
+| --- | --- | --- |
+| `POST` | `/api/imports` | validate and start a local import |
+| `GET` | `/api/imports/:id` | check progress and problems |
+| `GET` | `/api/transactions` | list and filter transactions |
+| `PATCH` | `/api/transactions/:id` | correct classification or metadata |
+| `POST` | `/api/reconciliations/:id/resolve` | resolve a pending item |
+| `POST` | `/api/portfolio/contribution-simulation` | simulate a contribution by pillars |
+| `GET` | `/api/timeline` | read local events |
+
+### 4.9 Prisma and SQLite
+
+**Current.** `prisma/schema.prisma` targets SQLite through `DATABASE_URL` (the host default lives under the ignored `temp/` directory; the container uses `DOCKER_DATABASE_URL` inside the `talentum-data` volume). Migrations: `20260905182000_init`, `20260905214010_mvp_financial_core`, `20260911000729_mvp_scheduled_obligations`; all are local-only. The server accesses the database through `src/server/db.ts`. Scripts: `prisma:generate`, `prisma:validate`, `prisma:migrate`.
+
+## 5. Error format and shared API conventions
+
+### 5.1 Error format
+
+**Current shapes:**
+
+- Worker and local API: `{ "error": { "code": "<STABLE_CODE>", "message": "<safe message>" } }`. The Worker always uses the generic message `A solicitação não pôde ser concluída.`; the local API uses messages such as `A ação não pôde ser validada.`.
+- BFF availability errors: `{ "error": { "code": "WORKER_UNAVAILABLE" | "WORKER_NOT_CONFIGURED" } }` with status `503` (no `message`).
+- BFF form-route errors: bare strings, `{ "error": "forbidden" }`, `{ "error": "invalid_artifact" }`, `{ "error": "download_unavailable" }`.
+
+There is no `requestId` or correlation identifier in any response (**Planned**). Known codes: `BFF_REQUIRED`, `RATE_LIMITED`, `INVALID_ACTION_TARGET`, `INVALID_ACTION_CODE`, `INVALID_CALLBACK`, `INVALID_AUTH_TRANSACTION`, `OAUTH_EXCHANGE_FAILED`, `INVALID_ID_TOKEN`, `AUTH_FAILED`, `INVALID_REFRESH`, `REFRESH_REUSE_DETECTED`, `AUTH_REQUIRED`, `RELEASE_NOT_FOUND`, `NOT_FOUND`, `INTERNAL_ERROR`, `HOST_NOT_ALLOWED`.
+
+**Planned target shape** (adds a non-sensitive correlation identifier):
+
+```json
+{
+  "error": {
+    "code": "IMPORT_UNSUPPORTED_FORMAT",
+    "message": "O formato do arquivo não é compatível.",
+    "requestId": "req_example"
+  }
+}
+```
+
+Public messages must not include local paths, SQL queries, internal names, tokens or imported document content. No response includes a stack trace in production (Current: both backends catch and return generic codes).
+
+### 5.2 Conventions
+
+- JSON in UTF-8, except explicitly documented binary uploads (Current; the BFF download-grant route takes form data by design).
+- Input validated at the boundary with Zod or equivalent (Current in the local action-code route; the Worker validates by hand).
+- Opaque IDs, never sequential when exposed (Current: UUIDs and random tokens).
+- Dates and instants in ISO 8601; currency as an ISO 4217 code (Current for dates).
+- Monetary values as integers in the smallest unit, sent as strings in JSON (Current).
+- Errors with a stable code and a safe message (Current); non-sensitive correlation identifier (Planned).
+- Cursor pagination for large collections (Planned; no collection route paginates yet).
+- Idempotency for imports, backups and repeatable operations (Planned; no idempotency keys exist).
+- Private responses with `Cache-Control: no-store` (Current).
+
+## 6. Open items
+
+1. **Production domain.** `apps/web/src/site.ts` uses `talentum-tech.vercel.app`; `cloudflare/wrangler.jsonc` `PUBLIC_WEB_URL`/`ALLOWED_ORIGIN` and older documentation use `talentum.vercel.app`, which belongs to another project. The OAuth redirect and origin allowlist depend on the choice; fix code, config and the OAuth client together.
+2. **Repository layout.** Whether to migrate to the earlier `apps/desktop` + `packages/*` + `workers/` target layout or keep the current layout is undecided.
+3. **Vercel deploy isolation is unproven.** The Vercel project settings are not versioned and there is no deploy manifest; `Dockerfile.web` copies the whole repository into its build stage.
+4. **Worker action-code binding.** `context_hash` is the same for every caller (hash of the BFF secret); binding to session or origin is documented as intended but not implemented. Consumed and expired `action_codes` rows are never deleted; a cleanup policy is undefined.
+5. **Local action codes** are issued to any loopback caller and are not bound to a session or a per-run secret; this depends on the Planned random port and ephemeral secret.
+6. **Unused Worker variables.** `ALLOWED_ORIGIN` (no CORS) and `APP_ENV` are declared but not read by code.
+7. **Security event recording.** Refresh-token reuse revokes the family and session but writes nothing to `security_events`; `audit_events` is never written, so download grants are recorded but not audited.
+8. **Rate-limit coverage.** Only `codes` (30/min) and `login` (10/min) per IP exist; callback, refresh, download grants and private routes have none. Values are not calibrated with telemetry.
+9. **BFF origin checks.** `sameOrigin()` accepts requests without an `Origin` header (relying on `SameSite=Lax`), and `GET /api/auth/refresh` rotates cookies without an origin check.
+10. **Error shape consistency.** BFF form routes return bare-string errors while other routes use `{error:{code,message}}`; no response has a correlation identifier.
+11. **Local app CSP.** The local app sends no Content Security Policy, although the Electron boundary requires a restrictive one.
+12. **Release pipeline.** There is no CI (`.github/` absent), no Electron packaging configuration and no signing; signed installers on GitHub Releases are Planned only.
+13. **Worker adapters and timeouts.** Google and D1 calls are inline without adapters or explicit timeouts, contrary to normative rule 7.
+14. **D1 location.** Left to Cloudflare's automatic choice until latency is measured and a decision is recorded.

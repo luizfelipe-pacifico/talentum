@@ -53,7 +53,7 @@ test('o cabeçalho cabe em uma linha no celular', () => {
   assert.match(phone, /\.topbar \{[^}]*flex-wrap: nowrap/);
   assert.match(phone, /\.page-context \{[^}]*display: none/);
   assert.match(phone, /\.btn-label \{[^}]*display: none/);
-  // Margem lateral de celular definida em docs/BRANDING.md.
+  // Margem lateral de celular definida em docs/DESIGN-SYSTEM.md.
   assert.match(phone, /\.content \{[^}]*padding: 20px 16px 48px/);
 });
 

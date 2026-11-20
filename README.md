@@ -191,29 +191,22 @@ pnpm hooks:install
 | `pnpm prisma:validate` | Valida o schema Prisma |
 | `pnpm prisma:migrate` | Cria e aplica migrações SQLite locais |
 
-Para que `localhost:3000` use o banco SQLite dentro do Docker, suba o app com `pnpm docker:up:detached` e abra a janela com `pnpm dev:all`, que se anexa ao container. Skills de design para o Claude Code ficam em `.claude/skills/`; origem, licença e revisão estão em [`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md#skills-de-agente).
+Para que `localhost:3000` use o banco SQLite dentro do Docker, suba o app com `pnpm docker:up:detached` e abra a janela com `pnpm dev:all`, que se anexa ao container. Skills de design para o Claude Code ficam em `.claude/skills/`; origem, licença e revisão estão em [`docs/BEST_PRACTICES.md`](./docs/BEST_PRACTICES.md).
 
 Os containers executam os servidores Next.js como usuários não-root; a janela Electron é iniciada no host. O app local usa um volume nomeado para o SQLite, que não entra na imagem. A LP é servida separadamente em `http://localhost:3100`, preservando o limite arquitetural entre o site público e o produto local.
 
 ## Documentação
 
-As fontes técnicas estão indexadas em [`docs/README.md`](./docs/README.md). A arquitetura é separada entre [`Web`](./docs/ARCHITECTURE-WEB.md) e [`Electron`](./docs/ARCHITECTURE-ELECTRON.md); autenticação, refresh tokens e controles obrigatórios estão em [`AUTHENTICATION.md`](./docs/AUTHENTICATION.md) e [`SECURITY.md`](./docs/SECURITY.md).
+A documentação técnica fica em `docs/`, em inglês, concentrada em poucos documentos extensos e indexada em [`docs/README.md`](./docs/README.md).
 
-- [`docs/README.md`](./docs/README.md): índice e hierarquia das fontes de verdade do projeto.
+- [`ARCHITECTURE.md`](./docs/ARCHITECTURE.md): visão geral, fluxos, contratos de API e as duas camadas, Web (LP, BFF, Worker e D1) e Electron (desktop, app local, SQLite).
+- [`SECURITY.md`](./docs/SECURITY.md): autenticação, refresh tokens, controles obrigatórios e gestão de segredos.
+- [`DATABASE.md`](./docs/DATABASE.md): regras de modelagem, schema local (Prisma/SQLite), schema cloud (D1) e migrations.
+- [`PRODUCT.md`](./docs/PRODUCT.md): visão do produto, funcionalidades e rotas do MVP, onboarding, dashboard e aviso de nova versão.
+- [`DESIGN-SYSTEM.md`](./docs/DESIGN-SYSTEM.md): marca, tokens dos dois temas, tipografia, ilustrações de estado e QA visual.
 - [`ROADMAP.md`](./docs/ROADMAP.md): MVP e sequência planejada de todas as macrofeatures.
-- [`ONBOARDING.md`](./docs/ONBOARDING.md): perguntas e fotografia financeira do primeiro acesso.
-- [`ARCHITECTURE.md`](./docs/ARCHITECTURE.md): componentes, limites de confiança e decisões estruturais.
-- [`HOW-IT-WORKS.md`](./docs/HOW-IT-WORKS.md): fluxos de execução, importação, conciliação e backup.
-- [`DATA_MODEL.md`](./docs/DATA_MODEL.md): modelo conceitual, relações e invariantes de persistência.
-- [`API.md`](./docs/API.md): convenções e contratos planejados das APIs local e de borda.
-- [`SECURITY.md`](./docs/SECURITY.md): requisitos obrigatórios de segurança e privacidade.
-- [`DEVELOPMENT.md`](./docs/DEVELOPMENT.md): ambiente local, comandos e critérios de qualidade.
-- [`CLOUDFLARE_SETUP.md`](./docs/CLOUDFLARE_SETUP.md): parametrização do Worker, D1, migrations e segredos.
-- [`DOCUMENTACAO_PDF_REESCRITA.md`](./docs/DOCUMENTACAO_PDF_REESCRITA.md): especificação consolidada do produto e da arquitetura.
-- [`PROJECT_THINKING.md`](./docs/PROJECT_THINKING.md): decisões iniciais de experiência e tecnologia.
-- [`BRANDING.md`](./docs/BRANDING.md): marca, paleta, tipografia e princípios de interface.
-- [`BEST_PRACTICES.md`](./docs/BEST_PRACTICES.md): organização, qualidade, segurança e fluxo de contribuição.
-- [`DOCUMENTACAO_PDF_TRANSCRICAO.md`](./docs/DOCUMENTACAO_PDF_TRANSCRICAO.md): material histórico que deu origem à visão atual.
+- [`BEST_PRACTICES.md`](./docs/BEST_PRACTICES.md): organização do repositório, práticas de engenharia e guia completo de desenvolvimento.
+- [`decisions/`](./docs/decisions/): registros de decisões de arquitetura (ADRs).
 
 ## Como contribuir
 

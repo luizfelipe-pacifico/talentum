@@ -1,55 +1,50 @@
-# Documentação do Talentum
+# Talentum Documentation
 
-Este diretório separa as fontes de verdade técnicas dos materiais de produto e do histórico de concepção. Uma decisão descrita como **planejada** não representa funcionalidade implementada.
+This directory holds the project's sources of truth. Documentation is kept in a few comprehensive documents rather than many small ones: extend the right document before creating a new one. A statement marked **Planned** is not implemented functionality.
 
-## Comece por aqui
+## Documents
 
-| Documento | Responsabilidade |
+| Document | Responsibility |
 | --- | --- |
-| [`ROADMAP.md`](./ROADMAP.md) | MVP, ordem das macrofeatures, dependências e critérios de conclusão |
-| [`ROUTING_MVP.md`](./ROUTING_MVP.md) | Plano executável de conclusão do MVP: trilhas cloud e local, rotas, APIs, migrations e Definition of Done |
-| [`ONBOARDING.md`](./ONBOARDING.md) | Perguntas, privacidade, fotografia inicial, importação e conciliação de primeiro acesso |
-| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Componentes, limites de confiança, responsabilidades e decisões estruturais |
-| [`ARCHITECTURE-WEB.md`](./ARCHITECTURE-WEB.md) | LP, autenticação, downloads e feedback público |
-| [`ARCHITECTURE-ELECTRON.md`](./ARCHITECTURE-ELECTRON.md) | Backend local, renderer, IPC, SQLite e integração cloud |
-| [`AUTHENTICATION.md`](./AUTHENTICATION.md) | OAuth/OIDC, sessões, access tokens e refresh tokens |
-| [`HOW-IT-WORKS.md`](./HOW-IT-WORKS.md) | Fluxos de execução do desktop, importação, conciliação, notícias e backup |
-| [`DATA_MODEL.md`](./DATA_MODEL.md) | Modelo conceitual local e remoto, invariantes e estratégia de evolução |
-| [`ESTRUTURA_DE_DADOS.md`](./ESTRUTURA_DE_DADOS.md) | Regras operacionais de modelagem, migrations, consultas e escala para um milhão de usuários |
-| [`API.md`](./API.md) | Convenções e contratos planejados para APIs locais e de borda |
-| [`SECURITY.md`](./SECURITY.md) | Modelo de ameaças, tratamento de dados e requisitos obrigatórios |
-| [`DEVELOPMENT.md`](./DEVELOPMENT.md) | Ambiente local, comandos, estrutura e critérios de validação |
-| [`CLOUDFLARE_SETUP.md`](./CLOUDFLARE_SETUP.md) | Configuração ordenada do Worker, D1, migrations, segredos e integração com a Vercel |
-| [`BEST_PRACTICES.md`](./BEST_PRACTICES.md) | Práticas gerais de engenharia e contribuição |
-| [`BRANDING.md`](./BRANDING.md) | Identidade visual e regras de interface |
-| [`ESTADOS_VAZIOS.md`](./ESTADOS_VAZIOS.md) | Mapa de estados vazios, de erro e de ausência, ilustrações flat e suas variantes por tema |
-| [`ATUALIZACOES.md`](./ATUALIZACOES.md) | Aviso de nova versão e instalação consentida da atualização (planejado, antes do MVP) |
-| [`DASHBOARD.md`](./DASHBOARD.md) | Padrões de dashboard e visualização de dados: referências, base teórica, auditoria e regras normativas |
+| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Overview, repository layout, runtime flows, the action-code protocol and API contracts, split into **Layer 1: Web** (landing page, BFF, Cloudflare Worker and D1, setup and deployment) and **Layer 2: Electron** (desktop shell, local Next.js app, local API, SQLite) |
+| [`SECURITY.md`](./SECURITY.md) | Threat model, authentication (OAuth/OIDC, sessions, refresh tokens), CSRF, rate limiting, headers, Electron hardening, secrets management and the verified controls |
+| [`DATABASE.md`](./DATABASE.md) | Data placement policy, modeling rules, the local Prisma/SQLite schema, the cloud D1 schema, migrations and capacity |
+| [`PRODUCT.md`](./PRODUCT.md) | Product vision and scope, MVP features and routes, onboarding, dashboard specification and the update notice |
+| [`DESIGN-SYSTEM.md`](./DESIGN-SYSTEM.md) | Brand, tokens for both themes, typography, iconography, motion, state illustrations and the visual QA log |
+| [`ROADMAP.md`](./ROADMAP.md) | MVP, macro-feature order, dependencies and completion criteria |
+| [`BEST_PRACTICES.md`](./BEST_PRACTICES.md) | Repository organization, engineering practices and the full development guide (setup, commands, Docker, tests, hooks, contribution) |
+| [`MEMORY-AI.md`](./MEMORY-AI.md) | How the maintainer thinks and works, for AI agents: communication, quality bar, design and copy philosophy, decision patterns and a lessons-learned log. Read at the start of every session and update in the same turn when a new preference appears |
+| [`decisions/`](./decisions/) | Architecture decision records, starting with [`0001-web-hosting.md`](./decisions/0001-web-hosting.md) |
 
-## Produto e referências
+`App de Gestão Financeira ARCA.pdf` is the original source material. It is historical and non-normative; its still-relevant ideas are condensed in the appendix of `PRODUCT.md`.
 
-- [`DOCUMENTACAO_PDF_REESCRITA.md`](./DOCUMENTACAO_PDF_REESCRITA.md): visão funcional consolidada que orienta o escopo, mas não substitui as fontes técnicas acima.
-- [`PROJECT_THINKING.md`](./PROJECT_THINKING.md): registro inicial de decisões; pode conter hipóteses superadas.
-- [`DOCUMENTACAO_PDF_TRANSCRICAO.md`](./DOCUMENTACAO_PDF_TRANSCRICAO.md): transcrição histórica, não normativa.
-- `App de Gestão Financeira ARCA.pdf`: material de origem, não normativo.
+## Decision hierarchy
 
-## Hierarquia de decisão
+When sources conflict, use this order:
 
-Quando houver conflito, use esta ordem:
+1. versioned code, tests and configuration;
+2. the documents in this index;
+3. the historical appendix of `PRODUCT.md` and the source PDF.
 
-1. código, testes e configuração versionados;
-2. documentos técnicos deste índice;
-3. visão consolidada do produto;
-4. documentos históricos e transcrições.
+Fix conflicts at the source; do not explain them only in code comments.
 
-Conflitos devem ser corrigidos na fonte, não explicados apenas em comentários de código.
+## Status labels
 
-## Estados usados
+- **Current:** exists and can be verified in the repository.
+- **Planned:** accepted decision, not fully implemented.
+- **Open:** depends on validation, an ADR or a maintainer decision.
 
-- **Atual:** existe e pode ser verificado no repositório.
-- **Planejado:** decisão aceita, ainda sem implementação completa.
-- **Em aberto:** depende de validação, ADR ou decisão do mantenedor.
+## Keeping documentation up to date
 
-## Atualização da documentação
+| Change | Update |
+| --- | --- |
+| Architecture, runtime flow, API contract, deployment | `ARCHITECTURE.md` (the affected layer) |
+| Authentication, authorization, secrets, data handling | `SECURITY.md` |
+| Schema, migrations, data placement | `DATABASE.md` |
+| Features, routes, onboarding, dashboard rules | `PRODUCT.md` |
+| Tokens, components, illustrations, visual QA | `DESIGN-SYSTEM.md` |
+| Scope or order of work | `ROADMAP.md` |
+| Setup, commands, tooling, conventions | `BEST_PRACTICES.md` and, for onboarding or commands, the root `README.md` |
+| A decision with meaningful alternatives | a new ADR in `decisions/` |
 
-Mudanças gerais de arquitetura atualizam `ARCHITECTURE.md` e a arquitetura específica afetada; mudanças de fluxo atualizam `HOW-IT-WORKS.md`; mudanças de persistência atualizam `DATA_MODEL.md`; mudanças de autenticação atualizam `AUTHENTICATION.md` e `SECURITY.md`; mudanças em painéis, indicadores ou gráficos atualizam `DASHBOARD.md` e, quando tocarem em tokens visuais, também `BRANDING.md`. Decisões com alternativas relevantes ganham ADR em `docs/decisions/`.
+Update this index whenever a document is added, removed, renamed or changes responsibility.

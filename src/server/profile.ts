@@ -3,7 +3,7 @@ import { db } from '@/server/db';
 /* Resolução do perfil local.
 
    O aplicativo é local-first e de perfil único por banco, mas toda consulta
-   precisa ser escopada mesmo assim: ESTRUTURA_DE_DADOS.md, seção 4, exige o
+   precisa ser escopada mesmo assim: docs/DATABASE.md exige o
    escopo do usuário na consulta e testes negativos de acesso cruzado. Escopar
    agora evita que um segundo perfil transforme isso em vazamento depois. */
 

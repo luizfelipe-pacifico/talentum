@@ -2,12 +2,12 @@
 
    Módulo puro: sem Prisma, sem rede, sem relógio implícito. Recebe dados já
    carregados e devolve números. É assim que as fórmulas ganham teste unitário
-   sem banco, conforme docs/DEVELOPMENT.md.
+   sem banco, conforme docs/BEST_PRACTICES.md.
 
    Dinheiro sempre em centavos inteiros (BigInt). Nenhuma função formata texto:
-   a formatação pertence à renderização (docs/DASHBOARD.md, R-25).
+   a formatação pertence à renderização (docs/PRODUCT.md, R-25).
 
-   As definições estão em docs/DASHBOARD.md, Parte 5. */
+   As definições estão em docs/PRODUCT.md, dashboard specification. */
 
 export type CategoryKind = 'income' | 'expense' | 'transfer';
 
@@ -35,14 +35,14 @@ export type ObligationInput = {
 /** Lançamento pendente ainda não aconteceu: não entra em saldo nem em gasto. */
 const isSettled = (transaction: TransactionInput) => transaction.status !== 'pending';
 
-/** Transferência entre contas próprias não é receita nem despesa (docs/DASHBOARD.md, L-5). */
+/** Transferência entre contas próprias não é receita nem despesa (docs/PRODUCT.md, L-5). */
 const isTransfer = (transaction: TransactionInput) => transaction.categoryKind === 'transfer';
 
 /**
  * Divisão inteira com arredondamento half-up explícito.
  *
  * `BigInt` trunca por padrão, e truncar centavos silenciosamente é uma decisão
- * de arredondamento tomada por acidente (docs/DASHBOARD.md, D-15).
+ * de arredondamento tomada por acidente (docs/PRODUCT.md, D-15).
  */
 export function divideRoundHalfUp(value: bigint, divisor: bigint): bigint {
   if (divisor <= 0n) throw new RangeError('O divisor precisa ser positivo.');
@@ -137,7 +137,7 @@ export function dailyAverageCents(expenseTotalCents: bigint, elapsedDays: number
  * Variação percentual contra uma base, com duas casas.
  *
  * Devolve `null` quando não existe base de comparação. Sem base, qualquer número
- * exibido seria inventado — inclusive "0%" (docs/DASHBOARD.md, R-4).
+ * exibido seria inventado — inclusive "0%" (docs/PRODUCT.md, R-4).
  */
 export function percentChange(currentCents: bigint, previousCents: bigint): number | null {
   if (previousCents <= 0n) return null;
@@ -148,7 +148,7 @@ export function percentChange(currentCents: bigint, previousCents: bigint): numb
  * Total comprometido: obrigações abertas com vencimento dentro do período.
  *
  * Só `open` é descontado. Obrigação paga ou cancelada que continuasse sendo
- * subtraída deixaria o veredito permanentemente pessimista (docs/DASHBOARD.md, L-1).
+ * subtraída deixaria o veredito permanentemente pessimista (docs/PRODUCT.md, L-1).
  */
 export function committedCents(obligations: ObligationInput[], periodEnd: Date): bigint {
   let total = 0n;
@@ -166,7 +166,7 @@ export type CommittedSummary = { cents: bigint; count: number; estimatedCount: n
  * Total comprometido com a contagem de obrigações e de estimativas.
  *
  * O veredito precisa dizer quando parte do valor descontado é aproximada
- * (docs/DASHBOARD.md, L-1): o número continua certo, mas a pessoa sabe o quanto confiar.
+ * (docs/PRODUCT.md, L-1): o número continua certo, mas a pessoa sabe o quanto confiar.
  */
 export function committedSummary(obligations: ObligationInput[], periodEnd: Date): CommittedSummary {
   const counted = obligations.filter((obligation) => obligation.status === 'open' && obligation.dueDate <= periodEnd);
@@ -181,7 +181,7 @@ export function committedSummary(obligations: ObligationInput[], periodEnd: Date
  * Saldo Livre de Risco: o que sobra depois de tudo que já tem dono no período.
  *
  * Renda futura prevista não entra, de propósito: previsão de entrada não é
- * dinheiro disponível (docs/HOW-IT-WORKS.md).
+ * dinheiro disponível (docs/ARCHITECTURE.md).
  */
 export function riskFreeBalanceCents(balanceCents: bigint, committedTotalCents: bigint): bigint {
   return balanceCents - committedTotalCents;
@@ -199,7 +199,7 @@ export type CategorySlice = {
  *
  * Lançamento sem categoria vira um grupo próprio em vez de sumir: omiti-lo faria
  * a soma das barras divergir do total de gastos sem que ninguém percebesse.
- * A cauda além de `limit` é somada em "Outros" (docs/DASHBOARD.md, G-2).
+ * A cauda além de `limit` é somada em "Outros" (docs/PRODUCT.md, G-2).
  */
 export function categoryBreakdown(
   transactions: TransactionInput[],

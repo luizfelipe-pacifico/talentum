@@ -28,7 +28,7 @@ export type DashboardPayload = { hasProfile: false } | ({ hasProfile: true } & D
 
 /* Estado discriminado de propósito: não existe valor padrão para exibir.
    Um zero renderizado durante carregamento ou falha é uma afirmação falsa sobre
-   o dinheiro da pessoa usuária (docs/DASHBOARD.md, D-2 e R-29). */
+   o dinheiro da pessoa usuária (docs/PRODUCT.md, D-2 e R-29). */
 export type DashboardState =
   | { status: 'loading' }
   | { status: 'error'; retry: () => void }
