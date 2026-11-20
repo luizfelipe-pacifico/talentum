@@ -15,7 +15,10 @@ test('o servidor de desenvolvimento escuta somente no loopback',async()=>{
 test('a janela do Electron abre localhost, com IPv4 como segunda tentativa',async()=>{
   const devAll=await read('scripts/dev-all.mjs');
   assert.match(devAll,/`http:\/\/localhost:\$\{port\}`,\s*`http:\/\/127\.0\.0\.1:\$\{port\}`/);
-  assert.match(await read('electron/main.cjs'),/TALENTUM_URL \|\| 'http:\/\/localhost:3000'/);
+  // O endereço do dev:all só é aceito fora do app empacotado e se for loopback.
+  const main=await read('electron/main.cjs');
+  assert.match(main,/requestedUrl && isLoopbackUrl\(requestedUrl\) \? requestedUrl : 'http:\/\/localhost:3000'/);
+  assert.match(main,/\['localhost', '127\.0\.0\.1', '\[::1\]'\]/);
 });
 
 test('só o healthcheck do próprio Talentum autoriza anexar a janela',async()=>{

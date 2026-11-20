@@ -44,8 +44,15 @@ const ENTITIES: Record<string, string> = {
 function decodeEntities(value: string): string {
   return value
     .replace(/&(?:amp|lt|gt|quot|apos|nbsp);/g, (match) => ENTITIES[match] ?? match)
-    .replace(/&#(\d{1,6});/g, (_, code) => String.fromCodePoint(Number(code)))
-    .replace(/&#x([0-9a-f]{1,6});/gi, (_, code) => String.fromCodePoint(Number.parseInt(code, 16)));
+    .replace(/&#(\d{1,7});/g, (_, code) => safeCodePoint(Number(code)))
+    .replace(/&#x([0-9a-f]{1,6});/gi, (_, code) => safeCodePoint(Number.parseInt(code, 16)));
+}
+
+/* Entidade numérica fora do Unicode válido, substituto ou caractere de
+   controle vira espaço: a decodificação vem depois do filtro do arquivo. */
+function safeCodePoint(code: number): string {
+  if (code < 0x20 || (code >= 0x7f && code <= 0x9f) || (code >= 0xd800 && code <= 0xdfff) || code > 0x10ffff) return ' ';
+  return String.fromCodePoint(code);
 }
 
 /**

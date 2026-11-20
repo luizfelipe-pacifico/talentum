@@ -9,6 +9,15 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  // Só a própria janela emite código: corpo JSON (força preflight em outra
+  // origem) e, quando o navegador informa a origem, ela precisa ser a do app.
+  if (!request.headers.get('Content-Type')?.toLowerCase().startsWith('application/json')) {
+    return NextResponse.json({ error: { code: 'UNSUPPORTED_MEDIA_TYPE', message: 'A solicitação não pôde ser concluída.' } }, { status: 415, headers: { 'Cache-Control': 'no-store' } });
+  }
+  const origin = request.headers.get('Origin');
+  if (origin && origin !== new URL(request.url).origin) {
+    return NextResponse.json({ error: { code: 'ORIGIN_NOT_ALLOWED', message: 'A solicitação não foi autorizada.' } }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
+  }
   const expected = process.env.TALENTUM_LOCAL_BOOTSTRAP_SECRET;
   const supplied = request.headers.get('X-Talentum-Bootstrap');
   if (expected) {

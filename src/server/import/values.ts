@@ -132,8 +132,14 @@ export function parseAmountCents(raw: string, decimalSeparator: DecimalSeparator
     if (fractionPart.length > 2 && Number(fractionPart[2]) >= 5) cents += 1n;
   }
 
+  // Teto de R$ 9.999.999.999.999,99: acima disso o valor não é de extrato
+  // pessoal e um arquivo hostil envenenaria os totais.
+  if (cents > MAX_AMOUNT_CENTS) throw new ValueParseError('AMOUNT_UNREADABLE', original);
+
   return { cents: negative ? -cents : cents };
 }
+
+const MAX_AMOUNT_CENTS = 10n ** 15n - 1n;
 
 /** Janela civil aceita. Fora dela o valor quase certamente não é uma data. */
 const MIN_YEAR = 1980;

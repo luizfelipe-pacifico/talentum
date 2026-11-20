@@ -9,7 +9,19 @@ const path = require('node:path');
    Compose. `scripts/dev-all.mjs` sobrescreve TALENTUM_URL quando confirma que
    outro endereço responde. No aplicativo empacotado, `startPackagedBackend`
    troca o endereço por uma porta aleatória no loopback. */
-let url = process.env.TALENTUM_URL || 'http://localhost:3000';
+/* No app empacotado o endereço nunca vem do ambiente: uma variável plantada no
+   perfil do usuário faria a janela confiável abrir uma página remota. Em
+   desenvolvimento, só endereços de loopback são aceitos. */
+function isLoopbackUrl(value) {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+const requestedUrl = app.isPackaged ? null : process.env.TALENTUM_URL;
+let url = requestedUrl && isLoopbackUrl(requestedUrl) ? requestedUrl : 'http://localhost:3000';
 let appOrigin = new URL(url).origin;
 let localServer;
 /* Segredo de bootstrap do backend empacotado: gerado a cada execução, entregue ao
@@ -122,7 +134,7 @@ function waitForHealth(target) {
 }
 
 async function startPackagedBackend() {
-  if (!app.isPackaged || process.env.TALENTUM_URL) return;
+  if (!app.isPackaged) return;
   const appRoot = app.getAppPath();
   const databasePath = path.join(app.getPath('userData'), 'talentum-local.db').replaceAll('\\', '/');
   const port = await availablePort();

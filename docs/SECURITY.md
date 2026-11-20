@@ -412,6 +412,18 @@ Status: **Current**. Verified in October 2026; each item has a test in `tests/re
 
 Outside `tests/regression/`, contract and unit tests cover the controls added with the MVP features: `electron-security.test.mjs` (window isolation, enumerated preload surface, packaged backend with random port, `userData` database and per-run secret), `pix.test.mjs` and `accounts-e2e.test.mjs` (Pix identifier cryptography and masking), `import-inspect.test.mjs` and `import-e2e.test.mjs` (import limits and refusals), `reconciliation-contracts.test.mjs` and `timeline-contracts.test.mjs` (action code, profile scoping, reversible decisions, redacted events and the migration backup gate). The two `*-e2e` files are skipped when no local backend answers.
 
+
+### Controls added by the 2026-11-20 offensive review (**Current**, `tests/regression/offensive-review-findings.test.mjs`)
+
+- Installers exclude `.env*`, `.dev.vars*`, databases and key files (`package.json` `build.files`), and `scripts/desktop-prepare.mjs` deletes the `.env` that Next copies into `.next/standalone` and aborts if one remains.
+- The packaged app ignores `TALENTUM_URL`; in development only loopback URLs are accepted, so a planted variable cannot make the trusted window load a remote page.
+- The local device key is created with mode `0600` (atomically, `wx`) inside a `0700` directory.
+- Imported descriptions (CSV and OFX) drop C0/C1 controls and bidirectional overrides, and OFX numeric entities outside valid Unicode decode to a space instead of rejecting the file.
+- Imported amounts above R$ 9.999.999.999.999,99 are rejected, so a hostile file cannot poison totals.
+- `POST /api/action-codes` requires `Content-Type: application/json` (415 otherwise) and rejects a foreign `Origin` (403 `ORIGIN_NOT_ALLOWED`).
+- No source file may contain literal bidirectional control characters (Trojan Source, CVE-2021-42574).
+- Local writes are scoped by `profileId` in their own `where` clause, and concurrent onboarding saves, transaction edits and timeline reverts get `409` (`tests/regression/concurrent-writes.test.mjs`, `onboarding-concurrent-version.test.mjs`).
+
 ## Mandatory pre-commit and pre-push security gate
 
 Rule. This is the owner of the gate; `CLAUDE.md` makes it binding for AI agents and links here. Run it together with the [offensive security review](#offensive-security-review-before-every-commit-and-push).
@@ -510,6 +522,12 @@ A suspected exposure requires: stopping the affected distribution, preserving ev
 15. **Local action codes are unbound outside the packaged app**: in development and Docker any loopback process, and any web page the user visits, can request local action codes. The packaged app requires the per-run bootstrap secret, and its delivery to the window over the trusted IPC `app:bootstrap-secret` is Current in code; what stays open is that any script in the renderer can read the value, and that a packaged smoke test must still confirm action-code issuance end to end.
 16. **Import hardening gaps**: the parse timeout is declared but not enforced, the parser is not process-isolated, and the upload is buffered by `request.formData()` before the size check (see [Statement import](#statement-import)).
 17. **Migration gate coverage**: the destructive-migration preflight runs only through `scripts/dev.mjs`; the Docker image and the packaged app run `prisma migrate deploy` without it, and no code yet creates the `DatabaseBackup` rows it requires.
+18. **Unmapped Prisma errors**: unique-constraint and not-found errors (`P2002`, `P2025`) in category rename, Pix, institution, merchant-rule and reconciliation routes surface as an empty `500` instead of `409`/`404` with the `{error:{code,message}}` shape. Nothing leaks, but the error contract is broken. Fix: one shared mapper in `src/server/http.ts`.
+19. **Remaining check-then-act races**: `persistImport` reads duplicates outside its transaction (fallback-key rows can be inserted twice by concurrent imports); `POST /api/profile` and `/api/onboarding` can create two `LocalProfile` rows; reverting a `transaction_edit` restores `beforeJson` without checking that the row still equals `afterJson`.
+20. **Electron fuses and signing**: no `electronFuses` are configured (`EnableNodeOptionsEnvironmentVariable` and `EnableNodeCliInspectArguments` stay on), installers are unsigned and `asar` is off. Consider `utilityProcess.fork` so `RunAsNode` can be disabled. Required before any public release.
+21. **CI secret scanning and dependency review**: the workflow has no gitleaks/TruffleHog step, no dependency-review action and no Dependabot configuration.
+22. **CSV export escaping**: no export exists yet; descriptions are stored raw, so any future CSV export must neutralize leading `=`, `+`, `-`, `@`, tab and carriage return.
+23. **Upload buffering**: the multipart body is buffered by `request.formData()` before the size ceiling applies; reject on `Content-Length` first.
 ## Offensive security review (before every commit and push)
 
 Rule (mandatory manual step; `CLAUDE.md`, "Security is tested before every commit and push"); none of it runs automatically yet. It complements, and does not replace, the [secret and personal-data gate](#mandatory-pre-commit-and-pre-push-security-gate) and the [Checklists](#checklists) above. That gate asks "is anything sensitive leaving the machine?"; this review asks "how would an attacker abuse what this change adds or touches?". Run it as the attacker would: try to break the change, record what you tried, fix what breaks before sending.

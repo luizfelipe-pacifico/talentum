@@ -84,7 +84,11 @@
       "prisma/**/*",
       "package.json",
       "icon-badge.ico",
-      "icon-badge.png"
+      "icon-badge.png",
+      "!**/.env*",
+      "!**/.dev.vars*",
+      "!**/*.db*",
+      "!**/*.key"
     ],
     "win": { "target": "nsis", "icon": "icon-badge.ico", "artifactName": "Talentum-${version}-Windows-${arch}.${ext}" },
     "linux": { "target": "AppImage", "icon": "icon-badge.png", "category": "Office;Finance", "artifactName": "Talentum-${version}-Linux-${arch}.${ext}" },

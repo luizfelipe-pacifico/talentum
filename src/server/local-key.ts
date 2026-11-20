@@ -67,10 +67,10 @@ function loadMasterKey(): Promise<Buffer> {
     }
 
     const generated = randomBytes(KEY_BYTES);
-    await mkdir(dirname(path), { recursive: true });
+    await mkdir(dirname(path), { recursive: true, mode: 0o700 });
     // `wx` falha se outro processo criou o arquivo nesse intervalo.
     try {
-      await writeFile(path, generated, { flag: 'wx' });
+      await writeFile(path, generated, { flag: 'wx', mode: 0o600 });
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
         const raced = await readFile(path);

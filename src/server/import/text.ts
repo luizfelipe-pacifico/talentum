@@ -145,7 +145,11 @@ export function normalizeLabel(value: string): string {
 }
 
 /** Colapsa espaços e corta no teto de caracteres persistido. */
+/* Controles C0/C1 e marcas de direção (bidi) permitem falsificar a leitura de
+   uma descrição na interface; nunca são conteúdo legítimo de extrato. */
+const UNSAFE_TEXT = /[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/gu;
+
 export function collapseWhitespace(value: string, maxChars: number): string {
-  const collapsed = value.replace(/\s+/g, ' ').trim();
+  const collapsed = value.replace(UNSAFE_TEXT, ' ').replace(/\s+/g, ' ').trim();
   return collapsed.length > maxChars ? `${collapsed.slice(0, maxChars - 1)}…` : collapsed;
 }

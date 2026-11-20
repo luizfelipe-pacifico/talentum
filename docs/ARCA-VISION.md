@@ -432,7 +432,7 @@ A small Smart Triage card, as described in the text:
 └──────────────────────────────────────┘
 ```
 
-> **Superseded by** [PRODUCT.md — Feature 4, CSV and OFX import](PRODUCT.md#feature-4--csv-and-ofx-import) and [ARCHITECTURE.md — 2.5 Import and reconciliation](ARCHITECTURE.md#25-import-and-reconciliation-local): the MVP imports **CSV and OFX**; PDF is [ROADMAP.md](ROADMAP.md) Stage 7 and Open Finance Stage 22. Importer and parser code do not exist yet (**Planned**). The 85–95% and 2-second figures are aspirations from the source, not measured targets.
+> **Superseded by** [PRODUCT.md — Feature 4, CSV and OFX import](PRODUCT.md#feature-4--csv-and-ofx-import) and [ARCHITECTURE.md — 2.5 Import and reconciliation](ARCHITECTURE.md#25-import-and-reconciliation-local): the MVP imports **CSV and OFX**; PDF is [ROADMAP.md](ROADMAP.md) Stage 7 and Open Finance Stage 22. CSV and OFX importers exist (**Current**); PDF import remains **Planned**. The 85–95% and 2-second figures are aspirations from the source, not measured targets.
 
 ### 8.3 Cards, benefits and annual fee module (turn 6)
 
