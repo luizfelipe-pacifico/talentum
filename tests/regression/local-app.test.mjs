@@ -83,3 +83,24 @@ test('a API local recusa Host que não seja o loopback (DNS rebinding)', async (
     assert.equal(isLoopbackHost(host), false, String(host));
   assert.match(await read('src/middleware.ts'), /isLoopbackHost\(/);
 });
+
+test('emitir código de ação funciona com o app aberto em 127.0.0.1, não só em localhost', async () => {
+  // A checagem de Origin comparava com request.url, que o `next dev` monta como
+  // localhost mesmo quando a pessoa abre 127.0.0.1. O navegador recebia 403 em
+  // POST /api/action-codes e nenhuma tela carregava dados. Mesmo defeito que o
+  // BFF já teve (web-bff.test.mjs): a comparação certa é com o Host acessado.
+  const { sameOriginAsHost } = await import(new URL('src/server/local-host.ts', root).href);
+  assert.equal(typeof sameOriginAsHost, 'function');
+  const headers = (entries) => new Headers(entries);
+  assert.equal(sameOriginAsHost(headers({ host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' })), true);
+  assert.equal(sameOriginAsHost(headers({ host: 'localhost:3000', origin: 'http://localhost:3000' })), true);
+  assert.equal(sameOriginAsHost(headers({ host: '127.0.0.1:3000' })), true, 'sem Origin, o navegador não declarou outra origem');
+  assert.equal(sameOriginAsHost(headers({ host: '127.0.0.1:3000', origin: 'http://localhost:3000' })), false);
+  assert.equal(sameOriginAsHost(headers({ host: '127.0.0.1:3000', origin: 'https://evil.example' })), false);
+  assert.equal(sameOriginAsHost(headers({ host: '127.0.0.1:3000', origin: 'null' })), false);
+  assert.equal(sameOriginAsHost(headers({ host: '127.0.0.1:3000', origin: 'http://127.0.0.1:8080' })), false);
+  assert.equal(sameOriginAsHost(headers({ host: '127.0.0.1:3000', origin: 'https://127.0.0.1:3000' })), false);
+  const route = await read('src/app/api/action-codes/route.ts');
+  assert.match(route, /sameOriginAsHost\(request\.headers\)/);
+  assert.doesNotMatch(route, /new URL\(request\.url\)\.origin/);
+});

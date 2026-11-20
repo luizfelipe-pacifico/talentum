@@ -231,7 +231,7 @@ Status of each control in `electron/main.cjs` and `electron/preload.cjs`:
 - **Current in code, packaged app only**: a per-run ephemeral bootstrap secret. The packaged Electron main process generates 32 random bytes as `TALENTUM_LOCAL_BOOTSTRAP_SECRET` for the backend it spawns; when that variable is set, `POST /api/action-codes` issues a code only to a caller presenting the same value in `X-Talentum-Bootstrap` (timing-safe comparison, `403 BOOTSTRAP_DENIED` otherwise).
 - **Current in code, packaged app only**: the secret reaches the window over the trusted IPC channel `app:bootstrap-secret`. The main process answers only when the sender frame belongs to the app origin; the preload exposes it as `bootstrapSecret()` and the API client sends it in `X-Talentum-Bootstrap`. **Open**: any script running in the renderer can call it, and no packaged build has yet been exercised end to end ([Open items](#open-items), item 15).
 - **Open**: in development and Docker the variable is unset, so any loopback process can request action codes and the action code does not authenticate the caller there.
-- **Planned**: origin control on the local API (no `Origin` check today).
+- **Current**: origin control on code issuance: `POST /api/action-codes` refuses a browser `Origin` that is not the requested loopback `Host`. A web page the user visits therefore cannot obtain codes (browsers always send `Origin` on a cross-origin `POST`). Other routes need a code, so they inherit the check; non-browser loopback processes, which send no `Origin`, are still not stopped outside the packaged app.
 - **Current in code, packaged app only**: a random loopback port chosen at start; development and Docker keep the fixed port 3000.
 - **Planned**: a rate limit on the local API.
 
@@ -420,7 +420,7 @@ Outside `tests/regression/`, contract and unit tests cover the controls added wi
 - The local device key is created with mode `0600` (atomically, `wx`) inside a `0700` directory.
 - Imported descriptions (CSV and OFX) drop C0/C1 controls and bidirectional overrides, and OFX numeric entities outside valid Unicode decode to a space instead of rejecting the file.
 - Imported amounts above R$ 9.999.999.999.999,99 are rejected, so a hostile file cannot poison totals.
-- `POST /api/action-codes` requires `Content-Type: application/json` (415 otherwise) and rejects a foreign `Origin` (403 `ORIGIN_NOT_ALLOWED`).
+- `POST /api/action-codes` requires `Content-Type: application/json` (415 otherwise) and rejects a foreign `Origin` (403 `ORIGIN_NOT_ALLOWED`). The `Origin` is compared with the requested `Host` (`sameOriginAsHost` in `src/server/local-host.ts`), which the middleware has already restricted to loopback. A first version compared it with `request.url`, which `next dev` builds as `localhost` even when the page was opened at `127.0.0.1`, so every screen opened at `127.0.0.1` failed to load data; `tests/regression/local-app.test.mjs` and the end-to-end suite now cover both addresses.
 - No source file may contain literal bidirectional control characters (Trojan Source, CVE-2021-42574).
 - Local writes are scoped by `profileId` in their own `where` clause, and concurrent onboarding saves, transaction edits and timeline reverts get `409` (`tests/regression/concurrent-writes.test.mjs`, `onboarding-concurrent-version.test.mjs`).
 
@@ -519,7 +519,7 @@ A suspected exposure requires: stopping the affected distribution, preserving ev
 13. **Security-event recording**: refresh-token reuse revokes the family and session but writes nothing to `security_events`, and `audit_events` is never written, so download grants are recorded but not audited.
 14. **Rate-limit coverage**: only `codes` (30/min) and `login` (10/min) per IP exist; callback, refresh, download grants, private routes and the local API have none, and the values are not calibrated with telemetry.
 
-15. **Local action codes are unbound outside the packaged app**: in development and Docker any loopback process, and any web page the user visits, can request local action codes. The packaged app requires the per-run bootstrap secret, and its delivery to the window over the trusted IPC `app:bootstrap-secret` is Current in code; what stays open is that any script in the renderer can read the value, and that a packaged smoke test must still confirm action-code issuance end to end.
+15. **Local action codes are unbound outside the packaged app**: in development and Docker any loopback process can request local action codes (web pages cannot: their `Origin` is refused). The packaged app requires the per-run bootstrap secret, and its delivery to the window over the trusted IPC `app:bootstrap-secret` is Current in code; what stays open is that any script in the renderer can read the value, and that a packaged smoke test must still confirm action-code issuance end to end.
 16. **Import hardening gaps**: the parse timeout is declared but not enforced, the parser is not process-isolated, and the upload is buffered by `request.formData()` before the size check (see [Statement import](#statement-import)).
 17. **Migration gate coverage**: the destructive-migration preflight runs only through `scripts/dev.mjs`; the Docker image and the packaged app run `prisma migrate deploy` without it, and no code yet creates the `DatabaseBackup` rows it requires.
 18. **Unmapped Prisma errors**: unique-constraint and not-found errors (`P2002`, `P2025`) in category rename, Pix, institution, merchant-rule and reconciliation routes surface as an empty `500` instead of `409`/`404` with the `{error:{code,message}}` shape. Nothing leaks, but the error contract is broken. Fix: one shared mapper in `src/server/http.ts`.
@@ -611,13 +611,13 @@ curl -s -o /dev/null -w '%{http_code}\n' -H 'Host: attacker.example' "$BASE/api/
 curl -s -o /dev/null -w '%{http_code}\n' -X POST "$BASE/api/action-codes" \
   -H 'Content-Type: application/json' -d '{"method":"POST","path":"/api/action-codes"}'
 
-# cross-origin page: today 200 (Open: no Origin check on the local API)
+# cross-origin page: must be refused -> 403 ORIGIN_NOT_ALLOWED
 curl -s -o /dev/null -w '%{http_code}\n' -X POST "$BASE/api/action-codes" \
   -H 'Origin: https://attacker.example' -H 'Content-Type: application/json' \
   -d '{"method":"GET","path":"/api/local-summary"}'
 ```
 
-On 2026-11-20 every probe above returned the expected result against `next dev`, including exactly one success in the race. The last probe documents a known gap rather than a pass: in development and Docker a web page the user visits can request action codes from the loopback API (see [Local API boundary](#local-api-boundary) and [Open items](#open-items), item 15). In the packaged app the issuer also requires the per-run bootstrap secret, so the same request receives `403 BOOTSTRAP_DENIED` by code; this has not yet been exercised on a packaged build. A change that adds a write route or returns more data raises the impact of that gap and must be weighed against it. The issuer has no rate limit (**Planned**); a flood such as `ab -n 5000 -c 50 -p body.json -T application/json "$BASE/api/action-codes"` (with `body.json` holding a valid request) shows how far the in-memory map grows in 60 seconds.
+On 2026-11-20 every probe above returned the expected result against `next dev`, including exactly one success in the race. The cross-origin probe now returns `403`. What remains open is narrower: in development and Docker any other process on the machine, which sends no `Origin`, can still request action codes from the loopback API (see [Local API boundary](#local-api-boundary) and [Open items](#open-items), item 15). In the packaged app the issuer also requires the per-run bootstrap secret, so the same request receives `403 BOOTSTRAP_DENIED` by code; this has not yet been exercised on a packaged build. A change that adds a write route or returns more data raises the impact of that gap and must be weighed against it. The issuer has no rate limit (**Planned**); a flood such as `ab -n 5000 -c 50 -p body.json -T application/json "$BASE/api/action-codes"` (with `body.json` holding a valid request) shows how far the in-memory map grows in 60 seconds.
 
 #### Electron (`electron/`)
 
