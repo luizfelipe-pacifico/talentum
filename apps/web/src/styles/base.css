@@ -8,12 +8,20 @@ html,
 body {
   margin: 0;
   padding: 0;
+  scrollbar-width: none;
 }
 
 html {
   color-scheme: light;
 }
 
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 body {
   background: #f4f1ea;
+  overflow-x: clip;
+  overflow-y: overlay;
 }

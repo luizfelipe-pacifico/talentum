@@ -23,7 +23,7 @@ import {
 } from './art';
 import { PlateCarousel, ShotCarousel, type Plate, type Shot } from './carousel';
 import { LegalNotices } from './legal';
-import { BackToTop, Parallax, PointerScene, ReadingProgress, Reveal, SectionNav } from './motion';
+import { BackToTop, Parallax, PointerScene, ReadingProgress, Reveal, ScrollPosition, SectionNav } from './motion';
 import { Icon } from './icon';
 
 const REPO = 'https://github.com/luizfelipe-pacifico/talentum';
@@ -293,6 +293,7 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
     <div className="lp-root">
       <ArtDefs />
       <ReadingProgress />
+      <ScrollPosition />
 
       <a className="lp-skip" href="#conteudo">
         Ir para o conteúdo

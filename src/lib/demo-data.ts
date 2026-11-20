@@ -24,6 +24,7 @@ export const NAV: NavEntry[] = [
 /** Cartões de acesso às áreas, exibidos no Início. */
 export const HOME_AREAS: { href: string; icon: string; label: string; text: string }[] = [
   { href: '/dashboard', icon: 'bi-speedometer2', label: 'Dashboard', text: 'Saldo, gastos do mês e o que já está comprometido.' },
+  { href: '/contas', icon: 'bi-bank', label: 'Contas', text: 'Instituições, saldos informados e chaves PIX próprias.' },
   { href: '/extratos', icon: 'bi-receipt', label: 'Extratos', text: 'Lançamentos importados, cartões e recorrências.' },
   { href: '/conciliacao', icon: 'bi-check2-square', label: 'Conciliação', text: 'Confirme ou corrija o que ficou em dúvida.' },
   { href: '/patrimonio', icon: 'bi-columns-gap', label: 'Patrimônio', text: 'Ativos, metas e destinação de aportes.' },

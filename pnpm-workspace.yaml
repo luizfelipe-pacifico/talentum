@@ -2,9 +2,14 @@ allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
   electron: true
+  electron-winstaller: false
   esbuild: true
   prisma: true
   workerd: true
 overrides:
+  # Correções de segurança em dependências transitivas (pnpm audit).
+  effect: '^3.22.5'
+  sharp: '^0.35.5'
+  source-map-js: '^1.2.4'
   deepmerge-ts: 8.0.2
   postcss: 8.5.28

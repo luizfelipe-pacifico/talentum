@@ -34,17 +34,19 @@ Status: **Current** (verified 2026-11-20).
 
 What exists today:
 
-- A local Next.js application (UI plus local API) with six local API route handlers: `action-codes`, `dashboard`, `dashboard/categories`, `health/live`, `local-summary` and `system/status`.
-- Local action codes: opaque, single-use, 60-second codes issued by `/api/action-codes` and required by `dashboard`, `dashboard/categories`, `local-summary` and `system/status` (`health/live` is exempt).
-- Prisma/SQLite with nine models (`LocalProfile`, `UserPreference`, `Institution`, `Account`, `BalanceSnapshot`, `Category`, `ImportBatch`, `Transaction`, `ScheduledObligation`) created by three migrations, with money stored as `BigInt` cents.
-- A dashboard that reads real local SQLite data through `/api/dashboard`, with pure, tested metric formulas in `src/server/dashboard-metrics.ts` (consolidated balance, income, expenses, daily average, committed obligations, risk-free balance, category breakdown, month-to-date periods).
-- A hardened Electron shell (context isolation, sandbox, no Node integration, navigation and window-open guards, deny-all permissions, trusted-sender IPC) that loads the local application.
+- A local Next.js application (UI plus local API) with 39 local API route handlers covering MVP features 1 to 8 (listed in [ARCHITECTURE.md](ARCHITECTURE.md)).
+- Local action codes: opaque, single-use, 60-second codes issued by `/api/action-codes` and required by every other local route except `health/live`.
+- Prisma/SQLite with 24 models created by 11 migrations, with money stored as `BigInt` cents.
+- Persistent onboarding; profile, institutions, accounts, balance history and encrypted own Pix keys; categories, income sources, obligations and merchant rules (CRUD); CSV and OFX import with an own bounded OFX reader, reusable column mappings, deduplication and batch undo; transaction listing, detail, edit and history; a persistent reconciliation queue with reversible decisions; a local timeline with reversal; a destructive-migration preflight.
+- A dashboard with all nine elements, including the cash projection and the monthly cash flow, with pure, tested formulas in `src/server/dashboard-metrics.ts`.
+- A hardened Electron shell (context isolation, sandbox, no Node integration, navigation and window-open guards, deny-all permissions, trusted-sender IPC) and `electron-builder` packaging for NSIS and AppImage; when packaged, the shell starts its own backend on a random loopback port with a per-run bootstrap secret (unverified end to end).
 - A Cloudflare Worker with Google OAuth/OIDC Authorization Code plus PKCE, opaque hashed sessions, refresh-token rotation with reuse detection and family revocation, logout, `/api/me`, `/api/releases`, release download grants, Worker action codes stored in D1, IP-keyed rate limits for code issuance and login, and two D1 migrations.
 - The public landing page (`apps/web`) with its BFF (auth start, callback, refresh and logout routes, download-grant form handler) and the protected `/downloads` page, served with CSP and HSTS.
-- A Node test suite of about 18 files in `tests/` (including a regression suite in `tests/regression/` and an in-memory D1 Worker harness) enforced by versioned Git hooks.
+- A Node test suite of 38 files in `tests/` (including a regression suite in `tests/regression/`, an in-memory D1 Worker harness and two end-to-end files that run against a live local backend) enforced by versioned Git hooks and by CI (`.github/workflows/ci.yml`).
+- A `LICENSE` file, `CONTRIBUTING`, `CODE_OF_CONDUCT` and a vulnerability-reporting policy in `.github/`, and ADRs 0002 to 0004.
 - Brand vectors and per-theme state illustrations generated from versioned sources, and Docker images for the local application and the landing page.
 
-What does not exist yet: import (OFX/CSV/PDF), categorization, reconciliation, CRUD for accounts and categories, onboarding beyond a stub, Turnstile, CORS handling, per-user rate limits, the update notice, packaged or signed installers, CI, a `LICENSE` file and the packager ADR.
+What does not exist yet: PDF import, automatic categorization by rules, automatic own-transfer detection, a local app CSP, Turnstile, CORS handling, per-user rate limits, the update notice, signed or published installers, a validated packaged build, CI secret scanning and CodeQL, a real linter and formatter.
 
 ## Cross-cutting rules for every stage
 
@@ -89,7 +91,7 @@ The MVP ends when a person can sign up, install Talentum, import an OFX file, re
 
 **Exit:** web and Electron start in development, CI passes and no frontend layer accesses persistence directly.
 
-Partial state (**Current**): the Next.js application, local REST API, Prisma/SQLite, Docker files, layer separation, Bootstrap Icons (Lucide removed), local and Worker action codes, typecheck, the test suite with regression tests and the Git hooks exist. The Workers versus Vercel decision is recorded in [decisions/0001-web-hosting.md](decisions/0001-web-hosting.md). Still missing (**Planned**): a real linter and formatter (`pnpm lint` only runs the typecheck), CI, CodeQL and secret scanning in CI, the `LICENSE` file and community policies, and the packaging ADR.
+Partial state (**Current**): the Next.js application, local REST API, Prisma/SQLite, Docker files, layer separation, Bootstrap Icons (Lucide removed), local and Worker action codes, typecheck, the test suite with regression tests, the Git hooks, CI (`.github/workflows/ci.yml`: Prisma, typecheck, tests and the three builds), the `LICENSE` file, contribution guide, code of conduct and security policy, and the packaging ADR ([0004](decisions/0004-electron-packaging.md)). The Workers versus Vercel decision is recorded in [decisions/0001-web-hosting.md](decisions/0001-web-hosting.md). Still missing (**Planned**): a real linter and formatter (`pnpm lint` only runs the typecheck), and CodeQL, dependency analysis and secret scanning in CI.
 
 ### MVP 1 — Landing page, sign-up and downloads
 
@@ -126,7 +128,7 @@ Partial state (**Current**): the landing page, the BFF, Google OAuth/OIDC with P
 
 **Exit:** the installed application opens securely and prepares the local database without sending finances to the cloud.
 
-Partial state (**Current**): context isolation, sandbox, `nodeIntegration: false`, navigation and permission guards, trusted-sender IPC, loopback-only binding and automatic SQLite migration on start exist. **Planned:** signed builds, a CSP for the local application, Electron fuses, a random port and per-run secret (the shell loads a fixed `http://localhost:3000` or `TALENTUM_URL`), system-browser login with keychain storage, onboarding (the route is a stub) and preferences selection.
+Partial state (**Current**): context isolation, sandbox, `nodeIntegration: false`, navigation and permission guards, trusted-sender IPC, loopback-only binding, automatic SQLite migration on start (development, Docker and, in code, the packaged app), the four-step persistent onboarding with currency and time-zone selection, and, for the packaged app only, a random loopback port with a per-run bootstrap secret. **Open:** the packaged startup and the delivery of the bootstrap secret to the renderer are unverified. **Planned:** signed builds, a CSP for the local application, Electron fuses, system-browser login with keychain storage and the fuller progressive snapshot of [PRODUCT.md](PRODUCT.md).
 
 ### MVP 3 — Accounts, categories and obligations
 
@@ -142,7 +144,7 @@ Partial state (**Current**): context isolation, sandbox, `nodeIntegration: false
 
 **Exit:** the user configures the bases needed to interpret a statement.
 
-Partial state (**Current**): the `LocalProfile`, `Institution`, `Account`, `Category`, `BalanceSnapshot` and `ScheduledObligation` tables exist with relations by IDs and money in `BigInt` cents, and the dashboard reads them. **Planned:** CRUD routes and validation in the local API, the screens that create and edit these records, encrypted Pix keys, own-transfer identification and merchant rules.
+Status (**Current**): profile, institutions, accounts, balances, income sources, categories, merchant rules and obligations have CRUD routes with validation, screens and relations by IDs, with money in `BigInt` cents; own Pix keys are encrypted and HMAC-indexed with a local device key ([ADR 0003](decisions/0003-local-device-key.md)). **Planned:** automatic identification of own transfers and automatic application of merchant rules.
 
 ### MVP 4 — OFX import
 
@@ -157,7 +159,7 @@ Partial state (**Current**): the `LocalProfile`, `Institution`, `Account`, `Cate
 
 **Exit:** a valid OFX file produces local transactions traceable to their source batch.
 
-Partial state: the `ImportBatch` and `Transaction` tables and the `ofx-data-extractor` dependency exist (**Current**); no parser or import route exists (**Planned**).
+Status (**Current**): OFX (SGML and XML) and CSV import with content-based detection, size, row and column limits, a two-step inspect-then-write flow, file fingerprint and per-entry deduplication, file metadata without content retention, per-line issues, the covered period and batch undo, all with synthetic fixtures. `ofx-data-extractor` was replaced by an own bounded reader ([ADR 0002](decisions/0002-own-ofx-parser.md)). **Open:** the parse timeout is declared but not enforced and the parser runs in-process.
 
 ### MVP 5 — Categorization and reconciliation
 
@@ -172,7 +174,7 @@ Partial state: the `ImportBatch` and `Transaction` tables and the `ofx-data-extr
 
 **Exit:** the user corrects ambiguities without losing the original data.
 
-Status: **Planned.** The `/conciliacao` screens are navigable layouts only.
+Status (**Current**): a persistent pending queue (one item per uncategorized imported entry), decisions to confirm, categorize, link an obligation, record interest/fee/discount/correction or pair an own transfer, before/after snapshots, transaction edit history and atomic reversal. **Planned:** deterministic categorization by local rules, confidence scoring, quick cash entries and automatic transfer detection.
 
 ### MVP 6 — Dashboard and Risk-Free Balance
 
@@ -188,7 +190,7 @@ Status: **Planned.** The `/conciliacao` screens are navigable layouts only.
 
 **Exit:** the first MVP release for Windows and Linux, with installation, usage, security and limitations documentation.
 
-Partial state (**Current**): the dashboard reads SQLite and computes consolidated balance, committed obligations up to period end, risk-free balance, income, expenses, daily average, period-over-period change and category breakdown in a pure module with unit tests; empty and error state illustrations exist for both themes. **Planned:** local due-date and stale-data alerts, end-to-end tests of the OFX flow (blocked on MVP 4) and the release documentation.
+Partial state (**Current**): the dashboard reads SQLite and computes consolidated balance, committed obligations up to period end, risk-free balance with its daily projection, monthly income and outflow limited to covered months, daily average, period-over-period change and category breakdown in a pure module with unit tests; the gain/loss chart tokens are ratified; empty and error state illustrations exist for both themes; end-to-end tests of the import flow exist and run against a live backend. **Open:** the verdict and the projection disagree on currency filtering (L-4 in [PRODUCT.md](PRODUCT.md)). **Planned:** local due-date and stale-data alerts and the release documentation.
 
 ## Later stages: one macro-feature per stage
 
@@ -212,7 +214,7 @@ Actionable local notifications for bills, statements, pending imports and budget
 
 ### Stage 11 — History and restoration
 
-Filterable timeline, events per domain, restore points, safe undo/redo, snapshots before migrations and a secret-free trail.
+Filterable timeline, events per domain, restore points, safe undo/redo, snapshots before migrations and a secret-free trail. **Current** groundwork from the MVP: a redacted local timeline for imports, edits and reconciliation with reversal, `DatabaseBackup` metadata and a destructive-migration preflight; no code creates backups yet.
 
 ### Stage 12 — Goals and savings pots
 

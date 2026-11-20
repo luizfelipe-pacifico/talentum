@@ -12,6 +12,8 @@ export const PAGE_META: { prefix: string; title: string; context: string }[] = [
   { prefix: '/historico', title: 'Histórico e perfil', context: 'Trilha de eventos, dados locais e progresso' },
   { prefix: '/perfil/privacidade', title: 'Dados e backup', context: 'Banco local, exportação e backup cifrado' },
   { prefix: '/perfil', title: 'Perfil e progresso', context: 'Missões, XP, níveis e conquistas' },
+  { prefix: '/contas/nova', title: 'Nova conta', context: 'Onde você mantém dinheiro' },
+  { prefix: '/contas', title: 'Contas e saldos', context: 'Instituições, contas, saldos e chaves PIX próprias' },
   { prefix: '/configuracoes', title: 'Configurações', context: 'Preferências do aplicativo' },
   { prefix: '/onboarding', title: 'Primeiro acesso', context: 'Fotografia financeira inicial e privacidade local' },
   { prefix: '/layout-guide', title: 'Guia de layout', context: 'Tokens, componentes e regras do sistema visual' },

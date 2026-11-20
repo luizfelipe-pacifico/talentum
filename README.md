@@ -14,6 +14,7 @@ https://talentum-tech.vercel.app
   [![Plataformas: Windows e Linux](https://img.shields.io/badge/plataformas-Windows%20%7C%20Linux-1A110A)](#arquitetura)
   [![Dados: local-first](https://img.shields.io/badge/dados-local--first-5C4033)](#privacidade-por-princípio)
   [![Contribuições: bem-vindas](https://img.shields.io/badge/contribuições-bem--vindas-4A4A4A)](#como-contribuir)
+  [![Licença: MIT](https://img.shields.io/badge/licença-MIT-B8773D)](./LICENSE)
 </div>
 
 > *Talentum* vem do latim: uma unidade de grande valor e, por extensão, aquilo que nos foi confiado para administrar e multiplicar.
@@ -21,7 +22,7 @@ https://talentum-tech.vercel.app
 O Talentum nasce para quem quer cuidar melhor do dinheiro, mas não tem tempo para alimentar planilhas ou classificar cada compra manualmente. O aplicativo pretende importar extratos, organizar transações, antecipar compromissos e transformar dados financeiros em próximos passos claros — mantendo os dados sensíveis no dispositivo do usuário.
 
 > [!IMPORTANT]
-> O projeto está em fase inicial de especificação e estruturação. As telas e capacidades descritas abaixo representam a visão do produto e não devem ser interpretadas como funcionalidades já disponíveis.
+> O projeto está em fase inicial. As telas e capacidades descritas abaixo representam a visão do produto; o que já está implementado e verificável está listado em [Estado do projeto](#estado-do-projeto). Tudo o que não aparece lá ainda não existe.
 
 ## O problema que queremos resolver
 
@@ -145,7 +146,16 @@ Os ícones usados neste README pertencem ao [Bootstrap Icons](https://icons.getb
 
 ## Estado do projeto
 
-O repositório está em **pré-alpha**. Hoje ele contém a visão consolidada, documentação, identidade visual, base Next.js full-stack, API REST inicial, Prisma/SQLite, Docker e shell Electron. Os módulos financeiros e serviços Cloudflare ainda serão implementados.
+O repositório está em **pré-alpha**. Hoje ele contém a visão consolidada, documentação, identidade visual, base Next.js full-stack, API REST local, Prisma/SQLite, Docker e shell Electron.
+
+Já funcionam de ponta a ponta, sobre o banco local:
+
+- importação de extrato em **CSV e OFX**, com prévia antes de gravar, conferência do papel de cada coluna, deduplicação por arquivo e por lançamento, gravação atômica e reversão do lote;
+- listagem de lançamentos;
+- cadastro de perfil local, instituições e contas com saldo informado;
+- painel com Saldo Livre de Risco, saldo consolidado, gastos do mês, média diária, comprometido no período e gastos por categoria.
+
+Ainda não implementados por pertencerem a etapas posteriores: importação de PDF, cartões e faturas, patrimônio e ARCA, metas, notícias, gamificação e backup cloud cifrado. A conciliação e a timeline local do MVP estão implementadas. A trilha Cloudflare de cadastro e download está preparada no código, mas ainda depende de segredos, OAuth, artefatos assinados e validação no ambiente publicado.
 
 ### Roadmap inicial
 
@@ -223,7 +233,7 @@ Parsers comunitários devem usar amostras sintéticas e anonimizadas. Nunca envi
 
 ## Licença e transparência
 
-O Talentum é desenvolvido de forma aberta e aceita colaboração da comunidade. A licença definitiva do código ainda precisa ser formalizada em um arquivo `LICENSE` antes da primeira distribuição pública. Dependências e recursos de terceiros permanecem sob suas respectivas licenças.
+O Talentum é distribuído sob a [licença MIT](./LICENSE). Dependências e recursos de terceiros permanecem sob suas respectivas licenças. Consulte também as políticas de contribuição, conduta e segurança em [`.github/`](./.github/).
 
 ---
 

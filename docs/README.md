@@ -14,7 +14,7 @@ This directory holds the project's sources of truth. Documentation is kept in a 
 | [`ROADMAP.md`](./ROADMAP.md) | MVP, macro-feature order, dependencies and completion criteria |
 | [`BEST_PRACTICES.md`](./BEST_PRACTICES.md) | Repository organization, engineering practices and the full development guide (setup, commands, Docker, tests, hooks, contribution) |
 | [`MEMORY-AI.md`](./MEMORY-AI.md) | How the maintainer thinks and works, for AI agents: communication, quality bar, design and copy philosophy, decision patterns and a lessons-learned log. Read at the start of every session and update in the same turn when a new preference appears |
-| [`decisions/`](./decisions/) | Architecture decision records, starting with [`0001-web-hosting.md`](./decisions/0001-web-hosting.md) |
+| [`decisions/`](./decisions/) | Architecture decision records; see [Recorded decisions](#recorded-decisions) |
 
 `App de Gestão Financeira ARCA.pdf` is the original source material. It is historical and non-normative; its still-relevant ideas are condensed in the appendix of `PRODUCT.md`.
 
@@ -48,3 +48,12 @@ Fix conflicts at the source; do not explain them only in code comments.
 | A decision with meaningful alternatives | a new ADR in `decisions/` |
 
 Update this index whenever a document is added, removed, renamed or changes responsibility.
+
+## Recorded decisions
+
+| ADR | Subject |
+| --- | --- |
+| [`0001-web-hosting.md`](./decisions/0001-web-hosting.md) | Landing page on Vercel, backend on Cloudflare Workers |
+| [`0002-own-ofx-parser.md`](./decisions/0002-own-ofx-parser.md) | Own bounded OFX reader instead of `ofx-data-extractor` |
+| [`0003-local-device-key.md`](./decisions/0003-local-device-key.md) | Where the secret that protects own Pix identifiers lives |
+| [`0004-electron-packaging.md`](./decisions/0004-electron-packaging.md) | Desktop packaging with `electron-builder` (NSIS and AppImage) |

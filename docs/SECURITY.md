@@ -15,6 +15,8 @@ This document is the normative security and privacy reference for Talentum. It c
 - [CORS, response headers and CSP](#cors-response-headers-and-csp)
 - [Electron hardening](#electron-hardening)
 - [Local API boundary](#local-api-boundary)
+- [Statement import](#statement-import)
+- [Own Pix identifiers](#own-pix-identifiers)
 - [Controls by environment](#controls-by-environment)
 - [Secrets management](#secrets-management)
 - [Files, AI and hostile content](#files-ai-and-hostile-content)
@@ -52,9 +54,10 @@ Financial data stays on the device (local SQLite, accessed only by the local bac
 
 | Threat | Minimum control | Status |
 | --- | --- | --- |
-| Malicious import file | size limits, real type detection, isolated parser and timeout | **Planned** (no statement parser exists yet) |
-| Local API reached by another process or site | loopback bind, `Host` check, controlled origin and a per-session ephemeral secret | `Host` check **Current**; per-session secret **Planned** |
-| Theft of the local database | operating-system permissions, optional encryption, no data in logs | **Planned** (no encryption option yet) |
+| Malicious import file | size limits, real type detection, isolated parser and timeout | **Current**: size, row, column and field limits, content-based format detection and a bounded in-process parser ([Statement import](#statement-import)); **Open**: the parse timeout is declared but not enforced and the parser is not process-isolated |
+| Hostile file name | the original name is treated as a label, never as a path | **Current**: the name is sanitized, stored only as metadata and the file is never written to disk |
+| Local API reached by another process or site | loopback bind, `Host` check, controlled origin and a per-session ephemeral secret | loopback bind and `Host` check **Current**; per-run bootstrap secret **Current** in code for the packaged app only (delivery to the renderer unverified, **Open**); origin control **Planned** |
+| Theft of the local database | operating-system permissions, optional encryption, no data in logs | own Pix identifiers encrypted and HMAC-indexed with a device key kept outside the database (**Current**, [Own Pix identifiers](#own-pix-identifiers)); whole-database encryption option **Planned** |
 | Theft of the remote backup | AES-256-GCM on the client, key never on the server | **Planned** (no backup feature yet) |
 | OAuth hijacking | PKCE, `state`, nonce, strict redirect and short-lived tokens | **Current** for the web login |
 | Compromised dependency | lockfile, review, alerts and controlled updates | lockfile **Current**; alerts and automated review **Planned** |
@@ -206,15 +209,15 @@ The original plan to store codes in KV or a Durable Object is superseded by the 
 Status of each control in `electron/main.cjs` and `electron/preload.cjs`:
 
 - **Current**: `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`.
-- **Current**: the preload exposes only three window functions (`minimize`, `toggleMaximize`, `close`) through `contextBridge`.
+- **Current**: the preload exposes, through `contextBridge`, only three window functions (`minimize`, `toggleMaximize`, `close`) and `bootstrapSecret()`, which returns the per-run local bootstrap secret from the renderer's environment or `null` (see [Local API boundary](#local-api-boundary)). It never exposes `ipcRenderer`, the filesystem or `child_process` (`tests/electron-security.test.mjs`).
 - **Current**: `setWindowOpenHandler` denies every new window; `will-navigate` blocks navigation outside the app origin.
 - **Current**: external links open in the system browser only when the protocol is `https:` and the host is on a fixed allowlist.
 - **Current**: the default session denies every permission request.
 - **Current**: IPC handlers act only when the sender frame belongs to the app origin.
 - **Current**: single-instance lock and no application menu.
-- **Current**: the window loads the fixed `TALENTUM_URL` or `http://localhost:3000`; no remote content is loaded with Electron privileges.
+- **Current**: in development and Docker the window loads `TALENTUM_URL` or `http://localhost:3000`; a packaged build without `TALENTUM_URL` starts its own backend on a random `127.0.0.1` port and loads that origin. No remote content is loaded with Electron privileges.
 - **Planned**: a restrictive CSP for the renderer (see above).
-- **Planned**: Electron fuses, code signing and signed automatic updates once distribution exists.
+- **Planned**: Electron fuses, code signing and signed automatic updates once distribution exists. Packaging with `electron-builder` is configured and produces unsigned test artifacts only ([ADR 0004](decisions/0004-electron-packaging.md)).
 - **Planned**: never accept invalid certificates nor disable Chromium protections (no code does so today; the rule applies to future changes).
 
 ## Local API boundary
@@ -223,10 +226,44 @@ Status of each control in `electron/main.cjs` and `electron/preload.cjs`:
 - **Current**: `src/middleware.ts` rejects every `/api` request whose `Host` is not `localhost`, `127.0.0.1` or `[::1]`, blocking DNS rebinding.
 - **Current**: Docker Compose publishes the local app only on `127.0.0.1`.
 - **Current**: every route except `/api/action-codes` (bootstrap) and `/api/health/live` (infrastructure probe without application data) requires a local action code.
-- **Planned**: a per-session ephemeral secret shared only between Electron and the local backend. Today any loopback process can request action codes, so the action code does not authenticate the caller.
+- **Current in code, packaged app only**: a per-run ephemeral secret. The packaged Electron main process generates 32 random bytes as `TALENTUM_LOCAL_BOOTSTRAP_SECRET` for the backend it spawns; when that variable is set, `POST /api/action-codes` issues a code only to a caller presenting the same value in `X-Talentum-Bootstrap` (timing-safe comparison, `403 BOOTSTRAP_DENIED` otherwise). **Open**: the secret is set only in the spawned server's environment while the preload reads the renderer's own `process.env`, so delivery to the renderer is unverified; and the preload makes the value readable by any script in the renderer. In development and Docker the variable is unset and any loopback process can request action codes, so the action code does not authenticate the caller there.
 - **Planned**: origin control on the local API (no `Origin` check today).
-- **Planned**: a random port instead of the fixed port 3000.
+- **Current in code, packaged app only**: a random loopback port chosen at start; development and Docker keep the fixed port 3000.
 - **Planned**: a rate limit on the local API.
+
+## Statement import
+
+Status: **Current**. Controls implemented in `src/server/import/`, all applied before any write:
+
+- a size ceiling (8 MiB) checked on the uploaded file before its bytes are copied into a buffer, plus ceilings on rows, columns and characters per field (`limits.ts`). **Open**: `request.formData()` has already buffered the multipart body when the check runs, and no HTTP-level body limit exists;
+- the format is recognized by content; the declared extension and `Content-Type` decide nothing;
+- a control byte in the file fails the import: a statement is text, and binary content disguised as CSV is the vector to block (`BINARY_CONTENT`);
+- decoding tries strict UTF-8 before Windows-1252, in that order: the reverse would silently decode a UTF-8 file wrongly;
+- no embedded content is executed, and the OFX reader resolves no external entity ([ADR 0002](decisions/0002-own-ofx-parser.md));
+- the original name is sanitized and used only as a label; the file is never written to disk;
+- the statement content is not retained: `ImportFile` stores name, size, type, encoding and hash;
+- error messages use a stable code and generic text, with no local path, SQL, internal name or document excerpt;
+- every importer query is scoped by `profileId`, and the target account is validated as belonging to the profile: an opaque ID is not authorization.
+
+**Open**: `PARSE_TIMEOUT_MS` is declared in `limits.ts` but no code enforces it, and the parser runs inside the request process rather than in an isolated worker.
+
+Coverage: `tests/import-inspect.test.mjs` (limits and refusals) and `tests/import-e2e.test.mjs` (missing, reused, other-route and other-method action codes; disguised binary; unknown account; invalid filter; `no-store`; no stack trace in the response). The end-to-end file runs against a live local backend and is skipped automatically when none answers.
+
+## Own Pix identifiers
+
+Status: **Current**. A Pix key is a CPF, CNPJ, phone number or e-mail address: a strong identifier, and in three of the four cases with a value space small enough for brute force (a CPF has 10^11 combinations). The controls are therefore specific:
+
+- the value is normalized before anything else, so the same key written in different ways produces the same index;
+- comparison uses **HMAC-SHA256 with a device subkey**, never a plain hash, which would fall to a precomputed table;
+- the recoverable value uses **AES-256-GCM** with a fresh nonce per operation and a versioned header; tampered content fails the authentication tag;
+- the index and encryption subkeys are derived with HKDF with distinct `info`: compromising one does not yield the other, and neither is the master key;
+- the master key lives in a file separate from SQLite (`talentum-local.key`), with restricted permissions where the filesystem supports them;
+- a listing returns **only the masked form**; the cleartext value requires an explicit request (`?reveal=1`) and the ciphertext never leaves the API;
+- the value never enters logs, the timeline, analytics, D1 or error messages.
+
+This protects against theft of the database alone: a copied `.db`, a forgotten backup. It **does not protect** against compromise of the whole device: whoever reads the database also reads the key file. The limit is declared and must not be presented otherwise in the interface. The full decision, with the discarded alternatives, is in [ADR 0003](decisions/0003-local-device-key.md).
+
+Coverage: `tests/pix.test.mjs` and `tests/accounts-e2e.test.mjs`, which also verify that a listing exposes neither the value, the index nor the ciphertext.
 
 ## Controls by environment
 
@@ -238,10 +275,10 @@ Status of each control in `electron/main.cjs` and `electron/preload.cjs`:
 | Rate limit/WAF/Turnstile | edge and application; two buckets **Current**, the rest **Planned** | cloud backend; local API limit **Planned** |
 | Tokens | `HttpOnly` cookie in the BFF with rotation; **Current** | access token in memory, refresh token in the OS vault; **Planned** |
 | Database | D1 with per-row/resource authorization in the application; **Current** for existing routes | SQLite reached only by the local backend; **Current** |
-| Secrets | bindings/secret store, never in the bundle; **Current** | no client secret; local keys protected by the OS; **Planned** |
-| Software integrity | CI, dependencies and artifacts; **Planned** | code signing, update and manifest; **Planned** |
+| Secrets | bindings/secret store, never in the bundle; **Current** | no client secret; the local device key is a separate file with `0600` permissions where supported (**Current**, [ADR 0003](decisions/0003-local-device-key.md)); OS-vault protection **Planned** |
+| Software integrity | CI builds and tests **Current** (`.github/workflows/ci.yml`); dependency alerts, secret scanning and artifact verification **Planned** | code signing, update and manifest; **Planned** (unsigned `electron-builder` packaging only) |
 | Isolation | headers, CORS and cache; headers **Current**, CORS **Planned** | sandbox, context isolation, minimal IPC **Current**; fuses **Planned** |
-| Audit | login, session, moderation and download; **Planned** (`security_events` and `audit_events` tables exist but are not written) | local technical events without financial data; **Planned** |
+| Audit | login, session, moderation and download; **Planned** (`security_events` and `audit_events` tables exist but are not written) | redacted local timeline of imports, edits and reconciliation decisions without amounts, keys or file content **Current**; security-event log **Planned** |
 
 ## Secrets management
 
@@ -285,10 +322,10 @@ Setup and deployment steps for the Worker are in [ARCHITECTURE.md](ARCHITECTURE.
 
 ## Files, AI and hostile content
 
-Status: **Planned**. No statement parser, news feature or AI integration exists in the code; `pdfjs-dist` and `ofx-data-extractor` are installed but unused.
+Status: **Current** for CSV and OFX import (see [Statement import](#statement-import)); **Planned** for PDF, news and AI, none of which exists in the code. `pdfjs-dist` is installed but unused; `ofx-data-extractor` was removed.
 
-- import files get size limits, real type detection, an isolated parser and a timeout;
-- parsers are tested with invalid and hostile files before release;
+- import files get size limits, real type detection, an isolated parser and a timeout (CSV/OFX Current except the timeout and process isolation, which are Open);
+- parsers are tested with invalid and hostile files before release (Current for CSV/OFX with synthetic fixtures);
 - financial data is never sent to Workers AI or any external model;
 - news content is sanitized, rendered under CSP, and its links open externally and safely;
 - model prompts separate instructions from content, and the model gets no tools and no private data.
@@ -327,7 +364,7 @@ Without a documented recovery strategy, E2EE backup must not be presented as rea
 - **Current**: D1 stores only release metadata, artifact hashes and download grants, never installers.
 - **Planned**: installers as signed artifacts in GitHub Releases, never part of the landing page's executable bundle.
 - **Open**: download grants are recorded in D1, but the BFF redirects straight to the artifact's `download_url` and nothing validates the grant.
-- **Planned/Open**: a CI-generated and validated allowlist manifest of the package uploaded to Vercel. There is no CI and no manifest; `Dockerfile.web` copies the whole repository (minus `.dockerignore`) into the image context.
+- **Planned/Open**: a CI-generated and validated allowlist manifest of the package uploaded to Vercel. CI exists but produces no manifest; `Dockerfile.web` copies the whole repository (minus `.dockerignore`) into the image context.
 - **Planned**: previews follow the same isolation and never receive production secrets.
 
 ## Supply chain, CI and release integrity
@@ -337,7 +374,9 @@ Without a documented recovery strategy, E2EE backup must not be presented as rea
 - **Current**: `.gitignore` ignores `.env*` (except `.env.example`), `.dev.vars*` (except the example), SQLite files and journals, dumps, backups, private key and keystore formats, logs, traces, `.wrangler/`, `.vercel/`, build output and caches. `.dockerignore` excludes `.env*`, databases and `temp/` from image contexts.
 - **Current**: examples use unmistakable placeholders only.
 - **Current**: versioned Git hooks in `.githooks/` run `pnpm typecheck` and `pnpm test` before every commit and push (install with `pnpm hooks:install`). They do not scan for secrets; the manual gate in `CLAUDE.md` covers that.
-- **Planned**: CI secret scanning on every diff and, periodically, on the full history. There is no CI in the repository.
+- **Current**: `.gitignore` also covers `*.key` (the local device key) and `release/` (packaging output).
+- **Current**: CI (`.github/workflows/ci.yml`) runs on pushes and pull requests with read-only `contents` permission and repeats Prisma validation, typecheck, the test suite and the builds.
+- **Planned**: CI secret scanning on every diff and, periodically, on the full history. The current workflow has no secret-scanning step.
 - **Planned**: branch protection that blocks merges when the scanner finds a secret.
 - **Planned** (recommended): Dependabot or Renovate, SAST, dependency analysis and CodeQL.
 - A detected credential is revoked and rotated before it is removed from history, and its value is never printed in issues, logs or review comments.
@@ -349,7 +388,8 @@ Status: **Current** as a historical record. A local scan for sensitive names, pr
 ### Release integrity
 
 - **Current**: the downloads page shows each artifact's SHA-256 so users can verify it before running.
-- **Planned**: code signing, signed updates and an update manifest for the desktop app.
+- **Planned**: code signing, signed updates and an update manifest for the desktop app. Locally built `electron-builder` artifacts are unsigned and are for testing only.
+- **Current**: `.github/SECURITY.md` asks reporters to use GitHub's private vulnerability reporting with synthetic data only.
 
 ## Verified controls and their tests
 
@@ -370,6 +410,9 @@ Status: **Current**. Verified in October 2026; each item has a test in `tests/re
 | logout clears the cookies even when the Worker fails | `web-worker-offline.test.mjs` |
 | the interface does not cite internal documentation; the layout guide exists only in development | `ui-shell.test.mjs` |
 | error pages offer recovery without diagnostics | `error-pages.test.mjs` |
+| every local API route except `action-codes` and `health` requires an action code and scopes by profile | `dashboard-honesty.test.mjs` |
+
+Outside `tests/regression/`, contract and unit tests cover the controls added with the MVP features: `electron-security.test.mjs` (window isolation, enumerated preload surface, packaged backend with random port, `userData` database and per-run secret), `pix.test.mjs` and `accounts-e2e.test.mjs` (Pix identifier cryptography and masking), `import-inspect.test.mjs` and `import-e2e.test.mjs` (import limits and refusals), `reconciliation-contracts.test.mjs` and `timeline-contracts.test.mjs` (action code, profile scoping, reversible decisions, redacted events and the migration backup gate). The two `*-e2e` files are skipped when no local backend answers.
 
 ## Incident response
 
@@ -410,7 +453,10 @@ A suspected exposure requires: stopping the affected distribution, preserving ev
 6. **Action-code context binding**: `context_hash` is the same for every caller (hash of the BFF secret); binding to session or origin is not implemented in either backend.
 7. **`Cache-Control` gaps**: the `403` from the local `/api/system/status` and the BFF route handlers do not set `Cache-Control: no-store`.
 8. **Download grants not enforced**: grants are written to D1 but never validated; the BFF redirects to the artifact URL directly.
-9. **Vercel package allowlist**: no CI or manifest exists, and `Dockerfile.web` copies the whole repository; decide how the Vercel upload is restricted.
+9. **Vercel package allowlist**: CI exists but produces no manifest, and `Dockerfile.web` copies the whole repository; decide how the Vercel upload is restricted.
 10. **Local app CSP**: decide the CSP for the local app and Electron renderer (the local app sends none today).
 11. **Forwarded IP trust**: the BFF trusts the first `X-Forwarded-For` value; this is correct behind Vercel's proxy but not when the BFF is exposed directly (for example, outside Compose's loopback binding).
 12. **E2EE backup key recovery**: no recovery mechanism has been decided.
+13. **Local bootstrap secret delivery**: the packaged app gives the secret only to the spawned backend; whether the renderer can read it through the preload is unverified, and the value is readable by any renderer script. A packaged smoke test must confirm action-code issuance.
+14. **Import hardening gaps**: the parse timeout is declared but not enforced, the parser is not process-isolated, and the upload is buffered by `request.formData()` before the size check.
+15. **Migration gate coverage**: the destructive-migration preflight runs only through `scripts/dev.mjs`; the Docker image and the packaged app run `prisma migrate deploy` without it, and no code yet creates the `DatabaseBackup` rows it requires.

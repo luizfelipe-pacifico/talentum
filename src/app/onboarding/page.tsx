@@ -1,2 +1,2 @@
-import { OnboardingPage } from '@/components/demo-pages';
-export default function Page() { return <OnboardingPage />; }
+import { redirect } from 'next/navigation';
+export default function Page() { redirect('/onboarding/perfil'); }

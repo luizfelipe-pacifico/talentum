@@ -35,17 +35,17 @@ This document is the single development reference for Talentum: how the reposito
 
 Status: **Current** (pre-alpha).
 
-- A local Next.js application in `src/` renders the product UI and exposes six local API route handlers under `src/app/api` (`action-codes`, `dashboard`, `dashboard/categories`, `health/live`, `local-summary`, `system/status`). Server-only code lives in `src/server`.
-- The dashboard reads real data from the local SQLite database through `/api/dashboard` (formulas in `src/server/dashboard-metrics.ts`). `src/lib/demo-data.ts` holds only navigation and theme configuration, not financial data. Other screens are navigable layouts whose buttons and demonstration states do not imply finished persistence or integrations.
-- Prisma/SQLite holds nine models (see [DATABASE.md](DATABASE.md)) created by three migrations.
-- The Electron shell (`electron/main.cjs`, `electron/preload.cjs`) opens a hardened window on the local application.
+- A local Next.js application in `src/` renders the product UI and exposes 39 local API route handlers under `src/app/api` (see [ARCHITECTURE.md](ARCHITECTURE.md)). Server-only code lives in `src/server`, with the importer in `src/server/import/`.
+- The local financial features 1 to 8 of [PRODUCT.md](PRODUCT.md) have a vertical implementation over local SQLite: onboarding, profile, institutions, accounts and own Pix keys, categories, income, obligations and merchant rules, CSV/OFX import with batch undo, the transaction listing and detail, reconciliation, the dashboard (formulas in `src/server/dashboard-metrics.ts`) and the timeline. The remaining routes under `src/app/` (cards, net worth, goals, news, profile) are empty-state screens awaiting implementation; `src/lib/demo-data.ts` holds only navigation configuration and labels, never financial data.
+- Prisma/SQLite holds 24 models (see [DATABASE.md](DATABASE.md)) created by 11 migrations.
+- The Electron shell (`electron/main.cjs`, `electron/preload.cjs`) opens a hardened window on the local application and, when packaged, starts its own backend ([ADR 0004](decisions/0004-electron-packaging.md)).
 - `apps/web/` (`@talentum/web`) holds the public landing page, its minimal BFF and the protected `/downloads` page.
 - The Cloudflare Worker (`cloudflare/src/index.ts`) implements `/health`, Worker action codes, Google OAuth/OIDC with PKCE (`/api/auth/start`, `/api/auth/callback`), refresh-token rotation with reuse detection (`/api/auth/refresh`), logout, `/api/me`, `/api/releases` and release download grants, over two D1 migrations.
-- Import (OFX/CSV), categorization, reconciliation and the remaining financial modules are not implemented. `ofx-data-extractor` and `pdfjs-dist` are installed but unused.
+- The cloud track has contracts and an implementation, but configuring secrets and OAuth, producing signed artifacts and validating the published environment remain mandatory operational steps. Automatic categorization by merchant rules, PDF import, cards, net worth and the later stages are not implemented; `pdfjs-dist` is installed but unused.
 
 ## Project organization
 
-Status: **Current** for the tree below. The repository has no `packages/` directory, no `turbo.json`, no `.github/` directory and no `LICENSE` file.
+Status: **Current** for the tree below. The repository has no `packages/` directory and no `turbo.json`.
 
 ```text
 talentum/
@@ -64,12 +64,14 @@ talentum/
 ├── cloudflare/              # Cloudflare Worker, D1 migrations, and Wrangler config
 ├── design/                  # Source artwork for the state illustrations
 ├── public/                  # Static assets served by the local application
-├── scripts/                 # Dev, typecheck, and asset-generation scripts
+├── scripts/                 # Dev, typecheck, migration preflight, desktop packaging, palette validation and asset generation
 ├── tests/                   # Node test suite; regression tests in tests/regression/
 ├── .githooks/               # Versioned pre-commit and pre-push hooks
+├── .github/                 # CI workflow, CONTRIBUTING, CODE_OF_CONDUCT and SECURITY policy
 ├── .claude/                 # Claude Code agents and skills for this project
 ├── docs/                    # Architecture, decisions, guides, and project policies
 ├── README.md                # Project overview and onboarding
+├── LICENSE                  # Open-source license
 ├── CLAUDE.md                # Claude Code working rules
 ├── AGENTS.md                # Codex and agent working rules; defers to CLAUDE.md
 ├── package.json             # Root scripts and dependencies
@@ -143,10 +145,10 @@ Status: **Current** rule.
 Status: **Current** for what is installed; usage noted per item.
 
 - Next.js App Router, React, Electron, Prisma/SQLite and PDF.js (`pdfjs-dist`) are installed. Tailwind CSS is installed and wired into PostCSS but not imported anywhere; the interface is hand-written CSS. `pdfjs-dist` is not used yet.
-- The generic "Node-OFX" named in the original product document was made concrete as `ofx-data-extractor`, with types, normalization and validation. It replaces the legacy `ofx` package, whose repository is known as `node-ofx`. It is installed but not used yet.
+- The generic "Node-OFX" had been made concrete as `ofx-data-extractor`. When Feature 4 was implemented the library proved unsuitable: it fails on OFX 1.x/SGML, the format Brazilian banks export, and normalizes money to `number`, which [DATABASE.md](DATABASE.md) forbids. The dependency was **removed** and replaced by an own bounded reader in `src/server/import/ofx.ts`; the decision, with alternatives and consequences, is [ADR 0002](decisions/0002-own-ofx-parser.md).
 - AES-256-GCM uses `node:crypto` and needs no extra library.
 - **Planned:** Workers AI and Ollama are future HTTP integrations and need no SDK now.
-- **Open:** the `.exe`/AppImage packager still depends on an ADR and has not been chosen.
+- **Current:** `electron-builder` is the packager for the Windows NSIS installer and the Linux AppImage ([ADR 0004](decisions/0004-electron-packaging.md)).
 
 ## Icons and assets
 
@@ -206,8 +208,11 @@ Status: **Current**. This table lists every script in the root `package.json`.
 
 | Command | Current behavior |
 | --- | --- |
-| `pnpm dev` | runs `scripts/dev.mjs`: frees port 3000, waits for it, applies `prisma migrate deploy`, removes `.next` and starts `next dev` on `127.0.0.1:3000` |
+| `pnpm dev` | runs `scripts/dev.mjs`: frees port 3000, waits for it, runs the migration preflight, applies `prisma migrate deploy`, removes `.next` and starts `next dev` on `127.0.0.1:3000` |
 | `pnpm dev:all` | runs `scripts/dev-all.mjs`: opens Electron on `http://localhost:3000`, attaching to a server that already answers or starting its own |
+| `pnpm desktop:prepare` | runs `scripts/desktop-prepare.mjs`: `prisma generate`, a standalone `next build` and a copy of `.next/static` and `public/` into the standalone output |
+| `pnpm desktop:build:win` | `desktop:prepare`, then `electron-builder --win nsis --x64` into the ignored `release/` directory (unsigned) |
+| `pnpm desktop:build:linux` | `desktop:prepare`, then `electron-builder --linux AppImage --x64` into `release/` (unsigned) |
 | `pnpm docker:build` | builds the isolated images of the local application and the landing page |
 | `pnpm docker:up` | builds and starts the application on `127.0.0.1:3000` and the landing page on `127.0.0.1:3100` |
 | `pnpm docker:up:detached` | starts both services in the background and waits for their healthchecks |
@@ -219,6 +224,7 @@ Status: **Current**. This table lists every script in the root `package.json`.
 | `pnpm test` | runs `node --experimental-strip-types --test "tests/**/*.test.mjs"` |
 | `pnpm prisma:generate` | runs `prisma generate` |
 | `pnpm prisma:validate` | runs `prisma validate` |
+| `pnpm prisma:preflight` | runs `scripts/migration-preflight.mjs`: stops when a pending migration is destructive and no verified backup is named in `TALENTUM_VERIFIED_BACKUP_ID` |
 | `pnpm prisma:migrate` | runs `prisma migrate dev` (creates and applies local development migrations) |
 | `pnpm lp:lut` | generates Talentum's default image LUT (`.cube`), matching the landing page's CSS and SVG image filter |
 | `pnpm lp:icones` | generates the landing page SVG icon map from `bootstrap-icons` |
@@ -244,7 +250,7 @@ The landing page has its own scripts in `apps/web/package.json`; run it on the h
 
 Status: **Current**.
 
-- `pnpm dev` and `pnpm dev:all` run `prisma migrate deploy` before starting the server. `scripts/dev.mjs` terminates whatever process holds port 3000 (on Windows via `netstat`/`taskkill`, elsewhere via `lsof`/`kill`), waits up to five seconds for the port to be free, applies migrations, removes `.next` and starts `next dev` bound to `127.0.0.1:3000`.
+- `pnpm dev` and `pnpm dev:all` run the migration preflight and then `prisma migrate deploy` before starting the server. The preflight inspects pending migrations; destructive SQL requires `TALENTUM_VERIFIED_BACKUP_ID` pointing to `DatabaseBackup` metadata with a verified status, checksum, size and the current schema version, and without it the process stops before changing the database. `scripts/dev.mjs` terminates whatever process holds port 3000 (on Windows via `netstat`/`taskkill`, elsewhere via `lsof`/`kill`), waits up to five seconds for the port to be free, applies migrations, removes `.next` and starts `next dev` bound to `127.0.0.1:3000`.
 - Electron runs on the host and points to `http://localhost:3000`, both for `pnpm dev` and for the server started by Compose. `TALENTUM_URL` overrides the address when necessary.
 - `pnpm dev:all` checks `GET /api/health/live` first. When the local backend already answers, the window attaches to it and no new server starts; closing the window in that mode does not stop the container or the other terminal. When nothing answers, the script starts the server and stops it together with the window.
 - `pnpm start` runs `next start` on the host.
@@ -258,7 +264,7 @@ Talentum's servers listen only on IPv4 loopback (`127.0.0.1`). Another local ser
 Status: **Current**.
 
 - `compose.yaml` defines two services: `talentum-local` (the local backend and desktop interface) published on `127.0.0.1:3000`, and `talentum-web` (only the landing page/BFF from `apps/web`) published on `127.0.0.1:3100`. Both have healthchecks and `restart: unless-stopped`.
-- `Dockerfile` (local application) uses an Ubuntu 24.04 base with Node.js 22 copied from the official image, runs as a non-root user, installs only the system packages needed for TLS/Prisma, and serves the Next.js standalone output directly, avoiding pnpm symlink incompatibilities on Windows. On start the container runs `prisma migrate deploy`, creates or updates `/data/talentum-local.db` and only then starts the server. The named volume `talentum-data` preserves SQLite across container recreation. Electron does not run inside the image.
+- `Dockerfile` (local application) uses an Ubuntu 24.04 base with Node.js 22 copied from the official image, runs as a non-root user, installs only the system packages needed for TLS/Prisma, and serves the Next.js standalone output directly, avoiding pnpm symlink incompatibilities on Windows. On start the container runs `prisma migrate deploy` (without the migration preflight, **Open**), creates or updates `/data/talentum-local.db` and only then starts the server. The named volume `talentum-data` preserves SQLite across container recreation. Electron does not run inside the image.
 - `Dockerfile.web` (landing page) uses `node:22-bookworm-slim`, builds `apps/web` and runs its standalone output as a non-root user. Its build stage runs `COPY . .`, so the whole repository (minus `.dockerignore` entries) enters the build context; see the isolation finding in [decisions/0001-web-hosting.md](decisions/0001-web-hosting.md).
 - Inside the container, the landing page reaches the Worker at `host.docker.internal:8787` by default (mapped with `extra_hosts` so it also works on Linux), overridable with `DOCKER_CLOUDFLARE_API_BASE_URL`. Local integration values belong in the ignored `.env`, never in the versioned Compose file.
 
@@ -273,6 +279,7 @@ Status: **Current**.
 - The local schema is `prisma/schema.prisma`; see [DATABASE.md](DATABASE.md) before any schema work.
 - Create migrations with `pnpm prisma:migrate --name <name>`. Do not use `prisma db push` as a project workflow.
 - Migrations that were already applied are immutable; a contract test enforces this.
+- The SQLite database already holds the profile, onboarding, financial core, obligations, income and rules, Pix identifiers, import details, transaction revisions, reconciliation, timeline and backup metadata (24 models). The local device key `talentum-local.key` lives next to the database file and is ignored by Git ([ADR 0003](decisions/0003-local-device-key.md)).
 - `pnpm typecheck` compares `prisma/schema.prisma` with the copy stored in the generated client and runs `prisma generate` only when they differ. On Windows the development server locks the Prisma DLL, and regenerating while it was open failed with `EPERM`; if the schema changed, stop the server before running the typecheck.
 
 ## Cloudflare development
@@ -311,14 +318,40 @@ Status: **Current**.
 - `pnpm test` uses Node's built-in runner (`node --test`) with no extra library. Every test file lives in `tests/` and ends in `.test.mjs`; the glob `tests/**/*.test.mjs` picks up both top-level and `tests/regression/` files.
 - The financial formulas live in `src/server/dashboard-metrics.ts`, a pure module without Prisma and without an implicit clock, and are tested directly: Node strips types natively and imports the `.ts` file without a build step. `--experimental-strip-types` is passed explicitly for compatibility from Node 22.13; from Node 22.18 it is unnecessary.
 - Worker tests do not read the source text: `tests/regression/helpers/worker.mjs` builds an in-memory D1 with `node:sqlite` and the real migrations from `cloudflare/migrations`, and imports `cloudflare/src/index.ts` directly. This requires Node with `node:sqlite` (22.13 or later).
-- Contract tests read the source code and check invariants that must not regress silently: the `X-Action-Code` requirement, `profileId` scoping in every `where` clause, no formatted monetary text in the backend, no Prisma in the frontend and immutability of applied migrations.
+- Contract tests read the source code and check invariants that must not regress silently: the `X-Action-Code` requirement, `profileId` scoping in every `where` clause, no formatted monetary text in the backend, no Prisma in the frontend and immutability of applied migrations. Feature-level contract tests: `onboarding-contracts.test.mjs` (relational migration, action code, profile scoping, optimistic concurrency and the four steps), `financial-planning-contracts.test.mjs` (categories, income, obligations and deterministic rules), `transaction-detail-contracts.test.mjs` (detail, edit and history), `reconciliation-contracts.test.mjs`, `timeline-contracts.test.mjs` and `electron-security.test.mjs`.
 - No test depends on a credential or a personal service.
+
+The statement importer is tested in layers:
+
+| File | Layer | Needs a running server? |
+| --- | --- | --- |
+| `import-values.test.mjs` | monetary value and civil date | no |
+| `import-csv.test.mjs` | dialect, quoting, mapping and encoding | no |
+| `import-ofx.test.mjs` | OFX in SGML and in XML | no |
+| `import-inspect.test.mjs` | full inspection and security limits | no |
+| `import-e2e.test.mjs` | real HTTP flow and security controls | **yes** |
+
+The dashboard, accounts and colour validation have their own suites:
+
+| File | Layer | Needs a running server? |
+| --- | --- | --- |
+| `dashboard-metrics.test.mjs` | indicator formulas | no |
+| `dashboard-charts.test.mjs` | cash projection and monthly flow | no |
+| `palette.test.mjs` | palette validator | no |
+| `pix.test.mjs` | Pix identifier normalization and cryptography | no |
+| `accounts-e2e.test.mjs` | accounts, balances and Pix keys | **yes** |
+
+`tests/palette.test.mjs` does not only check that the validator runs: it requires its **verdicts to reproduce** those recorded in the dashboard specification of [PRODUCT.md](PRODUCT.md), the D-5 failures and the R-15 passes in both themes. If the validator disagrees with the document, one of the two is wrong and the test fails.
+
+The end-to-end tests run against the running backend (`pnpm dev` or `pnpm docker:up`) and are **skipped automatically** when no server answers, so `pnpm test` stays green offline. They create their own synthetic profile and account and undo the batches they create. Use `TALENTUM_E2E_URL` to point to another address. CI does not start a backend, so these two files are skipped there.
+
+The pure modules in `src/server/import/` use explicit `.ts` extensions in relative imports. This lets the Node runner import them directly without a build step, which is why `allowImportingTsExtensions` is enabled in `tsconfig.json`. For the same reason they do not use *parameter properties*: Node's `strip-only` mode does not support them.
 
 ### Minimum quality by area
 
 - Financial rules: unit tests for limits and rounding.
 - Persistence: migration and rollback tests. **Planned** for rollback; applied-migration immutability is **Current**.
-- Importers: synthetic fixtures and duplicate-detection tests. **Planned** with the importers.
+- Importers: synthetic fixtures and duplicate-detection tests. **Current** for CSV and OFX (see the table above).
 - External integrations: simulated in tests.
 - Critical flows: integration coverage before distribution.
 
@@ -347,8 +380,9 @@ Status: **Current**.
 ## Automated quality
 
 - **Current:** type checking (`pnpm typecheck`, also exposed as `pnpm lint`), the Node test suite and the Git hooks above.
+- **Current:** continuous integration in `.github/workflows/ci.yml`, on pushes to `main` and `feat/conclusao-mvp` and on pull requests, with read-only `contents` permission. On Ubuntu 24.04 with Node 22.13.0 and pnpm 11.1.2 it runs `pnpm install --frozen-lockfile`, `prisma:generate`, `prisma:validate`, `typecheck`, `test`, `build`, `web:typecheck`, `web:build`, `cloudflare:build` and `cloudflare:test`.
 - **Planned:** reproducible formatting and linting rules (there is no formatter and no linter beyond the TypeScript compiler today).
-- **Planned:** continuous integration that runs formatting, static analysis, tests and builds, plus CodeQL, dependency alerts and secret scanning; the repository has no `.github/` workflows yet.
+- **Planned:** formatting and static analysis in CI, plus CodeQL, dependency alerts and secret scanning; the current workflow has none of these.
 - Cover business rules with unit tests and critical flows with integration or end-to-end tests.
 - Do not use coverage percentage as the only quality measure; verify meaningful behavior and edge cases.
 - Interface changes are validated in both the light and the dark theme, as required by `CLAUDE.md` and detailed in [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md).
@@ -357,7 +391,7 @@ Status: **Current**.
 
 - Keep `main` stable and use short-lived branches for features and fixes.
 - Make pull requests small and include context, scope, risks and verification instructions.
-- Require checks and review before merging application changes. **Planned:** required automated status checks depend on CI; until then the local hooks and reviewer verification are the gate.
+- Require checks and review before merging application changes. CI exists (**Current**); making it a required status check through branch protection is a repository setting this repository cannot prove (**Open**). Until confirmed, the local hooks and reviewer verification remain the gate.
 - Resolve review conversations and avoid unrelated refactors in the same change.
 - Protect `main` against deletion, force pushes and merges that bypass required checks.
 - Documentation-only changes may go directly to `main`; all other changes must use a dedicated branch.
@@ -422,7 +456,7 @@ When the project has a public API, use Semantic Versioning in the `MAJOR.MINOR.P
 - `MINOR` for backward-compatible features.
 - `PATCH` for backward-compatible fixes.
 
-Never modify an already published version. Record meaningful changes in a changelog and tag releases in Git. **Planned:** signed Windows/Linux installers published to GitHub Releases (see [ROADMAP.md](ROADMAP.md)); the packager is **Open** pending an ADR.
+Never modify an already published version. Record meaningful changes in a changelog and tag releases in Git. **Planned:** signed Windows/Linux installers published to GitHub Releases (see [ROADMAP.md](ROADMAP.md)). The packager is `electron-builder` ([ADR 0004](decisions/0004-electron-packaging.md)); local builds are unsigned and for testing only.
 
 ## Definition of done
 

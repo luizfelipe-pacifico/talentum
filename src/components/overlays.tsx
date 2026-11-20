@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useApp } from '@/components/app-state';
+import { AccountBalance } from '@/components/accounts';
+import { useAccounts } from '@/hooks/use-accounts';
 import { trapFocus } from '@/lib/focus-trap';
 import { StateArt, type StateArtName } from '@/components/state-art';
 
@@ -19,7 +22,7 @@ export function Overlays() {
     {app.overlay === 'express' && <UnavailableDialog title="Lançamento manual" text="Cadastre uma conta e as categorias pelo backend antes de criar um lançamento."/>}
     {app.overlay === 'import' && <ImportDialog/>}
     {app.overlay === 'onboarding' && <OnboardingDialog/>}
-    {app.overlay === 'conta' && <UnavailableDialog art="sem-contas" title="Contas" text="Nenhuma conta foi retornada pelo backend local."/>}
+    {app.overlay === 'conta' && <AccountsDialog/>}
   </>;
 }
 
@@ -35,29 +38,89 @@ function NotificationsDrawer() {
   </div>;
 }
 
+/* Seletor de contas.
+
+   Critério de conclusão da Feature 2 em docs/PRODUCT.md: criar, editar ou
+   desativar uma conta atualiza este seletor e o saldo consolidado por consulta
+   ao backend. Só contas ativas aparecem, porque são elas que compõem o total. */
+function AccountsDialog() {
+  const app = useApp();
+  const state = useAccounts();
+  const trapRef = useFocusTrap<HTMLDivElement>();
+
+  const body = () => {
+    if (state.status === 'loading') {
+      return <span className="skeleton skeleton-line" />;
+    }
+    if (state.status === 'error') {
+      return (
+        <div className="callout callout-warn" role="alert">
+          <i className="bi bi-exclamation-triangle"/>
+          <p className="small">Não foi possível consultar as contas. Nenhum saldo é exibido sem resposta do backend.</p>
+        </div>
+      );
+    }
+    if (!state.payload.hasProfile || state.payload.accounts.length === 0) {
+      return <div className="empty"><StateArt name="sem-contas" size="sm"/><p className="muted">Nenhuma conta cadastrada ainda.</p></div>;
+    }
+
+    const active = state.payload.accounts.filter((account) => account.isActive);
+    if (active.length === 0) return <p className="muted">Todas as contas estão desativadas.</p>;
+
+    return (
+      <table className="tbl tbl-data">
+        <caption className="sr-only">Contas ativas e o saldo conhecido de cada uma.</caption>
+        <tbody>
+          {active.map((account) => (
+            <tr key={account.id}>
+              <td>
+                <Link href={`/contas/${account.id}`} onClick={app.close}>{account.name}</Link>
+                {account.institution && <span className="small muted"> · {account.institution.name}</span>}
+              </td>
+              <td className="right"><AccountBalance account={account}/></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  };
+
+  return <div className="overlay">
+    <button type="button" className="overlay-scrim" aria-label="Fechar" onClick={app.close}/>
+    <div ref={trapRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Contas" className="dialog dialog-md">
+      <div className="row-between"><div><h2 className="dialog-title">Contas</h2><p className="small muted">Saldos conhecidos, consultados no banco local.</p></div><button type="button" className="close-button" onClick={app.close} aria-label="Fechar"><i className="bi bi-x-lg"/></button></div>
+      {body()}
+      <div className="row-tight">
+        <Link className="btn btn-primary" href="/contas" onClick={app.close}>Gerenciar contas</Link>
+        <Link className="btn btn-neutral" href="/contas/nova" onClick={app.close}>Cadastrar conta</Link>
+      </div>
+    </div>
+  </div>;
+}
+
 function UnavailableDialog({title,text,art}:{title:string;text:string;art?:StateArtName}) {
   const app=useApp();
   const trapRef=useFocusTrap<HTMLDivElement>();
   return <div className="overlay"><button type="button" className="overlay-scrim" aria-label="Fechar" onClick={app.close}/><div ref={trapRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className="dialog"><div className="row-between"><h2 className="dialog-title">{title}</h2><button type="button" className="close-button" onClick={app.close} aria-label="Fechar"><i className="bi bi-x-lg"/></button></div>{art&&<StateArt name={art} size="sm"/>}<p className="muted">{text}</p><button type="button" className="btn btn-neutral" onClick={app.close}>Fechar</button></div></div>;
 }
 
+/* A importação real mora em /extratos/importar: ela tem prévia, mapeamento de
+   colunas, escolha de conta e confirmação, que não cabem em um diálogo. O
+   atalho global apenas leva até lá. */
 function ImportDialog() {
   const app=useApp();
   const trapRef=useFocusTrap<HTMLDivElement>();
-  const inputRef=useRef<HTMLInputElement>(null);
-  const [fileName,setFileName]=useState<string>();
   return <div className="overlay">
     <button type="button" className="overlay-scrim" aria-label="Fechar" onClick={app.close}/>
     <div ref={trapRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Importar extrato" className="dialog dialog-md">
-      <div className="row-between"><div><h2 className="dialog-title">Importar extrato</h2><p className="small muted">Selecione um CSV ou OFX para a inspeção local.</p></div><button type="button" className="close-button" onClick={app.close} aria-label="Fechar"><i className="bi bi-x-lg"/></button></div>
-      <div className="dropzone">
-        <StateArt name="importar-extrato" size="sm"/>
-        <p><strong>{fileName ?? 'Nenhum arquivo selecionado'}</strong></p>
-        <p className="small muted">A leitura do arquivo e a gravação dos lançamentos ainda não estão disponíveis nesta versão.</p>
-        <input ref={inputRef} className="sr-only" type="file" accept=".csv,.ofx,text/csv,application/x-ofx" onChange={event=>setFileName(event.target.files?.[0]?.name)}/>
-        <button type="button" className="btn btn-primary" onClick={()=>inputRef.current?.click()}>Escolher arquivo</button>
+      <div className="row-between"><div><h2 className="dialog-title">Importar extrato</h2><p className="small muted">CSV ou OFX, processado no seu dispositivo.</p></div><button type="button" className="close-button" onClick={app.close} aria-label="Fechar"><i className="bi bi-x-lg"/></button></div>
+      <StateArt name="importar-extrato" size="sm"/>
+      <p className="muted">O assistente mostra a leitura do arquivo antes de gravar qualquer coisa: período coberto, lançamentos reconhecidos e linhas com problema.</p>
+      <div className="callout callout-info"><i className="bi bi-shield-lock"/><p className="small">O extrato é lido pelo backend local e não é enviado à nuvem. O conteúdo do arquivo não é armazenado.</p></div>
+      <div className="row-tight">
+        <Link className="btn btn-primary" href="/extratos/importar" onClick={app.close}>Abrir o assistente</Link>
+        <button type="button" className="btn btn-neutral" onClick={app.close}>Fechar</button>
       </div>
-      {fileName&&<div className="callout callout-info"><i className="bi bi-shield-lock"/><p className="small">O arquivo foi apenas selecionado no navegador. Nenhum dado foi importado ou enviado.</p></div>}
     </div>
   </div>;
 }

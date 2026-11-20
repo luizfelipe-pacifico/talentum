@@ -120,9 +120,9 @@ The local app is single-profile per database, but every local query is still sco
 
 ## Local SQLite (Prisma)
 
-Status: **Current**. Source of truth: `prisma/schema.prisma`, datasource `sqlite`, URL from the `DATABASE_URL` environment variable. Nine models are implemented. All IDs are `String @id @default(uuid())`. Unless stated otherwise, every model has `createdAt` (default now) and `updatedAt` (auto-updated).
+Status: **Current**. Source of truth: `prisma/schema.prisma`, datasource `sqlite`, URL from the `DATABASE_URL` environment variable. Twenty-four models are implemented. All IDs are `String @id @default(uuid())`. Unless stated otherwise, every model has `createdAt` (default now) and `updatedAt` (auto-updated); append-only records (snapshots, revisions, decisions, adjustments, transfers, events, import files and issues, backups) have only `createdAt`.
 
-Every model except `LocalProfile` and `BalanceSnapshot` references `LocalProfile` through `profileId` with `onDelete: Cascade`: deleting the profile deletes all its local data. Status and kind columns are free `String` values; the database does not restrict them with `CHECK` constraints, so the allowed values below are enforced only by application code.
+Every model except `LocalProfile`, `BalanceSnapshot`, `ImportFile` and `ImportIssue` references `LocalProfile` through `profileId` with `onDelete: Cascade`; those three reach the profile through their account or batch, also with cascade. Deleting the profile deletes all its local data. Status and kind columns are free `String` values; the database does not restrict them with `CHECK` constraints, so the allowed values below are enforced only by application code.
 
 ### `LocalProfile`
 
@@ -133,11 +133,11 @@ The local identity that owns all data in the database.
 | `id` | opaque ID |
 | `displayName` | optional |
 
-Relations: has many `UserPreference`, `Institution`, `Account`, `Category`, `ImportBatch`, `Transaction`, `ScheduledObligation`. The local API reads the oldest profile (`createdAt` ascending) and never creates one on a read; without a profile, the API reports that there is no financial base and the interface leads to onboarding.
+Relations: has many of every profile-scoped model below. The local API reads the oldest profile (`createdAt` ascending) and never creates one on a read; a profile is created only by `POST /api/profile` or by starting onboarding (`POST /api/onboarding`). Without a profile, the API reports that there is no financial base and the interface leads to onboarding.
 
 ### `UserPreference`
 
-Key/value preferences of a profile.
+Key/value preferences of a profile. Completing onboarding writes the `currency` and `timezone` keys.
 
 | Field | Notes |
 | --- | --- |
@@ -155,7 +155,7 @@ A financial institution named by the user.
 | `profileId` | FK to `LocalProfile`, cascade |
 | `name` | string |
 
-Index: `(profileId)`. Relations: has many `Account`.
+Index: `(profileId)`. Relations: has many `Account`, `CsvMappingProfile`. Deleting an institution that still has accounts is refused by the API (`409 INSTITUTION_HAS_ACCOUNTS`), because `SetNull` would orphan them silently.
 
 ### `Account`
 
@@ -167,7 +167,7 @@ Index: `(profileId)`. Relations: has many `Account`.
 | `currency` | default `BRL` |
 | `isActive` | default `true`; the dashboard reads only active accounts |
 
-Indexes: `(profileId)`, `(institutionId)`. Relations: has many `BalanceSnapshot`, `Transaction`, `ScheduledObligation`.
+Indexes: `(profileId)`, `(institutionId)`. Relations: has many `BalanceSnapshot`, `Transaction`, `ScheduledObligation`, `ImportBatch`, `IncomeSource`, `PixIdentifier`. Because `Transaction.accountId` cascades, the API refuses to delete an account with entries or batches (`409 ACCOUNT_HAS_HISTORY`; deactivate instead) and refuses to change the currency of an account with entries (`409 ACCOUNT_CURRENCY_LOCKED`).
 
 ### `BalanceSnapshot`
 
@@ -178,8 +178,9 @@ A balance informed for an account at an instant. It has `createdAt` but no `upda
 | `accountId` | FK to `Account`, cascade |
 | `balanceCents` | `BigInt`, integer cents |
 | `capturedAt` | instant the balance refers to |
+| `importBatchId` | optional FK to `ImportBatch`, `SetNull` on delete; set when the balance came from a statement (migration `balance_snapshot_source`) |
 
-Index: `(accountId, capturedAt)`. The dashboard takes the latest snapshot per account and applies transactions after it.
+Indexes: `(accountId, capturedAt)`, `(importBatchId)`. The dashboard takes the latest snapshot per account and applies transactions after it. Each balance is a dated fact, never an overwrite. `importBatchId` identifies the origin: undoing an import deletes only the balance that batch wrote, and a balance entered by hand afterwards has no batch and stays. Without this link, reversal could identify the balance only by approximation (its creation instant) and would destroy user data. The API exposes the distinction as `fromImport`. A separate `source`/confidence field (`BANK_REPORTED`/`USER_DECLARED`) is still **Open** (L-3 in [PRODUCT.md](PRODUCT.md)).
 
 ### `Category`
 
@@ -189,7 +190,7 @@ Index: `(accountId, capturedAt)`. The dashboard takes the latest snapshot per ac
 | `name` | string |
 | `kind` | string (category type) |
 
-Constraints: unique `(profileId, name, kind)`; index `(profileId)`. Relations: has many `Transaction`, `ScheduledObligation`.
+Constraints: unique `(profileId, name, kind)`; index `(profileId)`. Relations: has many `Transaction`, `ScheduledObligation`, `MerchantRule`. `kind` is `income`, `expense` or `transfer`; entries in a `transfer` category leave income and expense aggregates.
 
 ### `ImportBatch`
 
@@ -198,13 +199,58 @@ One import of a statement file.
 | Field | Notes |
 | --- | --- |
 | `profileId` | FK to `LocalProfile`, cascade |
-| `format` | string (MVP formats are CSV and OFX; see [PRODUCT.md](PRODUCT.md)) |
-| `fingerprint` | file fingerprint |
+| `accountId` | optional FK to `Account`, `SetNull` on delete; target account of the batch |
+| `format` | string (`csv` or `ofx`; see [PRODUCT.md](PRODUCT.md)) |
+| `fingerprint` | SHA-256 of the decoded text with line breaks normalized, so the same statement re-exported with CRLF is still recognized |
 | `status` | string; the dashboard counts batches with `completed` |
-| `fileName` | optional |
+| `fileName` | optional, sanitized |
+| `periodStart`, `periodEnd` | optional; civil interval the file covers, not the import date |
+| `rowCount`, `importedCount`, `duplicateCount` | entries read, written and already present (default 0) |
 | `importedAt` | default now |
 
-Constraints: unique `(profileId, fingerprint)`, which prevents accidental duplicate imports per profile; index `(profileId, importedAt)`. Relations: has many `Transaction`.
+Constraints: unique `(profileId, fingerprint)`, which prevents accidental duplicate imports per profile; indexes `(profileId, importedAt)`, `(accountId)`, `(profileId, periodStart, periodEnd)`. Relations: has many `Transaction`, `ImportFile`, `ImportIssue`, `BalanceSnapshot`, `TimelineEvent`. `periodStart`/`periodEnd` resolve limitation L-2 in [PRODUCT.md](PRODUCT.md): without them the system cannot tell "a month without movement" from "a month without a statement", and the monthly cash-flow chart could not be published honestly.
+
+### `ImportFile`
+
+Metadata of the imported file; the raw content is never retained (the statement is processed in memory and discarded). `createdAt` only.
+
+| Field | Notes |
+| --- | --- |
+| `importBatchId` | FK to `ImportBatch`, cascade |
+| `originalName` | name sent by the browser, sanitized; never used as a path |
+| `byteSize`, `mediaType`, `encoding` | size, detected type and encoding |
+| `contentHash` | SHA-256 of the normalized text; same basis as the batch fingerprint |
+
+Indexes: `(importBatchId)`, `(contentHash)`.
+
+### `ImportIssue`
+
+A line that could not be converted, declared instead of silently omitted. An unreadable line becomes an issue; it is neither imported nor dropped. `createdAt` only.
+
+| Field | Notes |
+| --- | --- |
+| `importBatchId` | FK to `ImportBatch`, cascade |
+| `transactionId` | optional FK to `Transaction`, `SetNull` |
+| `lineNumber` | file line, counted from 1 as the person sees it |
+| `severity` | `error` or `warning` |
+| `code`, `message` | stable code and safe message |
+
+Indexes: `(importBatchId)`, `(transactionId)`.
+
+### `CsvMappingProfile`
+
+Reusable column mapping, recognized by layout.
+
+| Field | Notes |
+| --- | --- |
+| `profileId` | FK to `LocalProfile`, cascade |
+| `institutionId` | optional FK to `Institution`, `SetNull` |
+| `name` | unique per profile |
+| `separator`, `hasHeader`, `decimalSeparator` | dialect |
+| `roles` | column roles in file order, comma-separated |
+| `headerSignature` | optional SHA-256 of the normalized column labels in order |
+
+Constraints: unique `(profileId, name)`; indexes `(profileId)`, `(profileId, headerSignature)`. `headerSignature` identifies the **layout**, not the file, and is null without a usable header, because recognizing a layout by column position would be guesswork. The table stores no value, entry or statement excerpt, only dialect and roles.
 
 ### `Transaction`
 
@@ -219,9 +265,10 @@ A normalized financial entry.
 | `occurredOn` | civil date of the entry |
 | `description` | string |
 | `amountCents` | `BigInt`, integer cents |
-| `status` | default `pending`; the dashboard counts `pending` entries |
+| `status` | `pending` or `posted`; default `pending`. Imported entries are written as `posted` because they already happened |
+| `externalId` | optional; the entry's identifier at the source bank (`FITID` in OFX, an identifier column in CSV) |
 
-Indexes: `(profileId, occurredOn)`, `(accountId, occurredOn)`, `(importBatchId)`, `(categoryId)`.
+Constraints: unique `(accountId, externalId)`. In SQLite `NULL` is distinct from `NULL`, so entries without a source identifier remain allowed; for those, the importer compares civil day, amount and description, consuming one occurrence at a time. Indexes: `(profileId, occurredOn)`, `(accountId, occurredOn)`, `(importBatchId)`, `(categoryId)`. Relations: has many `ImportIssue`, `TransactionRevision`, `FinancialAdjustment`, `TimelineEvent`, outgoing and incoming `OwnAccountTransfer`; has at most one `ReconciliationItem`.
 
 ### `ScheduledObligation`
 
@@ -242,32 +289,105 @@ Invariant: **only `status = 'open'` is subtracted**. Without this field an oblig
 
 In the MVP an open credit-card statement is represented as a `ScheduledObligation`; `CreditCard` and `Statement` belong to stage 8 of the roadmap (see [ROADMAP.md](ROADMAP.md)).
 
+### `OnboardingSession` and `OnboardingAnswer`
+
+Persistent first-access state (migration `mvp_onboarding`).
+
+| Model | Fields | Constraints |
+| --- | --- | --- |
+| `OnboardingSession` | `profileId` (cascade), `status` (`draft` or `completed`, default `draft`), `currentStep` (`profile`, `accounts`, `position`, `review`; default `profile`), `version` (default 1), `completedAt` | index `(profileId, status, updatedAt)` |
+| `OnboardingAnswer` | `onboardingSessionId` (cascade), `profileId` (cascade), `questionKey`, `valueJson` | unique `(onboardingSessionId, questionKey)`; index `(profileId)` |
+
+The unique `(onboardingSessionId, questionKey)` makes answer updates idempotent, and `version` applies optimistic concurrency (`409 ONBOARDING_CHANGED`). Answers are a simple interface draft; consolidated financial data belongs to the typed domain tables, not to this draft.
+
+### `PixIdentifier`
+
+An own Pix key of the person, used only to recognize transfers between their own accounts, which are neither income nor expense (migration `mvp_pix_identifiers`). The name `PixIdentifier` is fixed; the earlier `PixKey` name is retired (L-6 in [PRODUCT.md](PRODUCT.md)).
+
+| Field | Notes |
+| --- | --- |
+| `profileId`, `accountId` | FKs, cascade |
+| `type` | `cpf`, `cnpj`, `phone`, `email` or `random` |
+| `label` | optional safe nickname chosen by the person |
+| `valueIndex` | HMAC-SHA256 of the normalized value with a device subkey |
+| `valueCiphertext` | AES-256-GCM of the normalized value, with version, nonce and tag |
+| `maskedValue` | masked form, the only one the interface shows by default |
+| `isActive`, `validFrom`, `validUntil` | state and known validity period |
+| `source` | `declared` or `detected`; default `declared` |
+
+Constraints: unique `(profileId, valueIndex)`, so the same key does not belong to two accounts of the same person; indexes `(accountId)`, `(profileId, isActive)`. Invariants:
+
+1. **The value is never stored in cleartext**: not in a column, log, timeline, analytics, D1 or error message.
+2. `valueIndex` is an HMAC, **not a plain hash**. CPF and phone numbers have a predictable value space (10^11 combinations for a CPF), and a plain hash would fall to brute force. The secret comes from `src/server/local-key.ts` ([ADR 0003](decisions/0003-local-device-key.md)).
+3. Normalization precedes the index: the same phone number written with or without punctuation and country code produces the same index. Otherwise the own transfer would not be recognized and would appear as an expense in one account and income in the other (L-5).
+4. The value is not editable. Changing it would change the index and the pairing history would lose meaning; the old key is deactivated, not rewritten, because it still explains past statements.
+
+### `IncomeSource`
+
+Expected income, never treated as available balance (migration `mvp_income_merchant_rules`). Fields: `profileId` (cascade), optional `accountId` (`SetNull`), `description`, `amountCents` (`BigInt`), `frequency`, optional `nextExpectedDate`, `isActive`. Indexes: `(profileId, isActive)`, `(accountId)`. A forecast income never increases the Saldo Livre de Risco before it exists as an effective transaction.
+
+### `MerchantRule`
+
+Local, deterministic and reviewable categorization rule (migration `mvp_income_merchant_rules`). Fields: `profileId` (cascade), `categoryId` (cascade), `pattern`, `matchType` (default `contains`), `priority` (default 0), `isActive`. Constraints: unique `(profileId, pattern, matchType)`; indexes `(profileId, isActive, priority)`, `(categoryId)`. **Current** as data and CRUD; applying the rules during import is **Planned**.
+
+### `TransactionRevision`
+
+Immutable history of manual edits of a `Transaction` (migration `transaction_revisions`). Fields: `profileId` and `transactionId` (both cascade), `beforeJson`, `afterJson`, optional `reason`; `createdAt` only. Indexes: `(profileId, createdAt)`, `(transactionId, createdAt)`. The history is local, immutable through the API and removed in cascade only with the transaction itself.
+
+### Reconciliation models
+
+Created by migration `mvp_reconciliation`.
+
+| Model | Fields | Constraints |
+| --- | --- | --- |
+| `ReconciliationItem` | `profileId`, `transactionId` (both cascade), `reason`, `confidence` (`Int`), `status` (default `pending`) | unique `transactionId` (exactly one item per transaction); index `(profileId, status, createdAt)` |
+| `ReconciliationDecision` | `profileId`, `reconciliationItemId` (both cascade), `kind`, `beforeJson`, `afterJson`, `revertedAt` | indexes `(profileId, createdAt)`, `(reconciliationItemId, createdAt)` |
+| `FinancialAdjustment` | `profileId`, `transactionId`, `decisionId` (all cascade), `kind` (`interest`, `fee`, `discount`, `correction`), `deltaCents` (`BigInt`), `note` | unique `decisionId`; indexes `(profileId, createdAt)`, `(transactionId)` |
+| `OwnAccountTransfer` | `profileId`, `outgoingTransactionId`, `incomingTransactionId`, `decisionId` (all cascade) | unique `decisionId`; unique `(outgoingTransactionId, incomingTransactionId)`; indexes `(profileId, createdAt)`, `(incomingTransactionId)` |
+
+Each resolution creates a `ReconciliationDecision` with JSON snapshots of the structured fields before and after. `FinancialAdjustment` records the delta in cents; `OwnAccountTransfer` links the two entries by opaque IDs. Reverting marks the decision (`revertedAt`), restores the snapshots and reopens the item without deleting the audit trail. The importer creates one item with reason `category_unknown` and confidence 0 for every uncategorized entry it writes.
+
+### `TimelineEvent` and `DatabaseBackup`
+
+Created by migration `mvp_timeline_backup`; both have `createdAt` only.
+
+| Model | Fields | Constraints |
+| --- | --- | --- |
+| `TimelineEvent` | `profileId` (cascade), `kind` (`import`, `transaction_edit`, `reconciliation`), `title`, `description`, optional `importBatchId`, `transactionId`, `transactionRevisionId`, `reconciliationDecisionId` (all `SetNull`), `reversible`, `revertedAt` | indexes `(profileId, createdAt)`, `(importBatchId)`, `(transactionId)` |
+| `DatabaseBackup` | `profileId` (cascade), `schemaVersion`, `checksum`, `byteSize`, `status`, `verifiedAt` | indexes `(profileId, createdAt)`, `(profileId, status, verifiedAt)` |
+
+A timeline event stores only redacted, structured metadata and opaque IDs: never amounts, entry descriptions, keys, hashes, file content or action codes. `DatabaseBackup` stores only metadata of a local backup; the path, key and content never enter it. `scripts/migration-preflight.mjs` reads it to unlock a destructive migration (see [Local migrations](#local-migrations)). **Open:** no code creates `DatabaseBackup` rows yet.
+
 ### Local data access
 
-Status: **Current**. The local API (`src/app/api`) reads the database through a single `PrismaClient` (`src/server/db.ts`). The dashboard, dashboard categories and local summary routes only read; no current route writes financial data. Write flows (onboarding, import, reconciliation) are **Planned**.
+Status: **Current**. The local API (`src/app/api`) reads and writes the database through a single `PrismaClient` (`src/server/db.ts`). Write flows exist for onboarding, profile, institutions, accounts, balances, Pix identifiers, categories, income, obligations, merchant rules, import, transaction edits, reconciliation and timeline reversal. Multi-row changes (writing or undoing a batch, a transaction edit with its revision, a reconciliation decision or its reversal, completing onboarding) run in one SQLite transaction. Every query is scoped by `profileId`.
 
 ### Implemented invariants
 
-1. `ImportBatch.fingerprint` is unique per profile and prevents accidental duplication. **Current** (unique constraint).
+1. `ImportBatch.fingerprint` is unique per profile and prevents accidental duplication. It is computed over the decoded text with normalized line breaks, so the same statement re-exported with CRLF is still recognized. **Current** (unique constraint).
 2. Only open obligations are subtracted from the risk-free balance. **Current** (query filter).
-3. Every imported transaction references its source batch. **Open**: `Transaction.importBatchId` is optional and becomes `NULL` when the batch is deleted, so the database does not enforce this invariant.
+3. Every imported transaction references its source batch, and undoing the batch removes exactly what it created (entries and the balance it recorded). **Current** in the importer and in `DELETE /api/imports/:importBatchId`; **Open** at the database level: `Transaction.importBatchId` is optional with `SetNull`, so a batch row deleted outside the API would leave entries without a batch.
+4. `(accountId, externalId)` is unique on `Transaction`, so overlapping statements do not write the same entry twice. **Current**.
+5. Adjustments never silently overwrite the original value: transaction edits keep before/after in `TransactionRevision`, and reconciliation decisions keep before/after snapshots and can be reverted. **Current**.
+6. A completed reconciliation records the decision and its instant. **Current**; the local author is implicit, because a local database has a single profile.
+7. Own Pix identifier values are never stored in cleartext. **Current**.
 
 ### Planned local aggregates
 
-Status: **Planned**. Beyond the nine implemented models, the conceptual model groups local data into these aggregates. Entities in bold are implemented; the rest are planned.
+Status: **Planned** for the entities not in bold. The conceptual model groups local data into these aggregates. Entities in bold are implemented; the rest are planned.
 
 | Aggregate | Responsibility | Main entities |
 | --- | --- | --- |
-| Local identity | Preferences and optional link to a remote identity | **`LocalProfile`**, **`UserPreference`** |
-| Accounts | Institutions, accounts and informed balances | **`Institution`**, **`Account`**, **`BalanceSnapshot`** |
-| Import | File, batch, parser and diagnostics | **`ImportBatch`**, `ImportFile`, `ImportIssue` |
-| Transactions | Normalized entries and categories | **`Transaction`**, **`Category`**, `MerchantRule` |
+| Local identity | Preferences, onboarding and optional link to a remote identity | **`LocalProfile`**, **`UserPreference`**, **`OnboardingSession`**, **`OnboardingAnswer`** |
+| Accounts | Institutions, accounts, informed balances and own Pix keys | **`Institution`**, **`Account`**, **`BalanceSnapshot`**, **`PixIdentifier`** |
+| Import | File, batch, parser, mapping and diagnostics | **`ImportBatch`**, **`ImportFile`**, **`ImportIssue`**, **`CsvMappingProfile`** |
+| Transactions | Normalized entries, categories, rules and edit history | **`Transaction`**, **`Category`**, **`MerchantRule`**, **`TransactionRevision`** |
 | Cards | Cards, statements, benefits and recurring charges | `CreditCard`, `Statement`, `CardBenefit`, `RecurringCharge` |
-| Reconciliation | Pending items, decisions and adjustments | `ReconciliationItem`, `FinancialAdjustment` |
-| Planning | Budget, goals and obligations | `Budget`, `Goal`, **`ScheduledObligation`** |
+| Reconciliation | Pending items, decisions, adjustments and own transfers | **`ReconciliationItem`**, **`ReconciliationDecision`**, **`FinancialAdjustment`**, **`OwnAccountTransfer`** |
+| Planning | Income, budget, goals and obligations | **`IncomeSource`**, `Budget`, `Goal`, **`ScheduledObligation`** |
 | Net worth | Assets, positions, pillars and contributions | `Asset`, `PositionSnapshot`, `Contribution` |
-| Product | Alerts, missions and history | `Notification`, `Mission`, `Achievement`, `TimelineEvent` |
-| Backup | Runs, versions and integrity | `BackupRecord` |
+| Product | Alerts, missions and history | `Notification`, `Mission`, `Achievement`, **`TimelineEvent`** |
+| Backup | Runs, versions and integrity | **`DatabaseBackup`** (metadata only) |
 
 Essential relations of the full conceptual model (planned entities included):
 
@@ -288,9 +408,9 @@ erDiagram
 
 ### Local SQLite operation
 
-- Apply pending migrations when a new version of the local backend starts. **Current** for `pnpm dev` and the local Docker image (see below); **Planned** for the packaged Electron app, which does not run migrations itself today.
+- Apply pending migrations when a new version of the local backend starts. **Current** for `pnpm dev`, the local Docker image and, in code, the packaged Electron app, which runs `prisma migrate deploy` against the database in its `userData` directory before starting the server ([ADR 0004](decisions/0004-electron-packaging.md)).
 - Enable and validate foreign keys. **Current**: Prisma's SQLite connector enforces the declared foreign keys.
-- Import a complete batch inside one transaction. **Planned** (no import writer exists yet).
+- Import a complete batch inside one transaction. **Current** (`src/server/import/persist.ts`); a failure halfway leaves no partial batch. Saving a reusable column mapping runs outside that transaction on purpose: it is a convenience and must not undo a correct import.
 - Keep one writer per database and limit write concurrency. **Planned** as an explicit rule for write flows.
 - Use WAL only after compatibility testing with packaging, backup and recovery. **Planned**; WAL is not enabled explicitly today.
 - SQLite database files and their `-wal`, `-shm` and `-journal` companions are git-ignored. **Current**.
@@ -304,11 +424,22 @@ Status: **Current**. The local schema evolves only through versioned Prisma migr
 | `20260905182000_init` | `LocalProfile`, `UserPreference` |
 | `20260905214010_mvp_financial_core` | `Institution`, `Account`, `BalanceSnapshot`, `Category`, `ImportBatch`, `Transaction` and their indexes |
 | `20260911000729_mvp_scheduled_obligations` | `ScheduledObligation` and its indexes |
+| `20260912120000_mvp_import_details` | `ImportFile`, `ImportIssue`, `CsvMappingProfile`; adds `accountId`, `periodStart`, `periodEnd`, `rowCount`, `importedCount`, `duplicateCount` to `ImportBatch` and `externalId` (unique per account) to `Transaction` |
+| `20260912160000_balance_snapshot_source` | adds `importBatchId` to `BalanceSnapshot` |
+| `20260912180000_mvp_onboarding` | `OnboardingSession`, `OnboardingAnswer` |
+| `20260912200000_mvp_income_merchant_rules` | `IncomeSource`, `MerchantRule` |
+| `20260912210000_transaction_revisions` | `TransactionRevision` |
+| `20260912220000_mvp_pix_identifiers` | `PixIdentifier`, with unique `(profileId, valueIndex)` |
+| `20260912230000_mvp_reconciliation` | `ReconciliationItem`, `ReconciliationDecision`, `FinancialAdjustment`, `OwnAccountTransfer` |
+| `20260912240000_mvp_timeline_backup` | `TimelineEvent`, `DatabaseBackup` |
+
+The migrations after `mvp_scheduled_obligations` are **additive**: new columns enter through `ALTER TABLE ... ADD COLUMN` and no already applied table is rebuilt.
 
 How migrations are applied:
 
 - `pnpm prisma:migrate` runs `prisma migrate dev` to create a new migration during development.
-- `pnpm dev` (`scripts/dev.mjs`) runs `prisma migrate deploy` before starting the local app, using `DATABASE_URL` or, when it is unset, a default git-ignored local database file.
+- `pnpm dev` (`scripts/dev.mjs`, also used by `pnpm dev:all`) first runs `scripts/migration-preflight.mjs` (`pnpm prisma:preflight`) and then `prisma migrate deploy` before starting the local app, using `DATABASE_URL` or, when it is unset, a default git-ignored local database file. The preflight inspects pending migrations; destructive SQL (`DROP TABLE`, `DROP COLUMN`, `TRUNCATE TABLE`, `DELETE FROM`) requires `TALENTUM_VERIFIED_BACKUP_ID` pointing to `DatabaseBackup` metadata with status `verified`, a checksum, a size and the current schema version; otherwise the process stops before changing the database.
+- The packaged Electron app runs `prisma migrate deploy` on start, without the preflight (**Open**).
 - The local Docker image runs `prisma migrate deploy` before starting the server.
 - `pnpm prisma:generate` regenerates the client and `pnpm prisma:validate` validates the schema; `pnpm typecheck` regenerates the client when it is stale.
 
@@ -419,7 +550,7 @@ Status: **Current** as rules.
 - Every schema change includes a reviewable migration with a unique name and scope.
 - Fixtures and tests use only synthetic data.
 - Migration and restore are tested on copies, never on the user's only database.
-- Destructive migrations require a local backup and a recovery path.
+- Destructive migrations require a local backup and a recovery path. **Current** as a gate in `pnpm dev` (the preflight above); **Open** for Docker and the packaged app, and no code creates the required `DatabaseBackup` rows yet.
 - The application records the schema version. **Current** through each tool's migration table (Prisma's and Wrangler's).
 
 Apply this order:
@@ -492,7 +623,7 @@ Rules (**Current** as policy):
 - retries only for transient errors, with backoff and jitter;
 - never keep a transaction open while calling the network, AI, e-mail or external storage.
 
-Idempotency keys for imports, download grants, post creation and other commands that a network failure can repeat: **Planned**. No current endpoint or table implements an idempotency key.
+Idempotency keys for imports, download grants, post creation and other commands that a network failure can repeat: **Planned**. No current endpoint or table implements an idempotency key. Related controls that exist (**Current**): the batch fingerprint and `(accountId, externalId)` make a repeated import safe, onboarding answers are upserted by `(onboardingSessionId, questionKey)` and onboarding updates use `version` for optimistic concurrency.
 
 ## Caching, retention, backup and observability
 
@@ -506,7 +637,7 @@ Status: **Current** as a rule; per-table records are **Open** (not yet written f
 
 ### Backup and restore
 
-Status: **Planned**. Define RPO and RTO per data class. A backup without a restore test does not count as a control. Execute:
+Status: **Planned**. Only the `DatabaseBackup` metadata table and the migration preflight that reads it exist (**Current**). Define RPO and RTO per data class. A backup without a restore test does not count as a control. Execute:
 
 1. automatic backup before a destructive migration;
 2. checksum and schema version;
@@ -620,9 +751,9 @@ Status: **Planned**. Never declare readiness just because the schema accepts a m
 
 ## Open items
 
-1. **Imported transaction to batch link.** The invariant "every imported transaction references its source batch" is not enforced: `Transaction.importBatchId` is optional with `onDelete: SetNull`. Decide whether to require it for imported rows (for example with a source/kind column) or to forbid batch deletion while transactions reference it.
+1. **Imported transaction to batch link.** The API removes a batch's entries when it undoes the batch, but the database does not enforce the invariant: `Transaction.importBatchId` is optional with `onDelete: SetNull`. Decide whether to require it for imported rows (for example with a source/kind column) or to forbid batch deletion while transactions reference it.
 2. **ID format.** Policy prefers UUIDv7 or ULID; Prisma (`uuid()`) and the Worker (`crypto.randomUUID()`) generate random UUIDv4. They satisfy opacity but not time ordering. Decide whether to migrate generators.
-3. **Unconstrained local states.** Local `status`, `kind`, `type`, `format` and `recurrence` columns are free strings without `CHECK` constraints, contrary to the rule of restricting finite states in the database when safe.
+3. **Unconstrained local states.** Local `status`, `kind`, `type`, `format`, `recurrence`, `severity`, `source`, `matchType` and `frequency` columns are free strings without `CHECK` constraints, contrary to the rule of restricting finite states in the database when safe.
 4. **Action-code rows are never purged.** Consumed and expired `action_codes`, `auth_transactions` and stale `rate_limit_windows` rows remain in D1; no cleanup job exists. Define retention and a purge mechanism.
 5. **Download grant consumption.** The Worker inserts `download_grants` rows and returns the artifact URL directly; nothing marks `consumed_at`, so the grant is not enforced as single-use.
 6. **Unused security and audit tables.** `security_events` and `audit_events` exist but nothing writes them; refresh-token reuse is not recorded as a security event.
@@ -632,7 +763,8 @@ Status: **Planned**. Never declare readiness just because the schema accepts a m
 10. **Remote XP synchronization.** Whether gamification XP needs remote storage is undecided.
 11. **Capacity documents.** The dated capacity-profile process has no directory or template yet, and existing schemas were approved without one. Decide whether to keep the requirement and create the location, or relax it for small changes.
 12. **Per-table retention records.** Purpose, retention, deletion event and export procedure are not yet documented per table for either store.
-13. **Migrations in the packaged desktop app.** Electron does not apply Prisma migrations on startup; the mechanism for the packaged app is undefined.
+13. **Migration gate outside development.** The packaged app now applies migrations on start (closing the former "no migration mechanism" item), but neither it nor the Docker image runs the destructive-migration preflight, and no code creates `DatabaseBackup` rows.
+14. **Balance origin and confidence.** `BalanceSnapshot.importBatchId` distinguishes a statement balance from a hand-entered one, but there is no `source`/confidence column (`BANK_REPORTED`/`USER_DECLARED`); see L-3 in [PRODUCT.md](PRODUCT.md).
 
 ## References
 

@@ -389,7 +389,7 @@ The theme is user-selectable through a dropdown in the header and in Settings, w
 
 ### Data visualization tokens
 
-Status: **Current** for `--data-1` and `--data-recessive`; **Open** for the full categorical palette.
+Status: **Current** for `--data-1`, `--data-recessive`, `--data-gain` and `--data-loss`; **Open** for the full categorical palette.
 
 The core palette is warm and near-monochrome. That is an asset for the interface and a liability for charts: measured against the product surfaces, Walnut and Amber fail the categorical checks in both themes, and in dark mode they fall below the normal-vision separation floor — two adjacent browns that even full-color-vision readers struggle to tell apart. Chart marks therefore take their own tokens, and the brand accent stays in the chrome.
 
@@ -397,8 +397,25 @@ The core palette is warm and near-monochrome. That is an asset for the interface
 | --- | --- | --- | --- |
 | `--data-1` | `#2a78d6` | `#3987e5` | Single-series and primary-series mark |
 | `--data-recessive` | `#898781` | `#898781` | De-emphasized groups such as `Outros` and `Sem categoria` |
+| `--data-gain` | `#157f52` | `#4fbf85` | Financial gain: income bars above the zero line |
+| `--data-loss` | `#b32d22` | `#dd5d50` | Financial loss: expense bars below the zero line |
 
-Both clear 3:1 against the light (`#FFFDF8`) and dark (`#2A2622`) chart surfaces. Classical Amber remains the **emphasis** color — one highlighted series against grey — and is never a categorical slot.
+All four clear 3:1 against the light (`#FFFDF8`) and dark (`#2A2622`) chart surfaces. Classical Amber remains the **emphasis** color — one highlighted series against grey — and is never a categorical slot.
+
+#### Ratifying a data token
+
+Run the validator before adding any mark color. It is versioned at `scripts/validate-palette.mjs` and its verdicts are locked by `tests/palette.test.mjs`:
+
+```bash
+node scripts/validate-palette.mjs "#2a78d6,#157f52,#b32d22,#898781" \
+  --mode light --surface "#FFFDF8" --neutral "#898781" --pairs all
+```
+
+`--data-gain` and `--data-loss` were ratified on 2026-09-12 this way, in both themes and in the strictest pairing mode: all five checks pass, with a worst color-vision-deficiency ΔE of 13.6 in light and 12.2 in dark, above the target of 8.
+
+They exist as their own tokens because R-14 of the dashboard specification in [PRODUCT.md](PRODUCT.md) forbids reusing the semantic tokens as series fills: `--ok` and `--err` mean *state*, and measured against each other they collapse under deuteranopia. Gain and loss are **quantities**, not states.
+
+Color is never the only channel for them: the diverging chart anchors income above and expense below the zero line, and every value carries a sign.
 
 The full eight-slot categorical palette is **not ratified**; it remains an open dashboard decision recorded in [PRODUCT.md](PRODUCT.md). Introduce it only after validating it against these surfaces.
 
@@ -913,6 +930,8 @@ Flat, with no gradient, shadow or texture; a warm palette consistent with the br
 ## Accessibility
 
 Status: **Current** (requirements).
+
+On the landing page the native scrollbar is hidden, with no track, buttons or arrows (`apps/web/src/styles/base.css`). A fixed Ebony indicator (`.lp-scroll-position`) represents the position and size of the viewport proportionally; scrolling by mouse, touch and keyboard stays native.
 
 - Meet WCAG 2.2 AA contrast requirements for text and interactive elements. Validate every final foreground and background combination; on the LP use `--lp-amber-text` for small Amber text and `--lp-amber-strong` for Amber buttons with light text.
 - Maintain visible keyboard focus using a treatment distinct from the component border (the global `:focus-visible` Amber outline).

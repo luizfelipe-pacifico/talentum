@@ -66,8 +66,12 @@ test('o gráfico de categorias mostra erro com repetição em vez de sumir (R-28
 
 test('telas de área não afirmam "nenhum" sem consultar o backend', async () => {
   const pages = await read('src/components/demo-pages.tsx');
-  for (const page of ['StatementsPage', 'RecurrencesPage', 'ReconciliationPage'])
+  for (const page of ['RecurrencesPage', 'ReconciliationPage'])
     assert.match(pages, new RegExp(`function ${page}\\([^)]*\\)\\s*\\{[\\s\\S]{0,160}useLocalSummary\\(`), page);
+  // A lista de lançamentos virou tela real: só declara "nenhum" depois de o
+  // backend responder, com carregamento e falha tratados antes.
+  const statements = await read('src/components/statements.tsx');
+  assert.match(statements, /status === 'loading'[\s\S]*status === 'error'[\s\S]*Nenhum lançamento ainda/);
   const nav = await read('src/lib/navigation.ts');
   assert.doesNotMatch(nav, /Nenhum item aguardando decisão/);
 });
@@ -80,9 +84,20 @@ test('toda rota da API local exige código de ação e escopa por perfil', async
   assert.ok(routes.includes('local-summary/route.ts'), 'resumo local existe');
   for (const route of routes) {
     const source = await read(`src/app/api/${route}`);
-    assert.match(source, /consumeActionCode\(request\.headers\.get\('X-Action-Code'\)/, route);
+    // Cada handler exportado passa pela borda: consome o código de ação direto
+    // ou pelo guard de src/server/http.ts, conferido no teste seguinte.
+    const handlers = [...source.matchAll(/export async function (GET|POST|PUT|PATCH|DELETE)\b[\s\S]*?(?=\nexport |$)/g)];
+    assert.ok(handlers.length > 0, `${route}: nenhum handler`);
+    for (const [body, method] of handlers)
+      assert.match(body, /consumeActionCode\(request\.headers\.get\('X-Action-Code'\)|(guardWithProfile|requireActionCode)\(request\)/, `${route} ${method}`);
     for (const clause of source.match(/where:\s*\{[^}]*\}/g) ?? []) assert.match(clause, /profileId|accountId: \{ in/, `${route}: ${clause}`);
   }
+});
+
+test('o guard da API local consome o código de ação e exige perfil', async () => {
+  const http = await read('src/server/http.ts');
+  assert.match(http, /function requireActionCode\(request: Request\)[\s\S]{0,200}consumeActionCode\(request\.headers\.get\('X-Action-Code'\), request\.method, path\)/);
+  assert.match(http, /function guardWithProfile\(request: Request\)[\s\S]{0,120}requireActionCode\(request\)[\s\S]{0,200}getLocalProfileId\(\)/);
 });
 
 test('mês sem gastos mostra o estado vazio do gráfico em vez de sumir', async () => {

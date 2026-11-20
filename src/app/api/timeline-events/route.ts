@@ -1,0 +1,6 @@
+import { z } from 'zod';
+import { db } from '@/server/db';
+import { fail,guardWithProfile,isDenied,ok } from '@/server/http';
+
+const querySchema=z.object({kind:z.enum(['import','transaction_edit','reconciliation']).optional(),cursor:z.string().uuid().optional()});
+export async function GET(request:Request){const guarded=await guardWithProfile(request);if(isDenied(guarded))return guarded.response;const url=new URL(request.url),parsed=querySchema.safeParse({kind:url.searchParams.get('kind')??undefined,cursor:url.searchParams.get('cursor')??undefined});if(!parsed.success)return fail('INVALID_TIMELINE_FILTER','O filtro informado é inválido.',400);const rows=await db.timelineEvent.findMany({where:{profileId:guarded.profileId,...(parsed.data.kind?{kind:parsed.data.kind}:{})},orderBy:[{createdAt:'desc'},{id:'desc'}],take:51,...(parsed.data.cursor?{cursor:{id:parsed.data.cursor},skip:1}:{}),select:{id:true,kind:true,title:true,description:true,reversible:true,revertedAt:true,createdAt:true}});const hasMore=rows.length>50,events=(hasMore?rows.slice(0,50):rows).map(row=>({...row,createdAt:row.createdAt.toISOString(),revertedAt:row.revertedAt?.toISOString()??null}));return ok({hasProfile:true,events,nextCursor:hasMore?events.at(-1)?.id??null:null})}

@@ -897,7 +897,7 @@ border: 1px solid var(--line);`}
 
         <Spec title="Gráfico de barras" hint="Amostra de proporção. Sempre acompanhe de tabela ou lista com os mesmos valores." block>
           <div style={{ width: '100%' }}>
-            <div className="chart">
+            <div className="bar-chart">
               {[42, 58, 35, 70, 52, 64, 48, 60].map((height, index) => (
                 <div key={index} className="chart-col">
                   <div className="chart-bars">

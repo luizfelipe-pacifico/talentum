@@ -47,6 +47,41 @@
      contraste contra as superfícies do produto nos dois temas. */
   --data-1: #2a78d6;
   --data-recessive: #898781;
+
+  /* Ganho e perda financeiros (docs/PRODUCT.md, R-19). Distintos dos quatro
+     tokens semânticos de propósito: `--ok` e `--err` significam *estado* e
+     reprovam entre si como preenchimento de série (R-14).
+
+     Ratificados em 12/09/2026 com `node scripts/validate-palette.mjs`, nos dois
+     temas e no modo `--pairs all`: as cinco verificações passam, com pior ΔE
+     sob daltonismo de 13.6 no claro e 12.2 no escuro — acima do alvo de 8.
+
+     A cor nunca é o único canal: a barra divergente ancora entradas acima e
+     saídas abaixo do zero, e todo valor traz sinal e rótulo. */
+  --data-gain: #157f52;
+  --data-loss: #b32d22;
+}
+
+.entity-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entity-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.entity-list li > span:first-child {
+  display: grid;
+  gap: var(--space-1);
 }
 
 html.dark {
@@ -71,6 +106,8 @@ html.dark {
   --shadow-md: 0 8px 24px rgb(0 0 0 / 34%);
 
   --data-1: #3987e5;
+  --data-gain: #4fbf85;
+  --data-loss: #dd5d50;
 }
 
 * {
@@ -1701,7 +1738,7 @@ p {
 
 /* ── Gráfico de barras ────────────────────────────────────────── */
 
-.chart {
+.bar-chart {
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: clamp(6px, 1.4vw, 20px);
@@ -2912,4 +2949,179 @@ html.dark .state-art-claro {
 
 html.dark .state-art-escuro {
   display: block;
+}
+
+/* ── Importação de extrato ────────────────────────────────────── */
+/* Feature 4 de docs/PRODUCT.md. As classes abaixo pertencem ao assistente
+   de importação e ao detalhe do lote. Nenhuma delas introduz cor, raio ou
+   espaçamento novo: todas reusam os tokens já definidos no topo do arquivo. */
+
+/* Tabela de dados mistos: texto à esquerda, números à direita sob demanda.
+   A `.tbl` base alinha toda célula à direita porque nasceu para colunas
+   puramente numéricas; aqui a descrição precisa começar na margem. */
+.tbl-data td,
+.tbl-data th[scope='col'] {
+  text-align: left;
+}
+
+.tbl-data td.right,
+.tbl-data th[scope='col'].right {
+  text-align: right;
+}
+
+.dropzone-active {
+  border-color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 6%, var(--surface));
+}
+
+/* Pares rótulo/valor do resumo de leitura e do detalhe do lote. */
+.spec-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin: 18px 0 0;
+}
+
+.spec-grid dt {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.spec-grid dd {
+  margin: 4px 0 0;
+  font-size: 20px;
+  line-height: 28px;
+  color: var(--ink);
+}
+
+/* Conferência do papel de cada coluna do CSV. */
+.mapping-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.mapping-header {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 720px) {
+  .spec-grid,
+  .mapping-grid,
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Caixa de opção com rótulo longo, usada no assistente de importação. */
+.check-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 16px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.check-field input[type='checkbox'] {
+  /* Alvo de toque de 24px sobre uma marca menor, conforme docs/PRODUCT.md R-33. */
+  inline-size: 18px;
+  block-size: 18px;
+  margin: 1px 3px 0;
+  accent-color: var(--amber);
+  flex: none;
+}
+
+/* ── Gráficos do painel ───────────────────────────────────────────── */
+/* Marcas finas, grade em fio de cabelo, sólidos nunca tracejados
+   (docs/PRODUCT.md, R-38 a R-43). */
+
+.chart {
+  margin: 16px 0 0;
+}
+
+.chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Séries longas rolam na horizontal dentro do próprio contêiner, em vez de
+   espremer as marcas até virarem fios. */
+.chart-scroll {
+  overflow-x: auto;
+}
+
+.chart-scroll svg {
+  min-width: 420px;
+}
+
+.chart figcaption {
+  margin-top: 10px;
+}
+
+/* Linha do zero: cinza neutro, um tom acima da superfície (R-18, R-38). */
+.chart-zero {
+  stroke: var(--data-recessive);
+  stroke-width: 1;
+}
+
+.chart-axis-label {
+  fill: var(--ink2);
+  font-size: 11px;
+  font-family: var(--font-body);
+}
+
+/* Projeção de caixa: série única, linha de 2px com extremidade arredondada. */
+.projection-line {
+  stroke: var(--data-1);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.projection-area {
+  fill: color-mix(in srgb, var(--data-1) 14%, transparent);
+  stroke: none;
+}
+
+/* Ênfase no cruzamento do zero: o ponto que responde à pergunta da tela. */
+.projection-shortfall {
+  fill: var(--data-loss);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+/* Entradas acima, saídas abaixo. A posição já separa as duas séries, então a
+   cor não é o único canal (R-35). */
+.flow-income {
+  fill: var(--data-gain);
+}
+
+.flow-expense {
+  fill: var(--data-loss);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart svg {
+    transition: none;
+  }
 }

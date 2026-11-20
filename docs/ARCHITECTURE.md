@@ -62,20 +62,22 @@ Normative rules (apply to both layers):
 
 ### 1.4 Repository layout
 
-**Current** (matches the tree; there is no `packages/`, no `turbo.json`, no `.github/` and therefore no CI, and no LICENSE file):
+**Current** (matches the tree; there is no `packages/` and no `turbo.json`):
 
 ```text
 apps/
   web/                 @talentum/web: public LP + BFF (Next.js, port 3100). No Electron, Prisma, SQLite or financial domain.
 src/                   local Next.js app: UI pages (src/app), local API (src/app/api), server code (src/server), client helpers (src/lib)
 electron/              main.cjs (window, navigation, permissions, IPC) and preload.cjs
-prisma/                schema.prisma + 3 migrations (local SQLite only)
+prisma/                schema.prisma + 11 migrations (local SQLite only)
 cloudflare/            Worker (src/index.ts), D1 migrations, wrangler.jsonc (tracked working config), wrangler.example.jsonc, .dev.vars.example
 design/estados-vetor/  vector sources for empty-state illustrations
 public/                static assets of the local app
-scripts/               dev, dev:all, asset generators, typecheck helpers
+scripts/               dev, dev:all, migration preflight, desktop packaging prep, palette validator, asset generators, typecheck helpers
 tests/                 node:test suites; tests/regression/ holds regression tests
 .githooks/             versioned pre-commit and pre-push hooks
+.github/               CI workflow (workflows/ci.yml), CONTRIBUTING, CODE_OF_CONDUCT and the vulnerability-reporting policy (SECURITY.md)
+LICENSE                open-source license
 .claude/               agent skills and tooling
 docs/                  normative documentation and ADRs (docs/decisions/)
 Dockerfile             local app image (Ubuntu 24.04 base)
@@ -94,6 +96,9 @@ compose.yaml           talentum-local (127.0.0.1:3000) and talentum-web (127.0.0
 - [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md): branding, states, visual QA.
 - [ROADMAP.md](ROADMAP.md): sequencing of planned work.
 - [decisions/0001-web-hosting.md](decisions/0001-web-hosting.md): web hosting decision.
+- [decisions/0002-own-ofx-parser.md](decisions/0002-own-ofx-parser.md): own bounded OFX reader.
+- [decisions/0003-local-device-key.md](decisions/0003-local-device-key.md): local device key protecting own Pix identifiers.
+- [decisions/0004-electron-packaging.md](decisions/0004-electron-packaging.md): desktop packaging with `electron-builder`.
 
 ## 2. Cross-layer runtime flows and the action-code protocol
 
@@ -115,15 +120,17 @@ Both issuers accept only `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, only paths sta
 
 | Aspect | Local app (`src/server/action-codes.ts`) | Worker (`cloudflare/src/index.ts`) |
 | --- | --- | --- |
-| Who may request a code | any loopback caller (after the `HOST_NOT_ALLOWED` check) | only the BFF (`X-Talentum-BFF` required) |
+| Who may request a code | any loopback caller (after the `HOST_NOT_ALLOWED` check); when `TALENTUM_LOCAL_BOOTSTRAP_SECRET` is set, only a caller presenting it in `X-Talentum-Bootstrap` (`403 BOOTSTRAP_DENIED` otherwise) | only the BFF (`X-Talentum-BFF` required) |
 | Storage | in-memory `Map` keyed by SHA-256 of the code, record `{method, path, expiresAt}` | D1 table `action_codes`, peppered hash of the code |
-| Binding | method + path | method + path + `context_hash` |
+| Binding | method + path (`pathname` only, query string excluded) | method + path + `context_hash` |
 | Consumption | record deleted on consume; expired records swept on each issue/consume | atomic `UPDATE … SET consumed_at` guarded by `consumed_at IS NULL AND expires_at > now`; rows are kept, not deleted |
 | Rate limit on issuing | none | 30 per minute per client IP (`codes` bucket) |
 
 **Current limitation.** The Worker's `context_hash` is the hash of the BFF shared secret, identical for every caller, so codes are effectively bound to "issued for the BFF" plus method and path, not to a session or origin. Binding to the session or origin context is **Planned**. The local in-memory store serves only a single-process local backend; before any distributed execution it must be replaced by an atomic mechanism appropriate to the provider (**Planned**).
 
-The local frontend implements the protocol once, in `src/lib/api-client.ts` (`getWithActionCode`), so that no screen reimplements it partially. The BFF implements it once, in `apps/web/src/server/cloudflare.ts` (`cloud()`).
+**Binding to path, not query string (Current, local).** The local code is bound to **method and path**, without the query. It identifies the contract (`GET /api/transactions`), not the filter values. The reason is correctness: the backend validates the code against the request `pathname`, so binding it to the whole URL would make every filtered listing fail. It does not weaken protection: the code exists against replay, while filters, ownership and `profileId` scoping are still validated by the backend on every request. Client and backend apply the same rule in `actionCodePath` (`src/lib/api-client.ts`) and `requireActionCode` (`src/server/http.ts`). Dynamic segments are part of the path, so a code issued for one batch does not serve another.
+
+The local frontend implements the protocol once, in `src/lib/api-client.ts` (`callApi`, with the helpers `getJson`, `postJson`, `postForm` and `deleteJson`; `getWithActionCode` remains as an alias of `getJson`), so that no screen reimplements it partially. Route handlers share one HTTP edge in `src/server/http.ts` (`requireActionCode`, `guardWithProfile`, `ok`, `fail`). The BFF implements it once, in `apps/web/src/server/cloudflare.ts` (`cloud()`).
 
 Manually validated call (local): issue a code for `GET /api/system/status`, send it in `X-Action-Code`, and receive `403` when reusing the same value.
 
@@ -134,9 +141,11 @@ Manually validated call (local): issue a code for `GET /api/system/status`, send
 - `pnpm dev` kills any previous process on port 3000, waits for the port to be released, removes `.next` and starts Next.js at `http://127.0.0.1:3000`.
 - `pnpm dev:all` probes `GET /api/health/live` and only then opens the Electron window at `http://localhost:3000` (falling back to `http://127.0.0.1:3000`; `TALENTUM_URL` overrides both). When a local backend already responds (from Docker or a `pnpm dev` in another terminal), the window attaches to it and does not stop it when closed; when nothing responds, the script starts the server and stops both processes together.
 - The server listens only on IPv4 loopback; `localhost` reaches it through address-family fallback.
-- The interface is navigable; the dashboard reads real local SQLite data through `GET /api/dashboard` and `GET /api/dashboard/categories`, and area screens confirm emptiness through `GET /api/local-summary`. `src/lib/demo-data.ts` holds only navigation and theme configuration, not financial fixtures. Import, reconciliation and the other financial use cases shown on screens are not implemented yet (**Planned**); the interface must not present fixtures as the user's data.
+- Implemented and verifiable: persistent onboarding, profile, institutions, accounts, balance history and own Pix keys, categories, income sources, obligations and merchant rules (CRUD only), CSV and OFX statement import with batch undo, the transaction listing, detail, edit and history, the reconciliation queue with reversible decisions, the dashboard (all nine elements, including the cash projection and monthly cash flow) and the local timeline with reversal. Cards, net worth, goals, news and gamification remain empty-state screens: they show no fictitious data, only the empty state. `src/lib/demo-data.ts` holds only navigation and theme configuration, never financial data, and area screens that are still placeholders confirm emptiness through `GET /api/local-summary`.
 
-**Planned production startup:**
+**Packaged startup (Current in code, see [ADR 0004](decisions/0004-electron-packaging.md)):** when `app.isPackaged` is true and `TALENTUM_URL` is unset, `electron/main.cjs` picks a free port on `127.0.0.1`, generates a per-run `TALENTUM_LOCAL_BOOTSTRAP_SECRET`, runs `prisma migrate deploy` against `talentum-local.db` in the Electron `userData` directory, spawns the standalone Next.js server with the Electron-embedded Node runtime, waits for `GET /api/health/live` (up to 60 seconds) and only then opens the window on that origin. The server process is killed when every window closes. No packaged build has been validated end to end in this repository (**Open**, see [Open items](#6-open-items)).
+
+**Target production startup:**
 
 ```mermaid
 sequenceDiagram
@@ -150,7 +159,7 @@ sequenceDiagram
     U->>N: use the local interface
 ```
 
-In production the process must choose an available port or use an authenticated local channel. The local API must never be exposed to the external network.
+In production the process must choose an available port or use an authenticated local channel (the packaged startup above does both in code). The local API must never be exposed to the external network.
 
 ### 2.3 Web sign-up, login and download
 
@@ -194,7 +203,7 @@ sequenceDiagram
     U->>R: download
 ```
 
-Because releases of an open-source repository are public, the grant controls the LP experience and auditing; it does not make the binary private. The LP neither contains nor runs the desktop system. **Planned:** installers signed and published by a release pipeline (no pipeline or packaging configuration exists yet).
+Because releases of an open-source repository are public, the grant controls the LP experience and auditing; it does not make the binary private. The LP neither contains nor runs the desktop system. **Planned:** installers signed and published by a release pipeline. Packaging configuration exists (`electron-builder`, [ADR 0004](decisions/0004-electron-packaging.md)) and CI validates builds, but no pipeline signs or publishes installers yet.
 
 ### 2.4 Feedback community
 
@@ -220,29 +229,44 @@ Anyone may read content in state `PUBLISHED`. Creating a post, commenting, votin
 
 ### 2.5 Import and reconciliation (local)
 
-**Status: Planned.** The tables exist (`ImportBatch`, `Transaction` and related models), but there is no importer or parser code. MVP import formats are CSV and OFX (see [PRODUCT.md](PRODUCT.md)); PDF is a later format. `pdfjs-dist` and `ofx-data-extractor` are installed but unused.
+**Status: Current** for CSV and OFX import and for the reconciliation queue; PDF is Stage 7 of [ROADMAP.md](ROADMAP.md) (**Planned**). `pdfjs-dist` is installed but unused; `ofx-data-extractor` was removed in favour of an own bounded reader ([ADR 0002](decisions/0002-own-ofx-parser.md)).
+
+The flow has two steps, and only the second one writes.
 
 ```mermaid
 flowchart LR
-    F[CSV, OFX or later PDF] --> V[Validate type and size]
-    V --> P[Isolated parser]
+    F[CSV or OFX] --> V[Validate size and real content]
+    V --> D[Decode and repair mojibake]
+    D --> P[Isolated, bounded parser]
     P --> N[Normalize entries]
-    N --> C[Classify by rules]
-    C --> Q{Enough confidence?}
-    Q -- yes --> S[Save transaction]
-    Q -- no --> T[Reconciliation queue]
-    T --> A[User confirms or corrects]
-    A --> S
-    S --> H[Record history event]
+    N --> R[Preview: nothing is written]
+    R --> U{Mapping correct?}
+    U -- no --> A[Person adjusts the columns]
+    A --> P
+    U -- yes --> G[Write the batch in one atomic transaction]
+    G --> Q{Duplicate?}
+    Q -- whole file --> X[Refuse the batch]
+    Q -- entry by entry --> S[Write only what is new]
+    S --> B[Record the statement closing balance]
+    S --> C[Open a reconciliation item per uncategorized entry]
 ```
 
-Requirements:
+Requirements, all met by the current importer (`src/server/import/`):
 
+- recognize the format by **content**, never by the extension or the declared type;
 - compute a file fingerprint to prevent duplicate imports;
+- also deduplicate entry by entry, so that statements with overlapping periods do not write the same entry twice;
 - persist in an atomic transaction;
 - keep traceability between file, batch and entries;
-- allow undoing a batch without affecting later unrelated changes;
+- declare every unreadable line instead of omitting it;
+- record the interval the file covers, not only the import date;
+- allow undoing a batch without affecting later unrelated changes, including keeping a balance entered by hand after the import, which requires the balance written by the batch to be identifiable rather than inferred from its creation instant;
+- not retain the statement content: only entries and file metadata;
 - never send a statement to external AI services.
+
+Imported entries are written with `status = 'posted'` (they already happened) and **without a category**. In the same transaction the importer opens one `ReconciliationItem` (reason `category_unknown`) per uncategorized entry, which feeds the reconciliation queue. Automatic classification by `MerchantRule` is **Planned**: the rules can be created through the API, but the importer does not apply them yet.
+
+Reconciliation (**Current**): the person confirms, categorizes, links an obligation, records a financial adjustment (interest, fee, discount or correction) or pairs an own-account transfer. Each decision is one SQLite transaction that stores before/after JSON snapshots, creates a `FinancialAdjustment` or `OwnAccountTransfer` when applicable and records a timeline event; reverting restores the snapshots and reopens the item without deleting the audit trail (`src/server/reconciliation.ts`). Automatic pairing of own-account transfers during import, using the registered Pix identifiers, is **Planned**.
 
 ### 2.6 Risk-free balance
 
@@ -266,7 +290,7 @@ A contribution suggestion:
 
 ### 2.9 Backup and restore
 
-**Status: Planned.**
+**Status: Planned** for backup and restore themselves. **Current:** a migration gate. `scripts/migration-preflight.mjs` runs before `prisma migrate deploy` in `pnpm dev` and `pnpm dev:all`; when a pending migration contains destructive SQL (`DROP TABLE`, `DROP COLUMN`, `TRUNCATE TABLE`, `DELETE FROM`) it stops unless `TALENTUM_VERIFIED_BACKUP_ID` names a `DatabaseBackup` row with status `verified`, a `verifiedAt` instant, a 64-hex checksum, a positive size and the current schema version. **Open:** nothing in the application creates `DatabaseBackup` rows yet, the Docker image and the packaged app do not run the preflight, and the target cloud flow below is not implemented.
 
 ```mermaid
 sequenceDiagram
@@ -287,7 +311,7 @@ Restore downloads the encrypted object, validates integrity, decrypts locally in
 
 ### 2.10 History
 
-**Status: Planned.** Relevant events are recorded with type, instant, related entity and minimal metadata. History is a product trail and supports undo; it must not contain tokens, raw document content or unnecessary data.
+**Status: Current** (local). Imports, manual transaction edits and reconciliation decisions write a redacted `TimelineEvent` with kind, title, description, instant and the opaque IDs of the related batch, transaction, revision or decision. `POST /api/timeline-events/:id/revert` reverts through the original use case (undo the batch, restore the revision snapshot or revert the decision) and refuses with `409` when the related state changed. History is a product trail and supports undo; it never contains tokens, action codes, raw document content, file content, keys or hashes.
 
 ## 3. Layer 1: Web
 
@@ -399,7 +423,7 @@ The cloud API never receives statements, transactions, balances or portfolios in
 
 **Current.** The Worker is a single module (`cloudflare/src/index.ts`) that accesses D1 only through the `DB` binding (`env.DB`), inline with prepared statements. D1 tables come only from `cloudflare/migrations` (`0001_cloud_core`, `0002_cloud_auth_runtime`); their schema is documented in [DATABASE.md](DATABASE.md).
 
-**Mandatory boundary between the databases.** All three Prisma migrations (`20260905182000_init`, `20260905214010_mvp_financial_core`, `20260911000729_mvp_scheduled_obligations`) belong only to the Electron local SQLite. They contain profiles, institutions, accounts, balances, import batches, transactions and scheduled obligations and **must never run on D1**. The browser and Electron never access D1 directly: every read or write goes through the Worker API. Do not use `prisma db push` on D1 and do not copy migrations from `prisma/migrations` into `cloudflare/migrations`.
+**Mandatory boundary between the databases.** All eleven Prisma migrations in `prisma/migrations` belong only to the Electron local SQLite. They contain profiles, onboarding, institutions, accounts, Pix identifiers, balances, import batches and files, transactions, obligations, income, rules, reconciliation, timeline and backup metadata, and **must never run on D1**. The browser and Electron never access D1 directly: every read or write goes through the Worker API. Do not use `prisma db push` on D1 and do not copy migrations from `prisma/migrations` into `cloudflare/migrations`.
 
 ### 3.7 Configuration variables (names and locations)
 
@@ -421,7 +445,11 @@ Values are never written in documentation or version control; secret-handling po
 | `DOCKER_CLOUDFLARE_API_BASE_URL` | Worker URL seen from the `talentum-web` container | root `.env` | not used |
 | `DATABASE_URL`, `DOCKER_DATABASE_URL` | local SQLite path (host, container) | root `.env` | not used (local only) |
 | `TALENTUM_STANDALONE_BUILD` | build flag for Next standalone output (Docker images) | Dockerfiles | not used |
-| `TALENTUM_URL` | Electron window URL override | shell env / `scripts/dev-all.mjs` | not used |
+| `TALENTUM_URL` | Electron window URL override; when set, the packaged app does not start its own backend | shell env / `scripts/dev-all.mjs` | not used |
+| `TALENTUM_LOCAL_BOOTSTRAP_SECRET` | per-run secret required by local `POST /api/action-codes` when set; generated by the packaged Electron app, never configured by hand | unset in development and Docker | generated per run in memory |
+| `TALENTUM_LOCAL_KEY_FILE` | optional override of the local device key path ([ADR 0003](decisions/0003-local-device-key.md)) | shell env | not used |
+| `TALENTUM_VERIFIED_BACKUP_ID` | opaque `DatabaseBackup` ID that unlocks a destructive local migration in the preflight | shell env, only when needed | not used |
+| `TALENTUM_E2E_URL` | base URL of the running local backend for the end-to-end tests | shell env | not used |
 
 None of the BFF variables uses the `NEXT_PUBLIC_` prefix. The LP calls its own BFF; the BFF calls the Worker; the Worker queries D1. If `CLOUDFLARE_BFF_SHARED_SECRET` and `BFF_SHARED_SECRET` differ, every Worker route answers `403 BFF_REQUIRED`.
 
@@ -567,12 +595,13 @@ The desktop app is local-first: it processes and stores financial data on the de
 
 **Current.**
 
-- The Next.js App Router (`src/app`) provides the interface and six route handlers: `action-codes`, `dashboard`, `dashboard/categories`, `health/live`, `local-summary`, `system/status`.
-- Prisma is configured for SQLite with nine models: `LocalProfile`, `UserPreference`, `Institution`, `Account`, `BalanceSnapshot`, `Category`, `ImportBatch`, `Transaction`, `ScheduledObligation`. Money is stored as `BigInt` cents. Details in [DATABASE.md](DATABASE.md).
-- The financial tables exist, but there is no importer code; the MVP import formats are CSV and OFX (Planned). The dashboard starts empty and asks for onboarding until a local profile exists; onboarding itself is a stub (Planned, see [PRODUCT.md](PRODUCT.md)).
-- With Compose, SQLite lives at `/data/talentum-local.db` inside the persistent volume `talentum-data`; the container runs `prisma migrate deploy` before starting the server, binds `127.0.0.1:3000` and health-checks `/api/health/live`. Docker runs only the local server; the graphical Electron shell stays on the host and opens `http://localhost:3000`. `pnpm dev:all` detects a running local backend and attaches the window to it instead of competing for the port.
+- The Next.js App Router (`src/app`) provides the interface and the local API of MVP features 1 to 8: 39 route handlers under `src/app/api` (listed in [Local API contract](#48-local-api-contract)).
+- Prisma is configured for SQLite with 24 models created by 11 migrations. Money is stored as `BigInt` cents. Details in [DATABASE.md](DATABASE.md).
+- The financial tables, the CSV/OFX importer, reconciliation, the dashboard and the timeline are implemented. The interface does not present fixtures as the user's data: the absence of records produces an empty or unknown state, never an invented zero. Without a local profile the dashboard leads to `/onboarding`, which now runs the persistent four-step flow (see [PRODUCT.md](PRODUCT.md)).
+- With Compose, SQLite lives at `/data/talentum-local.db` inside the persistent volume `talentum-data`; the container runs `prisma migrate deploy` before starting the server, binds `127.0.0.1:3000` and health-checks `/api/health/live`. Docker runs only the local server; the graphical Electron shell stays on the host and opens the configured loopback address (`http://localhost:3000` by default). `pnpm dev:all` detects a running local backend and attaches the window to it instead of competing for the port.
+- The local device key that protects own Pix identifiers lives in `talentum-local.key` next to the database file ([ADR 0003](decisions/0003-local-device-key.md)).
 - The local app sends no Content Security Policy (Planned).
-- There is no packaging configuration (no installer build); installers are Planned.
+- Packaging is configured with `electron-builder` (NSIS for Windows, AppImage for Linux; [ADR 0004](decisions/0004-electron-packaging.md)). Signed installers are Planned.
 
 ```mermaid
 flowchart LR
@@ -589,7 +618,7 @@ flowchart LR
 **Current controls:**
 
 - `BrowserWindow` with `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true` and `preload.cjs`; frameless window, no application menu, single-instance lock.
-- Loads `TALENTUM_URL` or the fixed `http://localhost:3000`. A random port and an ephemeral per-run secret are **Planned**.
+- In development and with Docker, loads `TALENTUM_URL` or `http://localhost:3000`. In a packaged build without `TALENTUM_URL`, starts its own backend on a random loopback port with a per-run bootstrap secret and loads that origin (**Current** in code; see [2.2](#22-local-app-startup-and-runtime)).
 - `setWindowOpenHandler` denies every new window; allowed external links (`https:` to `github.com` or `icons.getbootstrap.com`) open in the system browser.
 - `will-navigate` blocks navigation outside the local backend origin, opening allowlisted hosts externally.
 - A deny-all permission request handler refuses camera, notifications, geolocation and every other browser permission.
@@ -604,15 +633,17 @@ flowchart LR
 | Preload | minimal per-method API; never exposes `ipcRenderer`, filesystem or generic shell | Current |
 | Main | validates sender on every IPC | Current |
 | Main | validates arguments, origin and destination schema on every IPC | Planned (current channels take no arguments) |
-| Local backend | binds to loopback only | Current (`127.0.0.1:3000`) |
-| Local backend | random port when feasible and an ephemeral per-run secret | Planned |
+| Local backend | binds to loopback only | Current (`127.0.0.1:3000` in development and Docker; `127.0.0.1:<random port>` when packaged) |
+| Local backend | random port when feasible and an ephemeral per-run secret | Current in code for the packaged app only (`TALENTUM_LOCAL_BOOTSTRAP_SECRET` checked by `POST /api/action-codes`); development and Docker use the fixed port and no secret. Delivery of the secret to the renderer is unverified (Open) |
 | Local backend | rejects non-loopback `Host` (DNS rebinding) | Current |
 | SQLite | reachable only through the local backend persistence | Current |
 | Cloud | reachable only through the local backend, never from the renderer | Current (no cloud calls exist) / Planned (integration) |
 
 ### 4.5 IPC
 
-**Current.** `electron/preload.cjs` adds the `electron` class to the document element and exposes, through `contextBridge`, a single object `window.talentumWindow` with three methods: `minimize()`, `toggleMaximize()` and `close()`. They send the argument-less channels `window:minimize`, `window:toggle-maximize` and `window:close`; `main.cjs` handles each only for a trusted sender. No other IPC channel exists.
+**Current.** `electron/preload.cjs` adds the `electron` class to the document element and exposes, through `contextBridge`, a single object `window.talentumWindow` with four methods: `minimize()`, `toggleMaximize()`, `close()` and `bootstrapSecret()`. The first three send the argument-less channels `window:minimize`, `window:toggle-maximize` and `window:close`; `main.cjs` handles each only for a trusted sender. `bootstrapSecret()` is not IPC: it returns `TALENTUM_LOCAL_BOOTSTRAP_SECRET` from the renderer's `process.env`, or `null`, and `src/lib/api-client.ts` sends it as `X-Talentum-Bootstrap` when requesting an action code. No other IPC channel exists.
+
+**Open:** `main.cjs` puts the bootstrap secret only in the environment of the spawned backend, not in its own `process.env`, so it is unverified whether the sandboxed renderer can read it. If it cannot, a packaged build would answer `403 BOOTSTRAP_DENIED` to every action-code request. A packaged smoke test is required before the first release.
 
 ### 4.6 Mandatory shell controls
 
@@ -624,7 +655,7 @@ flowchart LR
 6. Validate sender and schema of every IPC. (Sender Current; schema Planned.)
 7. Prefer a secure custom protocol over `file://`. (Planned; the app currently loads over loopback HTTP.)
 8. Disable unused Electron features with fuses. (Planned.)
-9. Sign packages, updates and manifests. (Planned.)
+9. Sign packages, updates and manifests. (Planned; packages are built unsigned, see [ADR 0004](decisions/0004-electron-packaging.md).)
 10. Never send cleartext finances to the community or the cloud backend. (Current.)
 
 ### 4.7 Desktop authentication
@@ -633,28 +664,102 @@ flowchart LR
 
 ### 4.8 Local API contract
 
-**Current routes** (all under `src/app/api`):
+**Current routes** (all under `src/app/api`). Every route except the first and the last requires a single-use `X-Action-Code`; every route that touches financial data also resolves the local profile on the server and scopes its queries by `profileId` (a request without a profile answers `{ "hasProfile": false }`).
 
-| Method | Route | Protection | Purpose |
-| --- | --- | --- | --- |
-| `POST` | `/api/action-codes` | bootstrap; Zod validation (`method` enum, `path` starting with `/api/`, max 200 chars) | issue a 60-second action code |
-| `GET` | `/api/system/status` | single-use `X-Action-Code` | check frontend/API communication (`{status, service: "talentum-local-api", timestamp}`) |
-| `GET` | `/api/dashboard` | single-use `X-Action-Code` | dashboard indicators computed from local SQLite |
-| `GET` | `/api/dashboard/categories` | single-use `X-Action-Code` | spending by category in the period |
-| `GET` | `/api/local-summary` | single-use `X-Action-Code` | per-area counts from the local database: accounts, transactions, pending transactions, open obligations and imports |
-| `GET` | `/api/health/live` | infrastructure only | health check without application data (`{status: "ok"}`) |
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/action-codes` | bootstrap; Zod validation (`method` enum, `path` starting with `/api/`, max 200 chars); requires `X-Talentum-Bootstrap` when the backend runs with a bootstrap secret; issues a 60-second action code |
+| `GET` | `/api/system/status` | check frontend/API communication (`{status, service: "talentum-local-api", timestamp}`) |
+| `GET` | `/api/local-summary` | per-area counts: accounts, transactions, pending transactions, open obligations and imports |
+| `GET`/`POST` | `/api/profile` | read and create the local profile |
+| `GET`/`POST` | `/api/onboarding` | read the onboarding state; create the profile if needed and open or resume a draft session |
+| `PATCH` | `/api/onboarding/:onboardingId` | save a step and its answers with optimistic concurrency (`version`) |
+| `POST` | `/api/onboarding/:onboardingId/complete` | complete onboarding; requires privacy, currency and time zone answers and writes them to `UserPreference` |
+| `GET` | `/api/dashboard` | dashboard indicators computed from local SQLite |
+| `GET` | `/api/dashboard/categories` | spending by category in the period |
+| `GET` | `/api/dashboard/risk-free-balance` | breakdown of the risk-free balance and the daily projection to period end (G-1) |
+| `GET` | `/api/dashboard/cash-flow` | income and outflow per calendar month, only where a statement covers the month (G-3) |
+| `GET`/`POST` | `/api/institutions` | list and register institutions |
+| `GET`/`PATCH`/`DELETE` | `/api/institutions/:institutionId` | detail, rename and delete an institution |
+| `GET`/`POST` | `/api/accounts` | list and register accounts with an informed balance |
+| `GET`/`PATCH`/`DELETE` | `/api/accounts/:accountId` | detail, edit, deactivate and delete an account |
+| `GET`/`POST` | `/api/accounts/:accountId/balance-snapshots` | balance history and new informed balance |
+| `GET`/`POST` | `/api/accounts/:accountId/pix-identifiers` | list (masked) and register own Pix keys |
+| `GET`/`PATCH`/`DELETE` | `/api/accounts/:accountId/pix-identifiers/:pixIdentifierId` | detail (cleartext only with `?reveal=1`), edit and remove a key |
+| `GET`/`POST` | `/api/categories` | list and create categories |
+| `PATCH`/`DELETE` | `/api/categories/:categoryId` | edit and delete a category |
+| `GET`/`POST` | `/api/incomes` | list and register expected income sources |
+| `GET`/`POST` | `/api/obligations` | list and register scheduled obligations |
+| `PATCH`/`DELETE` | `/api/obligations/:obligationId` | edit and delete an obligation |
+| `GET`/`POST` | `/api/merchant-rules` | list and create deterministic merchant rules |
+| `POST` | `/api/imports/inspect` | inspect a statement without writing anything |
+| `GET`/`POST` | `/api/imports` | list batches and write a whole batch |
+| `GET`/`DELETE` | `/api/imports/:importBatchId` | detail and undo a batch |
+| `GET` | `/api/csv-mappings` | list saved column mappings |
+| `DELETE` | `/api/csv-mappings/:mappingId` | forget a saved mapping |
+| `GET` | `/api/transactions` | list entries with validated filters and cursor pagination |
+| `GET`/`PATCH` | `/api/transactions/:transactionId` | detail and edit (description, category and status only) |
+| `GET` | `/api/transactions/:transactionId/history` | immutable revision history of one entry |
+| `GET` | `/api/reconciliation-items` | list up to 100 pending items of the profile |
+| `GET` | `/api/reconciliation-items/:reconciliationItemId` | entry, categories and decisions of one item |
+| `POST` | `/api/reconciliation-items/:reconciliationItemId/decisions` | confirm, categorize, link an obligation, adjust or pair a transfer |
+| `POST` | `/api/reconciliation-decisions/:decisionId/revert` | restore the previous state and reopen the item |
+| `GET` | `/api/timeline-events` | redacted events, optional `kind` filter (`import`, `transaction_edit`, `reconciliation`) and cursor |
+| `POST` | `/api/timeline-events/:timelineEventId/revert` | revert an import, edit or reconciliation through its original use case |
+| `GET` | `/api/health/live` | infrastructure only; health check without application data (`{status: "ok"}`) |
 
-Every route under `/api` refuses with `403 HOST_NOT_ALLOWED` any request whose `Host` is not `localhost`, `127.0.0.1` or `[::1]` (`src/middleware.ts`, `src/server/local-host.ts`), against DNS rebinding. Successful responses send `Cache-Control: no-store`.
+Every route under `/api` refuses with `403 HOST_NOT_ALLOWED` any request whose `Host` is not `localhost`, `127.0.0.1` or `[::1]` (`src/middleware.ts`, `src/server/local-host.ts`), against DNS rebinding. Responses built with the shared helpers in `src/server/http.ts` send `Cache-Control: no-store`. `tests/regression/dashboard-honesty.test.mjs` checks that every local route other than `action-codes` and `health` requires an action code and scopes by profile.
 
-Every dashboard query is scoped by `profileId`, resolved on the server by `getLocalProfileId()`. Without a local profile the response is `{ "hasProfile": false }` and the interface leads to onboarding; no zero is returned in place of an unknown value.
+**Dashboard.** `GET /api/dashboard` returns the risk-free balance, the consolidated balance with the base date of the oldest informed balance (`balanceReferenceDate`), the committed total in the period with the count of estimated obligations (`committedEstimatedCount`), month spending and daily average with the change against the same interval of the previous month, and the counts of accounts with known and unknown balance, pending reconciliation items (`ReconciliationItem.status = 'pending'`) and imports. `GET /api/dashboard/categories` returns the period's spending slices, already ordered, with the tail summed into `Outros` and uncategorized entries in their own slice; the sum of the slices always equals `totalCents`.
 
-`GET /api/dashboard` returns the risk-free balance, the consolidated balance with the base date of the oldest informed balance (`balanceReferenceDate`), the committed total in the period with the count of estimated obligations (`committedEstimatedCount`), month spending and daily average with the change against the same interval of the previous month, and the counts of accounts with known and unknown balance, pending items and imports.
+`GET /api/dashboard/risk-free-balance` returns the verdict breakdown (balance, committed amount and the difference), the daily projection to the end of the period and the obligations that compose it; `shortfallDay` is the first day the projected balance turns negative, or `null`. **Forecast future income does not enter the projection**: including it would turn the Saldo Livre de Risco into a forecast. An obligation already overdue before the window is anchored on the first day instead of being omitted: it is still owed, and hiding it would make the projection optimistic.
 
-`GET /api/dashboard/categories` returns the period's spending slices, already ordered, with the tail summed into `Outros` and uncategorized entries in their own slice. The sum of the slices always equals `totalCents`.
+`GET /api/dashboard/cash-flow` returns income and outflow per calendar month. The rule governing the route is honesty, not aesthetics:
 
-`GET /api/local-summary` exists so that no screen claims "none" without backend confirmation; it returns only counts, never records, amounts or descriptions.
+| Month situation | Response |
+| --- | --- |
+| no imported statement | **not returned** |
+| statement covering the whole month | returned with `coverage: "full"` |
+| statement covering part of the month | returned with `coverage: "partial"` |
+| covered, with no entry | returned with zeros: here zero is a fact |
 
-**Monetary values travel as integer cents in a `string`** (`BigInt` is not JSON-serializable) and are formatted only at render time. The backend returns no formatted monetary text. Neither dashboard endpoint returns individual transactions, entry descriptions or file content. Formulas and criteria for each indicator are in [PRODUCT.md](PRODUCT.md).
+Without any batch with a known period the response carries `months: []` and `coverageRanges: 0`. **An empty series is different from a series of zeros**: the first says "I don't know", the second would claim there was no movement.
+
+**Open:** `GET /api/dashboard` computes the consolidated balance inline over every active account, while `GET /api/dashboard/risk-free-balance` uses `loadConsolidatedBalance` in `src/server/dashboard-queries.ts`, which keeps only `BRL` accounts. With an account in another currency the verdict and the projection can diverge (see L-4 in [PRODUCT.md](PRODUCT.md)).
+
+**Statement import.** `POST /api/imports/inspect` receives the file as `multipart/form-data` in the `file` field, optionally with `mapping` and `dialect` as JSON. It **persists nothing**: it returns the format, encoding, detected dialect, proposed role of each column, covered period, closing balance, a preview of the first entries, per-line issues, the fingerprint and the available accounts. It is safe to call as often as needed while the person adjusts the mapping.
+
+`POST /api/imports` receives the same fields plus `accountId` and writes the whole batch in one SQLite transaction: `ImportBatch`, `ImportFile`, the new `Transaction` rows, the `ImportIssue` rows, the reconciliation items, the closing-balance `BalanceSnapshot` and a timeline event. It answers `201` with the counts read, written and duplicated. The file stays in the client between the two steps and is sent again on confirmation, so the statement exists only on the device and only while a request is processed; this replaced the earlier three-step design with a server-side draft (see Feature 4 in [PRODUCT.md](PRODUCT.md)).
+
+The format is decided by **content**, never by the extension or the declared `Content-Type`. The statement content is not retained: `ImportFile` stores the sanitized name, size, type, encoding and the SHA-256 of the normalized text.
+
+Deduplication works on two levels:
+
+| Situation | Control | Response |
+| --- | --- | --- |
+| the same file sent again | `ImportBatch.fingerprint` unique per profile | `409 DUPLICATE_BATCH` |
+| statements with overlapping periods | `Transaction.externalId` unique per account | `201`, with `duplicateCount` |
+
+Without a source identifier in the file, the comparison uses civil day, amount and description, consuming one occurrence at a time: two identical, legitimate entries on the same day remain two.
+
+`DELETE /api/imports/:importBatchId` undoes the batch: it removes the entries born from it and the balance it recorded, without affecting other batches.
+
+**Reusable column mapping.** Inspection returns `headerSignature`, computed over the normalized column labels. It identifies the **layout**, not the content: two statements from the same bank in different months have different fingerprints and the same signature. When the signature matches a `CsvMappingProfile` of the profile, inspection reapplies the saved mapping and answers `mappingSource: "salvo"` with the mapping name, so the screen declares the reuse instead of applying it silently. The possible values are `inferido`, `salvo` and `informado`. `POST /api/imports` accepts `rememberMapping=true` in the multipart body and then saves or updates the mapping for that layout. The save happens **outside** the batch transaction: keeping the mapping is a convenience, and failing at it must not undo an import that is already correct. The mapping stores only the separator, header flag, decimal separator and the role of each column; no value, entry or statement excerpt is retained.
+
+**Accounts, balances and Pix keys.** Two deletions are **refused** rather than executed, because the foreign key would cause silent damage:
+
+| Situation | Foreign key | Response |
+| --- | --- | --- |
+| account with entries or batches | `Transaction` is `CASCADE` | `409 ACCOUNT_HAS_HISTORY`: deactivate instead of deleting |
+| institution with accounts | `Account.institutionId` is `SET NULL` | `409 INSTITUTION_HAS_ACCOUNTS`: the accounts would be orphaned |
+
+Deactivating (`PATCH` with `isActive: false`) removes the account from the dashboard totals and keeps its whole history; it is the operation that replaces deletion when a past exists. Changing the currency of an account that already has entries answers `409 ACCOUNT_CURRENCY_LOCKED`: the stored cents would stay the same and start meaning something else. Each balance is a **dated fact**, never an overwrite: `POST` on `balance-snapshots` appends a record, and the dashboard adds the latest one to the entries after it. The response distinguishes a balance entered by hand from one that came from a statement through `fromImport`.
+
+Own Pix keys exist only to recognize transfers between the person's own accounts. The contract never returns the cleartext value or the ciphertext in a listing, only `maskedValue`. The value leaves only through `GET` of the item with `?reveal=1`, an explicit request answered with `no-store` like every private route. Uniqueness is per profile and uses the HMAC index of the normalized value, so the same key written differently (for example, a formatted and an unformatted synthetic CPF) is recognized as repeated and answers `409 PIX_KEY_ALREADY_REGISTERED`. The key value is not editable: changing it would change the index and the pairing history would stop making sense; for another key, register a new one and deactivate the old one, which still explains older statements. The cryptographic construction and its limits are in [ADR 0003](decisions/0003-local-device-key.md).
+
+**Onboarding, planning and transactions.** Onboarding updates use `version` to detect concurrent edits, and every operation is scoped by the `profileId` resolved in the backend. Categories, planning and commitments travel money as integer cents in a `string`; a forecast income source is never added to the balance before it exists as an effective transaction. The transaction edit accepts only description, category and status, validates ownership and category in the backend and persists before/after in the same SQLite transaction (`TransactionRevision`).
+
+**Monetary values travel as integer cents in a `string`** (`BigInt` is not JSON-serializable) and are formatted only at render time. The backend returns no formatted monetary text. No dashboard endpoint returns individual transactions, entry descriptions or file content. Formulas and criteria for each indicator are in [PRODUCT.md](PRODUCT.md).
 
 Local route handlers serve only the interface running on the same device and orchestrate use cases and local Prisma access.
 
@@ -662,17 +767,14 @@ Local route handlers serve only the interface running on the same device and orc
 
 | Method | Route | Use case |
 | --- | --- | --- |
-| `POST` | `/api/imports` | validate and start a local import |
-| `GET` | `/api/imports/:id` | check progress and problems |
-| `GET` | `/api/transactions` | list and filter transactions |
-| `PATCH` | `/api/transactions/:id` | correct classification or metadata |
-| `POST` | `/api/reconciliations/:id/resolve` | resolve a pending item |
 | `POST` | `/api/portfolio/contribution-simulation` | simulate a contribution by pillars |
-| `GET` | `/api/timeline` | read local events |
+| `GET` | `/api/updates` | new-version notice (see [PRODUCT.md](PRODUCT.md)) |
+
+The earlier candidates `POST /api/reconciliations/:id/resolve` and `GET /api/timeline` are superseded by the Current reconciliation-decision and timeline-event routes above.
 
 ### 4.9 Prisma and SQLite
 
-**Current.** `prisma/schema.prisma` targets SQLite through `DATABASE_URL` (the host default lives under the ignored `temp/` directory; the container uses `DOCKER_DATABASE_URL` inside the `talentum-data` volume). Migrations: `20260905182000_init`, `20260905214010_mvp_financial_core`, `20260911000729_mvp_scheduled_obligations`; all are local-only. The server accesses the database through `src/server/db.ts`. Scripts: `prisma:generate`, `prisma:validate`, `prisma:migrate`.
+**Current.** `prisma/schema.prisma` targets SQLite through `DATABASE_URL` (the host default lives under the ignored `temp/` directory; the container uses `DOCKER_DATABASE_URL` inside the `talentum-data` volume; the packaged app uses the Electron `userData` directory). The 11 migrations in `prisma/migrations` are listed in [DATABASE.md](DATABASE.md); all are local-only. The server accesses the database through `src/server/db.ts`. Scripts: `prisma:generate`, `prisma:validate`, `prisma:preflight`, `prisma:migrate`.
 
 ## 5. Error format and shared API conventions
 
@@ -684,7 +786,7 @@ Local route handlers serve only the interface running on the same device and orc
 - BFF availability errors: `{ "error": { "code": "WORKER_UNAVAILABLE" | "WORKER_NOT_CONFIGURED" } }` with status `503` (no `message`).
 - BFF form-route errors: bare strings, `{ "error": "forbidden" }`, `{ "error": "invalid_artifact" }`, `{ "error": "download_unavailable" }`.
 
-There is no `requestId` or correlation identifier in any response (**Planned**). Known codes: `BFF_REQUIRED`, `RATE_LIMITED`, `INVALID_ACTION_TARGET`, `INVALID_ACTION_CODE`, `INVALID_CALLBACK`, `INVALID_AUTH_TRANSACTION`, `OAUTH_EXCHANGE_FAILED`, `INVALID_ID_TOKEN`, `AUTH_FAILED`, `INVALID_REFRESH`, `REFRESH_REUSE_DETECTED`, `AUTH_REQUIRED`, `RELEASE_NOT_FOUND`, `NOT_FOUND`, `INTERNAL_ERROR`, `HOST_NOT_ALLOWED`.
+There is no `requestId` or correlation identifier in any response (**Planned**). Known codes: `BFF_REQUIRED`, `RATE_LIMITED`, `INVALID_ACTION_TARGET`, `INVALID_ACTION_CODE`, `INVALID_CALLBACK`, `INVALID_AUTH_TRANSACTION`, `OAUTH_EXCHANGE_FAILED`, `INVALID_ID_TOKEN`, `AUTH_FAILED`, `INVALID_REFRESH`, `REFRESH_REUSE_DETECTED`, `AUTH_REQUIRED`, `RELEASE_NOT_FOUND`, `NOT_FOUND`, `INTERNAL_ERROR`, `HOST_NOT_ALLOWED`. The local API adds `BOOTSTRAP_DENIED` and per-domain codes such as `DUPLICATE_BATCH`, `ACCOUNT_HAS_HISTORY`, `ACCOUNT_CURRENCY_LOCKED`, `INSTITUTION_HAS_ACCOUNTS`, `PIX_KEY_ALREADY_REGISTERED`, `ONBOARDING_CHANGED`, `ONBOARDING_INCOMPLETE`, `TIMELINE_EVENT_NOT_REVERSIBLE`, `TIMELINE_REVERT_CONFLICT`, the importer's `FILE_TOO_LARGE`, `BINARY_CONTENT`, `UNSUPPORTED_FORMAT`, `UNREADABLE_ENCODING`, `TOO_MANY_ROWS` and `TOO_MANY_COLUMNS`, and `*_NOT_FOUND` / `INVALID_*` codes per resource; the source of truth is the route code.
 
 **Planned target shape** (adds a non-sensitive correlation identifier):
 
@@ -702,14 +804,14 @@ Public messages must not include local paths, SQL queries, internal names, token
 
 ### 5.2 Conventions
 
-- JSON in UTF-8, except explicitly documented binary uploads (Current; the BFF download-grant route takes form data by design).
-- Input validated at the boundary with Zod or equivalent (Current in the local action-code route; the Worker validates by hand).
+- JSON in UTF-8, except explicitly documented binary uploads (Current; the BFF download-grant route takes form data and the local import routes take `multipart/form-data` by design).
+- Input validated at the boundary with Zod or equivalent (Current in the local API routes; the Worker validates by hand).
 - Opaque IDs, never sequential when exposed (Current: UUIDs and random tokens).
 - Dates and instants in ISO 8601; currency as an ISO 4217 code (Current for dates).
 - Monetary values as integers in the smallest unit, sent as strings in JSON (Current).
 - Errors with a stable code and a safe message (Current); non-sensitive correlation identifier (Planned).
-- Cursor pagination for large collections (Planned; no collection route paginates yet).
-- Idempotency for imports, backups and repeatable operations (Planned; no idempotency keys exist).
+- Cursor pagination for large collections (Current for `GET /api/transactions` and `GET /api/timeline-events`, with deterministic ordering and `id` as the tie-breaker; other listings are bounded, for example 100 reconciliation items).
+- Idempotency for imports, backups and repeatable operations (Planned as idempotency keys; today import re-submission is caught by the batch fingerprint and per-entry `externalId`, and onboarding updates by `version`).
 - Private responses with `Cache-Control: no-store` (Current).
 
 ## 6. Open items
@@ -718,13 +820,16 @@ Public messages must not include local paths, SQL queries, internal names, token
 2. **Repository layout.** Whether to migrate to the earlier `apps/desktop` + `packages/*` + `workers/` target layout or keep the current layout is undecided.
 3. **Vercel deploy isolation is unproven.** The Vercel project settings are not versioned and there is no deploy manifest; `Dockerfile.web` copies the whole repository into its build stage.
 4. **Worker action-code binding.** `context_hash` is the same for every caller (hash of the BFF secret); binding to session or origin is documented as intended but not implemented. Consumed and expired `action_codes` rows are never deleted; a cleanup policy is undefined.
-5. **Local action codes** are issued to any loopback caller and are not bound to a session or a per-run secret; this depends on the Planned random port and ephemeral secret.
+5. **Local action codes.** In development and Docker they are issued to any loopback caller and are not bound to a session or a per-run secret. The packaged app sets a per-run bootstrap secret, but its delivery to the renderer is unverified: `main.cjs` puts it only in the spawned server's environment while the preload reads the renderer's `process.env`. A packaged smoke test must confirm that action codes can be issued.
 6. **Unused Worker variables.** `ALLOWED_ORIGIN` (no CORS) and `APP_ENV` are declared but not read by code.
 7. **Security event recording.** Refresh-token reuse revokes the family and session but writes nothing to `security_events`; `audit_events` is never written, so download grants are recorded but not audited.
 8. **Rate-limit coverage.** Only `codes` (30/min) and `login` (10/min) per IP exist; callback, refresh, download grants and private routes have none. Values are not calibrated with telemetry.
 9. **BFF origin checks.** `sameOrigin()` accepts requests without an `Origin` header (relying on `SameSite=Lax`), and `GET /api/auth/refresh` rotates cookies without an origin check.
 10. **Error shape consistency.** BFF form routes return bare-string errors while other routes use `{error:{code,message}}`; no response has a correlation identifier.
 11. **Local app CSP.** The local app sends no Content Security Policy, although the Electron boundary requires a restrictive one.
-12. **Release pipeline.** There is no CI (`.github/` absent), no Electron packaging configuration and no signing; signed installers on GitHub Releases are Planned only.
+12. **Release pipeline.** CI exists (`.github/workflows/ci.yml` runs Prisma generate/validate, typecheck, tests and the local, LP and Worker builds) and packaging is configured with `electron-builder`, but no workflow builds installers, nothing signs them and nothing publishes to GitHub Releases; no packaged build has been validated end to end.
 13. **Worker adapters and timeouts.** Google and D1 calls are inline without adapters or explicit timeouts, contrary to normative rule 7.
 14. **D1 location.** Left to Cloudflare's automatic choice until latency is measured and a decision is recorded.
+15. **Dashboard currency consistency.** `GET /api/dashboard` sums every active account, while the projection route keeps only `BRL` accounts; the verdict and the projection can diverge with a non-BRL account.
+16. **Migration gate coverage.** The destructive-migration preflight runs in `pnpm dev`/`pnpm dev:all` only (not in the Docker image or the packaged app), and no code creates the `DatabaseBackup` rows it requires.
+17. **Import limits.** `PARSE_TIMEOUT_MS` is declared in `src/server/import/limits.ts` but not enforced, the parser runs in the request process rather than an isolated worker, and the file-size ceiling is checked after `request.formData()` has already buffered the multipart body.

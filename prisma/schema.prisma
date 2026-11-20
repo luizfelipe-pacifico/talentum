@@ -19,6 +19,49 @@ model LocalProfile {
   importBatches ImportBatch[]
   transactions  Transaction[]
   obligations   ScheduledObligation[]
+  csvMappings   CsvMappingProfile[]
+  onboardingSessions OnboardingSession[]
+  onboardingAnswers  OnboardingAnswer[]
+  incomes       IncomeSource[]
+  merchantRules MerchantRule[]
+  transactionRevisions TransactionRevision[]
+  pixIdentifiers PixIdentifier[]
+  reconciliationItems ReconciliationItem[]
+  reconciliationDecisions ReconciliationDecision[]
+  financialAdjustments FinancialAdjustment[]
+  ownAccountTransfers OwnAccountTransfer[]
+  timelineEvents TimelineEvent[]
+  databaseBackups DatabaseBackup[]
+}
+
+model OnboardingSession {
+  id          String             @id @default(uuid())
+  profileId   String
+  status      String             @default("draft")
+  currentStep String             @default("profile")
+  version     Int                @default(1)
+  completedAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  profile     LocalProfile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  answers     OnboardingAnswer[]
+
+  @@index([profileId, status, updatedAt])
+}
+
+model OnboardingAnswer {
+  id                    String            @id @default(uuid())
+  onboardingSessionId   String
+  profileId             String
+  questionKey           String
+  valueJson             String
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  onboardingSession     OnboardingSession @relation(fields: [onboardingSessionId], references: [id], onDelete: Cascade)
+  profile               LocalProfile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([onboardingSessionId, questionKey])
+  @@index([profileId])
 }
 
 model UserPreference {
@@ -40,8 +83,9 @@ model Institution {
   name      String
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
-  profile   LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  accounts  Account[]
+  profile     LocalProfile        @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  accounts    Account[]
+  csvMappings CsvMappingProfile[]
 
   @@index([profileId])
 }
@@ -61,20 +105,66 @@ model Account {
   balanceSnapshots BalanceSnapshot[]
   transactions     Transaction[]
   obligations      ScheduledObligation[]
+  importBatches    ImportBatch[]
+  incomes          IncomeSource[]
+  pixIdentifiers   PixIdentifier[]
 
   @@index([profileId])
   @@index([institutionId])
 }
 
+/// Chave PIX própria da pessoa, usada só para reconhecer transferência entre
+/// contas dela mesma — que não é receita nem despesa (docs/PRODUCT.md).
+///
+/// O valor nunca é gravado em texto puro. `valueIndex` é um HMAC com segredo do
+/// dispositivo, e não um hash simples: CPF, telefone e e-mail têm espaço de
+/// valores previsível e um hash puro cairia por força bruta. `valueCiphertext`
+/// guarda o valor sob AES-256-GCM para quando a pessoa pedir para vê-lo.
+model PixIdentifier {
+  id              String        @id @default(uuid())
+  profileId       String
+  accountId       String
+  /// cpf | cnpj | phone | email | random
+  type            String
+  /// Apelido seguro escolhido pela pessoa, para reconhecer a chave na lista.
+  label           String?
+  /// HMAC-SHA256 do valor normalizado, com subchave do dispositivo.
+  valueIndex      String
+  /// AES-256-GCM do valor normalizado, com versão, nonce e tag.
+  valueCiphertext String
+  /// Forma mascarada, a única que a interface exibe por padrão.
+  maskedValue     String
+  isActive        Boolean       @default(true)
+  /// Período de validade conhecido, que ajuda a interpretar extrato antigo.
+  validFrom       DateTime?
+  validUntil      DateTime?
+  /// declared | detected
+  source          String        @default("declared")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  profile         LocalProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  account         Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  /// A mesma chave não pertence a duas contas da mesma pessoa.
+  @@unique([profileId, valueIndex])
+  @@index([accountId])
+  @@index([profileId, isActive])
+}
+
 model BalanceSnapshot {
-  id           String   @id @default(uuid())
+  id           String       @id @default(uuid())
   accountId    String
   balanceCents BigInt
   capturedAt   DateTime
-  createdAt    DateTime @default(now())
-  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  /// Lote que gravou este saldo, quando ele veio de uma importação. É o que
+  /// permite desfazer a importação sem apagar um saldo informado à mão depois.
+  importBatchId String?
+  createdAt    DateTime     @default(now())
+  account      Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  importBatch  ImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
 
   @@index([accountId, capturedAt])
+  @@index([importBatchId])
 }
 
 model Category {
@@ -87,26 +177,111 @@ model Category {
   profile      LocalProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
   transactions Transaction[]
   obligations  ScheduledObligation[]
+  merchantRules MerchantRule[]
 
   @@unique([profileId, name, kind])
   @@index([profileId])
 }
 
+/// Lote de importação. `periodStart`/`periodEnd` registram o intervalo que o
+/// arquivo cobre — não a data em que foi importado. Sem eles o sistema não
+/// distingue "mês sem movimento" de "mês sem extrato" (docs/PRODUCT.md, L-2).
 model ImportBatch {
-  id          String        @id @default(uuid())
-  profileId   String
-  format      String
-  fingerprint String
-  status      String
-  fileName    String?
-  importedAt  DateTime      @default(now())
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  profile     LocalProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
+  id             String        @id @default(uuid())
+  profileId      String
+  accountId      String?
+  format         String
+  fingerprint    String
+  status         String
+  fileName       String?
+  /// Primeiro dia civil coberto pelo arquivo.
+  periodStart    DateTime?
+  /// Último dia civil coberto pelo arquivo.
+  periodEnd      DateTime?
+  /// Linhas convertidas com sucesso pelo parser.
+  rowCount       Int           @default(0)
+  /// Linhas efetivamente gravadas como transação.
+  importedCount  Int           @default(0)
+  /// Linhas descartadas por já existirem na conta.
+  duplicateCount Int           @default(0)
+  importedAt     DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  profile        LocalProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  account        Account?      @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  transactions     Transaction[]
+  files            ImportFile[]
+  issues           ImportIssue[]
+  balanceSnapshots BalanceSnapshot[]
+  timelineEvents    TimelineEvent[]
 
   @@unique([profileId, fingerprint])
   @@index([profileId, importedAt])
+  @@index([accountId])
+  @@index([profileId, periodStart, periodEnd])
+}
+
+/// Metadados do arquivo importado. O conteúdo bruto não é retido: o extrato é
+/// processado em memória e descartado (docs/ARCHITECTURE.md).
+model ImportFile {
+  id            String      @id @default(uuid())
+  importBatchId String
+  /// Nome informado pelo navegador, já sanitizado. Nunca usado como caminho.
+  originalName  String
+  byteSize      Int
+  /// SHA-256 do texto normalizado. Mesma base da impressão digital do lote.
+  contentHash   String
+  mediaType     String
+  encoding      String
+  createdAt     DateTime    @default(now())
+  importBatch   ImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+
+  @@index([importBatchId])
+  @@index([contentHash])
+}
+
+/// Problema encontrado em uma linha do arquivo. Existe para que uma linha
+/// ilegível seja declarada, e não silenciosamente omitida do lote.
+model ImportIssue {
+  id            String       @id @default(uuid())
+  importBatchId String
+  transactionId String?
+  /// Linha do arquivo, contada a partir de 1, como a pessoa a vê.
+  lineNumber    Int
+  /// error | warning
+  severity      String
+  code          String
+  message       String
+  createdAt     DateTime     @default(now())
+  importBatch   ImportBatch  @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  @@index([importBatchId])
+  @@index([transactionId])
+}
+
+/// Mapeamento de colunas reutilizável por instituição. Evita repetir a
+/// conferência a cada extrato do mesmo banco.
+model CsvMappingProfile {
+  id               String       @id @default(uuid())
+  profileId        String
+  institutionId    String?
+  name             String
+  separator        String
+  hasHeader        Boolean      @default(true)
+  decimalSeparator String       @default("auto")
+  /// Papéis das colunas, na ordem do arquivo, separados por vírgula.
+  roles            String
+  /// Assinatura do cabeçalho, para reconhecer o mesmo layout automaticamente.
+  headerSignature  String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  profile          LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  institution      Institution? @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+
+  @@unique([profileId, name])
+  @@index([profileId])
+  @@index([profileId, headerSignature])
 }
 
 model Transaction {
@@ -118,14 +293,27 @@ model Transaction {
   occurredOn    DateTime
   description   String
   amountCents   BigInt
+  /// pending | posted
   status        String        @default("pending")
+  /// Identificador do lançamento no banco de origem (FITID no OFX, coluna de
+  /// identificação no CSV). É a chave estável que impede que dois extratos com
+  /// período sobreposto gravem o mesmo lançamento duas vezes.
+  externalId    String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   profile       LocalProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
   account       Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
   importBatch   ImportBatch?  @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
   category      Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  importIssues  ImportIssue[]
+  revisions     TransactionRevision[]
+  reconciliationItem ReconciliationItem?
+  financialAdjustments FinancialAdjustment[]
+  outgoingTransfers OwnAccountTransfer[] @relation("OutgoingTransfer")
+  incomingTransfers OwnAccountTransfer[] @relation("IncomingTransfer")
+  timelineEvents TimelineEvent[]
 
+  @@unique([accountId, externalId])
   @@index([profileId, occurredOn])
   @@index([accountId, occurredOn])
   @@index([importBatchId])
@@ -157,5 +345,171 @@ model ScheduledObligation {
 
   @@index([profileId, status, dueDate])
   @@index([accountId])
+  @@index([categoryId])
+}
+
+/// Histórico local e imutável de uma edição manual de lançamento.
+model TransactionRevision {
+  id            String       @id @default(uuid())
+  profileId     String
+  transactionId String
+  beforeJson    String
+  afterJson     String
+  reason        String?
+  createdAt     DateTime     @default(now())
+  profile       LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  transaction   Transaction  @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  timelineEvents TimelineEvent[]
+
+  @@index([profileId, createdAt])
+  @@index([transactionId, createdAt])
+}
+
+model ReconciliationItem {
+  id            String                   @id @default(uuid())
+  profileId     String
+  transactionId String                   @unique
+  reason        String
+  confidence    Int
+  status        String                   @default("pending")
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  profile       LocalProfile             @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  transaction   Transaction              @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  decisions     ReconciliationDecision[]
+
+  @@index([profileId, status, createdAt])
+}
+
+model ReconciliationDecision {
+  id                   String              @id @default(uuid())
+  profileId            String
+  reconciliationItemId String
+  kind                 String
+  beforeJson           String
+  afterJson            String
+  revertedAt           DateTime?
+  createdAt            DateTime            @default(now())
+  profile              LocalProfile        @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  reconciliationItem   ReconciliationItem  @relation(fields: [reconciliationItemId], references: [id], onDelete: Cascade)
+  adjustment           FinancialAdjustment?
+  transfer             OwnAccountTransfer?
+  timelineEvents       TimelineEvent[]
+
+  @@index([profileId, createdAt])
+  @@index([reconciliationItemId, createdAt])
+}
+
+model FinancialAdjustment {
+  id            String                 @id @default(uuid())
+  profileId     String
+  transactionId String
+  decisionId    String                 @unique
+  kind          String
+  deltaCents    BigInt
+  note          String?
+  createdAt     DateTime               @default(now())
+  profile       LocalProfile           @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  transaction   Transaction            @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  decision      ReconciliationDecision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, createdAt])
+  @@index([transactionId])
+}
+
+model OwnAccountTransfer {
+  id                    String                 @id @default(uuid())
+  profileId             String
+  outgoingTransactionId String
+  incomingTransactionId String
+  decisionId            String                 @unique
+  createdAt             DateTime               @default(now())
+  profile               LocalProfile           @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  outgoingTransaction   Transaction            @relation("OutgoingTransfer", fields: [outgoingTransactionId], references: [id], onDelete: Cascade)
+  incomingTransaction   Transaction            @relation("IncomingTransfer", fields: [incomingTransactionId], references: [id], onDelete: Cascade)
+  decision              ReconciliationDecision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  @@unique([outgoingTransactionId, incomingTransactionId])
+  @@index([profileId, createdAt])
+  @@index([incomingTransactionId])
+}
+
+/// Evento local redigido. Guarda apenas metadados estruturados e IDs opacos.
+model TimelineEvent {
+  id                       String                  @id @default(uuid())
+  profileId                String
+  kind                     String
+  title                    String
+  description              String
+  importBatchId            String?
+  transactionId            String?
+  transactionRevisionId    String?
+  reconciliationDecisionId String?
+  reversible               Boolean                 @default(false)
+  revertedAt               DateTime?
+  createdAt                DateTime                @default(now())
+  profile                  LocalProfile             @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  importBatch              ImportBatch?             @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  transaction              Transaction?             @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  transactionRevision      TransactionRevision?     @relation(fields: [transactionRevisionId], references: [id], onDelete: SetNull)
+  reconciliationDecision   ReconciliationDecision?  @relation(fields: [reconciliationDecisionId], references: [id], onDelete: SetNull)
+
+  @@index([profileId, createdAt])
+  @@index([importBatchId])
+  @@index([transactionId])
+}
+
+/// Metadados de um backup local; caminho, chave e conteúdo nunca entram aqui.
+model DatabaseBackup {
+  id            String       @id @default(uuid())
+  profileId     String
+  schemaVersion String
+  checksum      String
+  byteSize      Int
+  status        String
+  verifiedAt    DateTime?
+  createdAt     DateTime     @default(now())
+  profile       LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, createdAt])
+  @@index([profileId, status, verifiedAt])
+}
+
+/// Entrada futura declarada. Não aumenta o Saldo Livre de Risco antes de ser
+/// efetivamente registrada como transação.
+model IncomeSource {
+  id               String       @id @default(uuid())
+  profileId        String
+  accountId        String?
+  description      String
+  amountCents      BigInt
+  frequency        String
+  nextExpectedDate DateTime?
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  profile          LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  account          Account?     @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@index([profileId, isActive])
+  @@index([accountId])
+}
+
+/// Regra local, determinística e revisável de classificação por estabelecimento.
+model MerchantRule {
+  id         String       @id @default(uuid())
+  profileId  String
+  categoryId String
+  pattern    String
+  matchType  String       @default("contains")
+  priority   Int          @default(0)
+  isActive   Boolean      @default(true)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  profile    LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  category   Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, pattern, matchType])
+  @@index([profileId, isActive, priority])
   @@index([categoryId])
 }

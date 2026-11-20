@@ -52,7 +52,11 @@ test('a ilustração não pode ser arrastada nem selecionada', async () => {
 test('cada estado mostra a sua ilustração', async () => {
   const where = {
     'src/components/dashboard.tsx': ['base-vazia', 'falha-consulta', 'sem-gastos'],
-    'src/components/demo-pages.tsx': ['falha-consulta', 'sem-lancamentos', 'sem-cartoes', 'importar-extrato', 'sem-obrigacoes', 'nada-a-conciliar', 'sem-faturas', 'sem-patrimonio', 'sem-metas', 'sem-noticias', 'historico-vazio', 'perfil-vazio'],
+    'src/components/demo-pages.tsx': ['falha-consulta', 'sem-cartoes', 'sem-obrigacoes', 'nada-a-conciliar', 'sem-faturas', 'sem-patrimonio', 'sem-metas', 'sem-noticias', 'historico-vazio', 'perfil-vazio'],
+    // Telas que deixaram de ser demonstração continuam com a ilustração do seu estado.
+    'src/components/statements.tsx': ['falha-consulta', 'sem-lancamentos'],
+    'src/components/accounts.tsx': ['falha-consulta', 'sem-contas'],
+    'src/components/import-wizard.tsx': ['importar-extrato'],
     'src/components/overlays.tsx': ['sem-notificacoes', 'sem-contas', 'importar-extrato'],
     'src/app/not-found.tsx': ['nao-encontrada'],
     'src/app/error.tsx': ['erro-tela'],

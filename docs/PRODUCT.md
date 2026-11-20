@@ -61,7 +61,7 @@ People who have little time to manage their finances; accumulate accounts, cards
 
 ### Navigation areas
 
-The local application is organised in six areas plus global actions. Status: **Current** as navigation and placeholder screens; the functionality behind each area is mostly **Planned** (see the [Route map](#route-map)).
+The local application is organised in six areas plus global actions. Status: **Current** as navigation; Dashboard, Extratos, Conciliação, Histórico, accounts (`/contas`) and settings are functional, while Patrimônio, Invest, cards and profile remain empty-state screens (see the [Route map](#route-map)).
 
 1. **Início** (`/`): entry point without financial numbers.
 2. **Dashboard** (`/dashboard`): verdict and supporting indicators.
@@ -71,7 +71,7 @@ The local application is organised in six areas plus global actions. Status: **C
 6. **Invest** (`/invest`): market news related to the portfolio.
 7. **Histórico, perfil e configurações** (`/historico`, `/perfil`, `/configuracoes`): timeline, privacy, preferences.
 
-Global actions: import a file (Current as a dialog trigger; the parser is Planned), notifications and express cash entry (Planned).
+Global actions: import a file (**Current**, leads to the CSV/OFX import at `/extratos/importar`), notifications and express cash entry (Planned).
 
 ### MVP scope
 
@@ -143,34 +143,32 @@ This is the single authoritative list of product routes. Paths and Portuguese ro
 
 ### Local application UI routes (`src/app`)
 
-"Placeholder" means the screen exists but renders only an empty state or a backend-confirmed count; the functional feature behind it is still Planned.
+"Placeholder" means the screen exists but renders only an empty state or a backend-confirmed count; the functional feature behind it is still Planned. Every functional screen has the four states (loading, empty, error, data) and talks only to the local API.
 
 | Route | Status | Feature | Notes |
 | --- | --- | --- | --- |
 | `/` | **Current** | Início | Product presentation, local privacy notice, import/register action and shortcuts. Shows no financial value. No sidebar item of its own; reached through the brand at the top of the sidebar. |
-| `/dashboard` | **Current** | 7 | Real data from `GET /api/dashboard` and `GET /api/dashboard/categories`. |
-| `/onboarding` | **Current** (placeholder) | 1 | Single card with the local privacy callout and an `Importar primeiro extrato` action. The step flow is Planned. |
-| `/onboarding/perfil` | Planned | 1 | |
-| `/onboarding/contas` | Planned | 1 | |
-| `/onboarding/posicao-atual` | Planned | 1 | |
-| `/onboarding/revisao` | Planned | 1 | |
-| `/contas` | Planned | 2 | |
-| `/contas/nova` | Planned | 2 | |
-| `/contas/[accountId]` | Planned | 2 | |
+| `/dashboard` | **Current** | 7 | Real data from the four `/api/dashboard*` routes. |
+| `/onboarding` | **Current** | 1 | Redirects to `/onboarding/perfil`. |
+| `/onboarding/perfil` | **Current** | 1 | Step 1 of 4: name, currency (BRL only), time zone and privacy confirmation. |
+| `/onboarding/contas` | **Current** | 1 | Step 2: links to `/contas/nova`; may be skipped. |
+| `/onboarding/posicao-atual` | **Current** | 1 | Step 3: links to `/extratos/importar`; may be skipped. |
+| `/onboarding/revisao` | **Current** | 1 | Step 4: review and explicit completion. |
+| `/contas` | **Current** | 2 | Accounts with their known balance; the sidebar account selector lists active accounts. |
+| `/contas/nova` | **Current** | 2 | Register institution and account with an optional informed balance. |
+| `/contas/[accountId]` | **Current** | 2 | Edit, deactivate, balance history and own Pix keys (masked). |
 | `/configuracoes` | **Current** | — | Theme selector (`Claro`, `Escuro`, `Sistema`) and "About". |
-| `/configuracoes/categorias` | Planned | 3 | |
-| `/planejamento/rendas` | Planned | 3 | |
-| `/extratos` | **Current** (placeholder) | 5 | Empty state, or the backend-confirmed transaction count from `/api/local-summary`; the listing is Planned. |
-| `/extratos/[transactionId]` | Planned | 5 | |
-| `/extratos/recorrencias` | **Current** (placeholder) | 3 | Empty state, or the count of open obligations; CRUD is Planned. |
-| `/extratos/importar` | **Current** (placeholder) | 4 | Empty state with `Selecionar arquivo`; parsing is Planned. |
-| `/extratos/importar/[loteId]` | **Current** (placeholder) | 4 | Renders "batch not found"; real batch detail is Planned. |
-| `/extratos/importar/[loteId]/mapeamento` | Planned | 4 | CSV column mapping. |
-| `/extratos/importar/[loteId]/revisao` | Planned | 4 | Preview before confirming. |
+| `/configuracoes/categorias` | **Current** | 3 | Category CRUD through the backend. |
+| `/planejamento/rendas` | **Current** | 3 | Expected income sources; never added to the balance. |
+| `/extratos` | **Current** | 5 | Transaction listing with validated filters and cursor pagination; each row links to its `Transaction.id`. |
+| `/extratos/[transactionId]` | **Current** | 5 | Detail, edit (description, category, status) and read-only revision history. |
+| `/extratos/recorrencias` | **Current** | 3 | Scheduled obligation CRUD. |
+| `/extratos/importar` | **Current** | 4 | Import wizard: select, inspect and preview, adjust the CSV mapping, confirm; lists previous imports. |
+| `/extratos/importar/[loteId]` | **Current** | 4 | Batch detail with counts, issues and undo. |
 | `/extratos/cartoes` | **Current** (placeholder) | Stage 8 | Empty state; cards are outside the MVP. |
 | `/extratos/cartoes/[cartaoId]` | **Current** (placeholder) | Stage 8 | Renders "card not found". |
-| `/conciliacao` | **Current** (placeholder) | 6 | Empty state, or the count of pending transactions; triage is Planned. |
-| `/conciliacao/[reconciliationItemId]` | Planned | 6 | |
+| `/conciliacao` | **Current** | 6 | Persistent pending queue (`ReconciliationItem`). |
+| `/conciliacao/[reconciliationItemId]` | **Current** | 6 | Confirm, categorize, link an obligation, adjust or pair a transfer; revert a decision. |
 | `/conciliacao/faturas` | **Current** (placeholder) | Stage 8 | Bill check; enabled when bills exist. |
 | `/patrimonio` | **Current** (placeholder) | Stage 14 | Empty state linking to `/onboarding`. |
 | `/patrimonio/aportes` | **Current** (placeholder) | Stage 14 | |
@@ -178,13 +176,13 @@ This is the single authoritative list of product routes. Paths and Portuguese ro
 | `/patrimonio/metas/[metaId]` | **Current** (placeholder) | Stage 9+ | Renders "goal not found". |
 | `/invest` | **Current** (placeholder) | Stages 15–16 | No fictitious news. |
 | `/invest/[noticiaId]` | **Current** (placeholder) | Stages 15–16 | Renders "content not found". |
-| `/historico` | **Current** (placeholder) | 8 | Empty state; events are Planned. |
+| `/historico` | **Current** | 8 | Redacted timeline with `kind` filter, cursor and revert. |
 | `/perfil` | **Current** (placeholder) | 1 | Empty state linking to `/onboarding`. |
 | `/perfil/privacidade` | **Current** (placeholder) | 8 | States that data stays in local SQLite; encrypted backup shown as Planned. |
 | `/lp` | **Current** (development bridge) | — | Renders the landing page at the local origin during development only; must be removed before the first deploy (see [ARCHITECTURE.md](ARCHITECTURE.md)). |
 | `/layout-guide` | **Current** (development only) | — | Internal design reference; returns not found outside development. |
 
-The batch route parameter is `[loteId]` in code. Planned sub-routes under it keep that name.
+The batch route parameter is `[loteId]` in code. The earlier sub-routes `/extratos/importar/[loteId]/mapeamento` and `/extratos/importar/[loteId]/revisao` were **not created**: mapping and preview happen inside the import wizard before any batch exists (see Feature 4).
 
 ### Local API routes (`src/app/api`)
 
@@ -196,39 +194,43 @@ The batch route parameter is `[loteId]` in code. Planned sub-routes under it kee
 | `GET /api/local-summary` | **Current** | area screens | Counts of active accounts, transactions, pending transactions, open obligations and import batches; lets area screens decide between empty and existing state. |
 | `GET /api/dashboard` | **Current** | 7 | Includes the Saldo Livre de Risco, consolidated balance, month spending, daily average, committed total and reconciliation count. |
 | `GET /api/dashboard/categories` | **Current** | 7 | Spending by category. |
-| `GET /api/dashboard/cash-flow` | Planned, blocked by L-2 | 7 | Monthly income and outflow (G-3). |
-| `GET /api/onboarding`, `POST /api/onboarding` | Planned | 1 | |
-| `PATCH /api/onboarding/[onboardingId]` | Planned | 1 | |
-| `POST /api/onboarding/[onboardingId]/complete` | Planned | 1 | |
-| `GET\|POST /api/institutions` | Planned | 2 | |
-| `GET\|PATCH\|DELETE /api/institutions/[institutionId]` | Planned | 2 | |
-| `GET\|POST /api/accounts` | Planned | 2 | |
-| `GET\|PATCH\|DELETE /api/accounts/[accountId]` | Planned | 2 | |
-| `POST /api/accounts/[accountId]/balance-snapshots` | Planned | 2 | |
-| `GET\|POST /api/accounts/[accountId]/pix-identifiers` | Planned | 2 | |
-| `GET\|POST /api/categories` | Planned | 3 | |
-| `GET\|PATCH\|DELETE /api/categories/[categoryId]` | Planned | 3 | |
-| `GET\|POST /api/incomes` | Planned | 3 | |
-| `GET\|POST /api/obligations` | Planned | 3 | |
-| `GET\|PATCH\|DELETE /api/obligations/[obligationId]` | Planned | 3 | |
-| `POST /api/imports/inspect` | Planned | 4 | |
-| `POST /api/imports` | Planned | 4 | |
-| `GET /api/imports/[importBatchId]` | Planned | 4 | |
-| `PATCH /api/imports/[importBatchId]/mapping` | Planned | 4 | |
-| `POST /api/imports/[importBatchId]/confirm` | Planned | 4 | |
-| `DELETE /api/imports/[importBatchId]` | Planned | 4 | |
-| `GET /api/transactions` | Planned | 5 | |
-| `GET\|PATCH /api/transactions/[transactionId]` | Planned | 5 | |
-| `GET /api/transactions/[transactionId]/history` | Planned | 5 | |
-| `GET /api/reconciliation-items` | Planned | 6 | |
-| `GET /api/reconciliation-items/[reconciliationItemId]` | Planned | 6 | |
-| `POST /api/reconciliation-items/[reconciliationItemId]/decisions` | Planned | 6 | |
-| `POST /api/reconciliation-decisions/[decisionId]/revert` | Planned | 6 | |
-| `GET /api/timeline-events` | Planned | 8 | |
-| `POST /api/timeline-events/[timelineEventId]/revert` | Planned | 8 | |
+| `GET /api/dashboard/risk-free-balance` | **Current** | 7 | Verdict breakdown and daily cash projection (G-1). |
+| `GET /api/dashboard/cash-flow` | **Current** | 7 | Monthly income and outflow, only months with statement coverage (G-3). |
+| `GET\|POST /api/profile` | **Current** | 1 | Read or create the local profile. |
+| `GET /api/onboarding`, `POST /api/onboarding` | **Current** | 1 | |
+| `PATCH /api/onboarding/[onboardingId]` | **Current** | 1 | Optimistic concurrency by `version`. |
+| `POST /api/onboarding/[onboardingId]/complete` | **Current** | 1 | Requires privacy, currency and time zone. |
+| `GET\|POST /api/institutions` | **Current** | 2 | |
+| `GET\|PATCH\|DELETE /api/institutions/[institutionId]` | **Current** | 2 | Deleting with accounts is refused. |
+| `GET\|POST /api/accounts` | **Current** | 2 | |
+| `GET\|PATCH\|DELETE /api/accounts/[accountId]` | **Current** | 2 | Deleting with history is refused; deactivate instead. |
+| `GET\|POST /api/accounts/[accountId]/balance-snapshots` | **Current** | 2 | Balance as a dated fact; `fromImport` distinguishes origin. |
+| `GET\|POST /api/accounts/[accountId]/pix-identifiers` | **Current** | 2 | Masked values only. |
+| `GET\|PATCH\|DELETE /api/accounts/[accountId]/pix-identifiers/[pixIdentifierId]` | **Current** | 2 | Cleartext only with `?reveal=1`. |
+| `GET\|POST /api/categories` | **Current** | 3 | |
+| `PATCH\|DELETE /api/categories/[categoryId]` | **Current** | 3 | No item `GET`. |
+| `GET\|POST /api/incomes` | **Current** | 3 | |
+| `GET\|POST /api/obligations` | **Current** | 3 | |
+| `PATCH\|DELETE /api/obligations/[obligationId]` | **Current** | 3 | No item `GET`. |
+| `GET\|POST /api/merchant-rules` | **Current** | 3 | Rules are stored; the importer does not apply them yet. |
+| `POST /api/imports/inspect` | **Current** | 4 | Writes nothing. |
+| `GET\|POST /api/imports` | **Current** | 4 | |
+| `GET\|DELETE /api/imports/[importBatchId]` | **Current** | 4 | |
+| `GET /api/csv-mappings` | **Current** | 4 | |
+| `DELETE /api/csv-mappings/[mappingId]` | **Current** | 4 | |
+| `PATCH /api/imports/[importBatchId]/mapping`, `POST /api/imports/[importBatchId]/confirm` | Superseded | 4 | Replaced by the two-step flow (see Feature 4). |
+| `GET /api/transactions` | **Current** | 5 | Validated filters, cursor, deterministic order with `id` tie-breaker. |
+| `GET\|PATCH /api/transactions/[transactionId]` | **Current** | 5 | |
+| `GET /api/transactions/[transactionId]/history` | **Current** | 5 | |
+| `GET /api/reconciliation-items` | **Current** | 6 | Up to 100 pending items. |
+| `GET /api/reconciliation-items/[reconciliationItemId]` | **Current** | 6 | |
+| `POST /api/reconciliation-items/[reconciliationItemId]/decisions` | **Current** | 6 | |
+| `POST /api/reconciliation-decisions/[decisionId]/revert` | **Current** | 6 | |
+| `GET /api/timeline-events` | **Current** | 8 | |
+| `POST /api/timeline-events/[timelineEventId]/revert` | **Current** | 8 | |
 | `GET /api/updates` | Planned | Update notice | |
 
-The Saldo Livre de Risco is served inside `GET /api/dashboard`; a separate `/api/dashboard/risk-free-balance` endpoint, listed in an earlier plan, is not needed and is not planned.
+The Saldo Livre de Risco value itself is served inside `GET /api/dashboard`; `GET /api/dashboard/risk-free-balance` adds its breakdown and the daily projection, reading the consolidated balance through `src/server/dashboard-queries.ts` (see L-4 for a currency divergence between the two routes).
 
 ### Cloud routes
 
@@ -302,11 +304,11 @@ The health endpoint and the schema alone never mean that feedback or community f
 
 ## MVP features
 
-Tables and fields referenced here are specified in [DATABASE.md](DATABASE.md). The nine Prisma models that exist today are `LocalProfile`, `UserPreference`, `Institution`, `Account`, `BalanceSnapshot`, `Category`, `ImportBatch`, `Transaction` and `ScheduledObligation`.
+Tables and fields referenced here are specified in [DATABASE.md](DATABASE.md). All twenty-four Prisma models listed below exist today (11 migrations). Features 1 to 8 have a vertical implementation (migration, API, screen, tests); each section states what remains.
 
 ### Feature 1 — Financial onboarding
 
-Status: **Planned** (the `/onboarding` screen is a placeholder). Full specification in [Onboarding and initial financial snapshot](#onboarding-and-initial-financial-snapshot).
+Status: **Current** for the four-step persistent flow. The fuller question map in [Onboarding and initial financial snapshot](#onboarding-and-initial-financial-snapshot) remains a proposal.
 
 **What it does.** Creates the initial financial snapshot without forcing the person to fill everything at once. Allows registering profile, banks, accounts, balances, income, obligations and investments, or starting with the available statement import.
 
@@ -328,16 +330,18 @@ Status: **Planned** (the `/onboarding` screen is a placeholder). Full specificat
 | --- | --- | --- | --- |
 | `LocalProfile` | `id` | local identity without sensitive bank data | **Current** |
 | `UserPreference` | `id`, `profileId` | theme, currency, language and time zone | **Current** |
-| `OnboardingSession` | `id`, `profileId` | current step, status and resumption | Planned |
-| `OnboardingAnswer` | `id`, `onboardingSessionId` | validated answer per question | Planned |
+| `OnboardingSession` | `id`, `profileId` | current step, status, version and completion | **Current** |
+| `OnboardingAnswer` | `id`, `onboardingSessionId`, `profileId` | validated answer per question | **Current** |
 
-**Migration:** create `OnboardingSession` and `OnboardingAnswer` in their own migration (`mvp_onboarding`, Planned).
+**Migration:** `mvp_onboarding` (**Current**).
 
 **Done when:** onboarding can be interrupted and resumed, and the Dashboard stays empty until the backend confirms that financial data exists.
 
+**Met.** The session and its answers are persisted in SQLite, each step is saved through the local API with optimistic concurrency, and the review explicitly completes the flow and writes currency and time zone to `UserPreference`. Without an account, balance or import, the Dashboard stays in the empty state. The flow does not require a statement or an account to complete. Contracts are checked in `tests/onboarding-contracts.test.mjs` (relational migration, action code, profile scoping, optimistic concurrency and the four steps).
+
 ### Feature 2 — Institutions, accounts and balances
 
-Status: **Partial** (tables Current; routes, APIs and screens Planned).
+Status: **Current**.
 
 **What it does.** Represents where the person holds money. Does not require branch or account number. Own Pix keys are optional, encrypted, and used only to recognise transfers between the person's own accounts.
 
@@ -351,41 +355,56 @@ Status: **Partial** (tables Current; routes, APIs and screens Planned).
 
 **UI routes:** `/contas`, `/contas/nova`, `/contas/[accountId]`.
 
-**Local APIs:** `GET|POST /api/institutions`, `GET|PATCH|DELETE /api/institutions/[institutionId]`, `GET|POST /api/accounts`, `GET|PATCH|DELETE /api/accounts/[accountId]`, `POST /api/accounts/[accountId]/balance-snapshots`, `GET|POST /api/accounts/[accountId]/pix-identifiers`.
+**Local APIs (all Current):** `GET|POST /api/institutions`, `GET|PATCH|DELETE /api/institutions/[institutionId]`, `GET|POST /api/accounts`, `GET|PATCH|DELETE /api/accounts/[accountId]`, `GET|POST /api/accounts/[accountId]/balance-snapshots`, `GET|POST /api/accounts/[accountId]/pix-identifiers`, `GET|PATCH|DELETE /api/accounts/[accountId]/pix-identifiers/[pixIdentifierId]`.
 
 | Table | IDs and relations | Responsibility | Status |
 | --- | --- | --- | --- |
 | `Institution` | `id`, `profileId` | financial institution | **Current** (`mvp_financial_core`) |
 | `Account` | `id`, `profileId`, `institutionId` | account, type, currency and state | **Current** (`mvp_financial_core`) |
 | `BalanceSnapshot` | `id`, `accountId` | known balance at a date | **Current** (`mvp_financial_core`) |
-| `PixIdentifier` | `id`, `accountId` | HMAC for comparison and locally encrypted value | Planned (`mvp_financial_planning`) |
+| `PixIdentifier` | `id`, `profileId`, `accountId` | HMAC for comparison and locally encrypted value | **Current** (`mvp_pix_identifiers`, unique `(profileId, valueIndex)`) |
 
 **Done when:** creating, editing or deactivating an account updates the selector and the consolidated balance through a backend query.
 
+**Met.** Verifiable state:
+
+- `/contas`, `/contas/nova` and `/contas/[accountId]` consume the backend and have the four states;
+- the sidebar account selector lists active accounts with each one's known balance and reflects creation, editing and deactivation;
+- a balance is a **dated fact**, not an overwrite: recording a new one keeps the previous one, and the origin (entered by hand or from a statement) stays distinguishable;
+- a missing balance is declared, never converted to zero;
+- a deletion that would destroy history is **refused** and points to deactivation, because the foreign key of `Transaction` is `CASCADE`; deleting an institution with accounts is also refused, because `SET NULL` would silently orphan them;
+- changing the currency of an account with entries is refused: the stored cents would start meaning something else;
+- own Pix keys are encrypted on the device, indexed by HMAC and shown masked, with the cleartext only on explicit request ([ADR 0003](decisions/0003-local-device-key.md));
+- coverage in `tests/pix.test.mjs` (unit, synthetic values) and `tests/accounts-e2e.test.mjs` (real HTTP flow, isolation and validation; skipped without a running backend).
+
+Pending and outside this feature: automatic pairing of transfers between own accounts during import. It belongs to Feature 6; the identifiers registered here are its missing input. **Planned.**
+
 ### Feature 3 — Categories, income and obligations
 
-Status: **Partial** (`Category` and `ScheduledObligation` Current; CRUD, screens, income and merchant rules Planned).
+Status: **Current** (CRUD, screens and persistence); applying merchant rules automatically is **Planned**.
 
 **What it does.** Creates the structure used to interpret income, expenses, transfers and amounts committed in the month.
 
 **UI routes:** `/configuracoes/categorias`, `/planejamento/rendas`, `/extratos/recorrencias`.
 
-**Local APIs:** `GET|POST /api/categories`, `GET|PATCH|DELETE /api/categories/[categoryId]`, `GET|POST /api/incomes`, `GET|POST /api/obligations`, `GET|PATCH|DELETE /api/obligations/[obligationId]`.
+**Local APIs (all Current):** `GET|POST /api/categories`, `PATCH|DELETE /api/categories/[categoryId]`, `GET|POST /api/incomes`, `GET|POST /api/obligations`, `PATCH|DELETE /api/obligations/[obligationId]`, `GET|POST /api/merchant-rules`. Every route requires an action code and a local profile; money travels as integer cents in a `string`.
 
 | Table | IDs and relations | Responsibility | Status |
 | --- | --- | --- | --- |
 | `Category` | `id`, `profileId` | classification as income, expense or transfer (`kind`) | **Current** (`mvp_financial_core`) |
-| `IncomeSource` | `id`, `profileId`, `accountId?` | expected or recurring income | Planned |
+| `IncomeSource` | `id`, `profileId`, `accountId?` | expected or recurring income | **Current** (`mvp_income_merchant_rules`) |
 | `ScheduledObligation` | `id`, `profileId`, `accountId?`, `categoryId?` | commitment with `amountCents`, `dueDate`, `status`, `recurrence`, `isEstimated` | **Current** (`mvp_scheduled_obligations`), consumed by the Dashboard |
-| `MerchantRule` | `id`, `profileId`, `categoryId` | deterministic categorisation rule | Planned |
+| `MerchantRule` | `id`, `profileId`, `categoryId` | deterministic categorisation rule | **Current** as data and API; not yet applied by the importer |
 
-**Migrations:** `mvp_financial_core` creates `Category` (Current); `mvp_scheduled_obligations` creates `ScheduledObligation` (Current); a later migration creates income and merchant rules (Planned). The obligation CRUD and the recurrences screen still belong to this feature.
+**Migrations:** `mvp_financial_core` creates `Category`; `mvp_scheduled_obligations` creates `ScheduledObligation`; `mvp_income_merchant_rules` creates `IncomeSource` and `MerchantRule` (all Current).
 
 **Done when:** the frontend lists only categories and obligations returned by the backend, and the committed total has a unit test (the committed-total unit test is **Current** in `tests/dashboard-metrics.test.mjs`).
 
+**Met.** Categories, income sources, commitments and merchant rules have persistence and protected local APIs. The categories, income and recurrences screens consult only these contracts; future income stays out of the Saldo Livre de Risco. Contract tests: `tests/financial-planning-contracts.test.mjs`.
+
 ### Feature 4 — CSV and OFX import
 
-Status: **Partial** (`ImportBatch` and `Transaction` Current; parser, APIs and screens Planned). No parser code exists yet; `pdfjs-dist` and `ofx-data-extractor` are installed but unused.
+Status: **Current** for CSV and OFX. PDF is Stage 7 of [ROADMAP.md](ROADMAP.md). `ofx-data-extractor` was replaced by an own bounded reader ([ADR 0002](decisions/0002-own-ofx-parser.md)); `pdfjs-dist` is installed but unused.
 
 **What it does.** Turns a bank file into a traceable batch of local transactions. CSV requires column mapping because banks use different headers, separators, dates and signs.
 
@@ -400,39 +419,63 @@ Status: **Partial** (`ImportBatch` and `Transaction` Current; parser, APIs and s
 7. Write the batch and its transactions in one SQLite transaction.
 8. Send uncertain items to reconciliation.
 
-**UI routes:** `/extratos/importar`, `/extratos/importar/[loteId]`, `/extratos/importar/[loteId]/mapeamento`, `/extratos/importar/[loteId]/revisao`.
+**UI routes:** `/extratos/importar` (wizard with mapping and preview) and `/extratos/importar/[loteId]` (batch detail and undo).
 
-**Local APIs:** `POST /api/imports/inspect`, `POST /api/imports`, `GET /api/imports/[importBatchId]`, `PATCH /api/imports/[importBatchId]/mapping`, `POST /api/imports/[importBatchId]/confirm`, `DELETE /api/imports/[importBatchId]`.
+**Local APIs (all Current):** `POST /api/imports/inspect`, `GET /api/imports`, `POST /api/imports`, `GET /api/imports/[importBatchId]`, `DELETE /api/imports/[importBatchId]`, `GET /api/csv-mappings`, `DELETE /api/csv-mappings/[mappingId]`. Contracts in [ARCHITECTURE.md](ARCHITECTURE.md).
+
+**Deviation from the original design: writing in one step.** The routes `PATCH /api/imports/[importBatchId]/mapping` and `POST /api/imports/[importBatchId]/confirm` were **not implemented**, and the plan was changed deliberately. The three-step design assumed a server-side draft area: create the batch, adjust the mapping, confirm. That would require retaining the statement content between requests, exactly what the import requirements forbid, or creating a table of rows in preparation that would be orphaned whenever someone abandoned the flow. The implemented flow keeps the same steps for the person and removes the intermediate state: `inspect` is idempotent and may be called on every mapping adjustment, and `POST /api/imports` writes everything in one SQLite transaction. The file stays in the client between the two steps and is sent again on confirmation, so the statement exists only on the device and only while a request is processed. Accepted consequence: the file crosses the local API twice, over loopback, under a size ceiling and with no network cost.
 
 | Table | IDs and relations | Responsibility | Status |
 | --- | --- | --- | --- |
-| `ImportBatch` | `id`, `profileId` | format, fingerprint, state and batch totals | **Current** |
-| `ImportFile` | `id`, `importBatchId` | minimal metadata; raw content not retained by default | Planned |
-| `CsvMappingProfile` | `id`, `profileId`, `institutionId?` | reusable column mapping | Planned |
-| `ImportIssue` | `id`, `importBatchId`, `transactionId?` | error or warning per line/field | Planned |
+| `ImportBatch` | `id`, `profileId`, `accountId?` | format, fingerprint, state, covered period and batch totals | **Current** |
+| `ImportFile` | `id`, `importBatchId` | minimal metadata; raw content never retained | **Current** |
+| `CsvMappingProfile` | `id`, `profileId`, `institutionId?` | reusable column mapping, recognized by header signature | **Current** |
+| `ImportIssue` | `id`, `importBatchId`, `transactionId?` | error or warning per line/field | **Current** |
 | `Transaction` | `id`, `profileId`, `accountId`, `importBatchId?`, `categoryId?` | normalised entry | **Current** |
 
-**Migrations:** `mvp_financial_core` creates `ImportBatch` and `Transaction` (Current); `mvp_import_details` creates `ImportFile`, `CsvMappingProfile` and `ImportIssue` (Planned). The batch must also persist the covered period (see L-2).
+**Migrations:** `mvp_financial_core` creates `ImportBatch` and `Transaction`; `mvp_import_details` creates `ImportFile`, `CsvMappingProfile` and `ImportIssue`, adds `periodStart`/`periodEnd`/`accountId` and the counts to `ImportBatch`, and creates `Transaction.externalId` with uniqueness per account; `balance_snapshot_source` links a statement balance to its batch (all Current).
 
 **Done when:** synthetic CSV and OFX import correctly; re-sending the same file does not duplicate data; an error in one line does not produce a partially confirmed batch.
 
+**Met.** Verifiable state:
+
+- CSV and OFX are read by pure modules in `src/server/import/`, with separator detection, partial mojibake repair, Windows-1252 support, and inference and checking of each column's role;
+- the format comes from the content, never from the extension or the declared `Content-Type`;
+- re-sending the same file answers `409 DUPLICATE_BATCH`; an overlapping period writes only what is new and reports `duplicateCount`;
+- writing is one SQLite transaction, so an error halfway leaves no partial batch;
+- an unreadable line becomes an `ImportIssue`, never a silent omission;
+- `DELETE` undoes the batch without touching others;
+- coverage in `tests/import-values`, `import-csv`, `import-ofx`, `import-inspect` (unit, synthetic fixtures) and `tests/import-e2e` (end to end against the running backend, including the security controls; skipped without a running backend).
+
+A checked column mapping can be **saved and reused**: inspection computes a header signature (the labels normalized without accents, case or punctuation) and, when it matches a `CsvMappingProfile` of the profile, the saved mapping is reapplied and the screen declares the reuse. Three decisions the implementation fixes:
+
+1. **Saving requires an explicit request.** A mapping saved without consent would be reapplied silently on the next import.
+2. **Recognition only with a header.** Without one, identifying the layout by column position would be guesswork, and a wrong mapping applied silently would invert the sign of the entries.
+3. **The informed mapping beats the saved one.** The person's choice on screen always prevails, and a layout that changed since the last statement makes the system fall back to inference instead of refusing the file.
+
+Deleting a saved mapping does not affect an import already written; it only influences the next file reading. `/extratos/importar` lists previous imports, which is the path to the batch detail and to undo.
+
+Outside this feature: PDF (Stage 7), and automatic classification by merchant rules. Since Feature 6, every imported entry without a category opens a reconciliation item; it also appears in the dashboard's `Sem categoria` slice.
+
 ### Feature 5 — Statements and transactions
 
-Status: **Planned** (`/extratos` shows only a backend-confirmed count).
+Status: **Current**.
 
 **What it does.** Shows persisted entries with pagination, filters, source batch and reconciliation state.
 
 **UI routes:** `/extratos`, `/extratos/[transactionId]`.
 
-**Local APIs:** `GET /api/transactions`, `GET|PATCH /api/transactions/[transactionId]`, `GET /api/transactions/[transactionId]/history`.
+**Local APIs (all Current):** `GET /api/transactions` (validated filters, cursor pagination and deterministic ordering with `id` as the tie-breaker), `GET|PATCH /api/transactions/[transactionId]`, `GET /api/transactions/[transactionId]/history`.
 
 **Query rules.** Filters and ordering are validated in the backend. The API returns opaque IDs and minimal DTOs. The frontend never computes balances or reclassifies data on its own.
 
 **Done when:** without transactions the route shows an empty state; with records, each row corresponds to a `Transaction.id` returned by the backend.
 
+**Met.** `/extratos` consumes `GET /api/transactions`, has the four states and links each row to its detail by `Transaction.id`. Editing validates ownership and category in the backend and records before/after in `TransactionRevision`; the per-entry history is read-only. Invariants in `tests/transaction-detail-contracts.test.mjs`.
+
 ### Feature 6 — Reconciliation
 
-Status: **Planned** (`/conciliacao` shows only the count of `Transaction.status = 'pending'`).
+Status: **Current** (completed in the local MVP).
 
 **What it does.** Lets the person confirm or correct uncertain transactions without deleting the original data. Recognises category, transfer between own accounts, obligation and financial adjustment.
 
@@ -451,16 +494,20 @@ Status: **Planned** (`/conciliacao` shows only the count of `Transaction.status 
 
 | Table | IDs and relations | Responsibility | Status |
 | --- | --- | --- | --- |
-| `ReconciliationItem` | `id`, `transactionId` | pending item, reason and confidence | Planned |
-| `ReconciliationDecision` | `id`, `reconciliationItemId`, `profileId` | decision and before/after | Planned |
-| `FinancialAdjustment` | `id`, `transactionId`, `decisionId?` | interest, fine, discount or correction | Planned |
-| `OwnAccountTransfer` | `id`, `outgoingTransactionId`, `incomingTransactionId` | pairing between own accounts | Planned |
+| `ReconciliationItem` | `id`, `profileId`, `transactionId` | pending item, reason and confidence | **Current** |
+| `ReconciliationDecision` | `id`, `reconciliationItemId`, `profileId` | decision and before/after | **Current** |
+| `FinancialAdjustment` | `id`, `transactionId`, `decisionId` | interest, fee, discount or correction | **Current** |
+| `OwnAccountTransfer` | `id`, `outgoingTransactionId`, `incomingTransactionId`, `decisionId` | pairing between own accounts | **Current** |
+
+**Migration:** `mvp_reconciliation` (**Current**).
 
 **Done when:** no correction destroys the original value and every relevant decision can be audited and reverted.
 
+**Met.** Import creates a pending item for each entry without a category. Confirming, categorizing, linking an obligation, adjusting or pairing a transfer writes an atomic decision with before/after snapshots in cents; reverting restores the snapshots and reopens the item. The person picks obligations and counterpart entries from readable lists and never types an ID (`tests/reconciliation-contracts.test.mjs`). **Planned:** automatic confidence scoring and merchant-rule classification; today every item is created with reason `category_unknown` and confidence 0, and transfer pairing is manual.
+
 ### Feature 7 — Dashboard
 
-Status: **Current** for seven of nine elements; see the [Dashboard specification](#dashboard-specification).
+Status: **Current** for all nine elements; see the [Dashboard specification](#dashboard-specification).
 
 **What it does.** Summarises the current position using only backend queries. The Dashboard lives at `/dashboard`; the root `/` is Início, an entry point with no financial number, because a zero without backend confirmation is a false statement.
 
@@ -474,19 +521,31 @@ Status: **Current** for seven of nine elements; see the [Dashboard specification
 - reconciliation queue as an attention strip;
 - spending by category.
 
-The monthly income/outflow chart remains **blocked**: `ImportBatch` does not record the covered period, so a month without a statement would render as a month without movement (L-2).
+The monthly income/outflow chart and the cash projection are **Current**. Temporal coverage is shown on the chart itself: a month with a partial statement appears faded and labelled, and a month without a statement is not rendered.
 
-**Local APIs:** `GET /api/dashboard` and `GET /api/dashboard/categories` (**Current**); `GET /api/dashboard/cash-flow` (Planned, blocked by L-2).
+**Local APIs (all Current):** `GET /api/dashboard`, `GET /api/dashboard/categories`, `GET /api/dashboard/risk-free-balance`, `GET /api/dashboard/cash-flow`.
 
-**Tables queried:** `Account`, `BalanceSnapshot`, `Transaction`, `Category`, `ImportBatch` and `ScheduledObligation`. `ReconciliationItem` does not exist yet: the queue uses `Transaction.status = 'pending'` as a declared approximation until the reconciliation migration.
+**Tables queried:** `Account`, `BalanceSnapshot`, `Transaction`, `Category`, `ImportBatch`, `ScheduledObligation` and `ReconciliationItem` (the attention queue counts pending items).
 
-**Current state.** Both Dashboard routes query SQLite through the backend, require `X-Action-Code` and are scoped by `profileId`. Formulas live in a pure module (`src/server/dashboard-metrics.ts`) with unit tests; the screen is `src/components/dashboard.tsx`. The interface has the four states: skeleton while loading, error strip with retry, empty state and data state. No value is rendered without backend confirmation.
+**Current state.** The Dashboard routes query SQLite through the backend, require `X-Action-Code` and are scoped by `profileId`. Formulas live in a pure module (`src/server/dashboard-metrics.ts`) with unit tests; the screen is `src/components/dashboard.tsx`. The interface has the four states: skeleton while loading, error strip with retry, empty state and data state. No value is rendered without backend confirmation.
 
-**Done when:** no indicator comes from a frontend constant; changing a transaction or obligation changes the Dashboard; formulas have unit tests. **Met (Current)**, except the automated end-to-end test, which depends on the Feature 4 import flow (Planned).
+**Done when:** no indicator comes from a frontend constant; changing a transaction or obligation changes the Dashboard; formulas have unit tests.
+
+**Met, including the end-to-end test** (the earlier caveat depended on the Feature 4 import flow, which is complete). Verifiable state:
+
+- the nine elements of the [Dashboard specification](#dashboard-specification) are live;
+- the four routes exist, require `X-Action-Code`, are scoped by `profileId` and return integer cents, never formatted text;
+- the G-1 and G-3 formulas live in the pure module `src/server/dashboard-metrics.ts`, with unit tests in `tests/dashboard-charts.test.mjs`, and `tests/import-e2e.test.mjs` exercises both routes against a running backend;
+- the palette validation required by R-20 is no longer pending: `scripts/validate-palette.mjs` is versioned and `tests/palette.test.mjs` locks the reproduction of the recorded verdicts;
+- the gain and loss tokens were ratified with measurement in both themes, closing Dashboard decision 2.
+
+**Open:** `src/server/dashboard-queries.ts` (`loadConsolidatedBalance`) is used by the projection route but not by `GET /api/dashboard`, which computes the consolidated balance inline; the projection keeps only `BRL` accounts while the verdict sums every active account, so the two can diverge with a non-BRL account (L-4).
+
+Outside Feature 7: comparing the daily average against a budget depends on `Budget`, Stage 9 of [ROADMAP.md](ROADMAP.md).
 
 ### Feature 8 — History, reversal and local safety
 
-Status: **Planned** (`/historico` is a placeholder).
+Status: **Current** (completed in the local MVP scope; cloud E2EE backup stays outside the MVP).
 
 **What it does.** Records imports and relevant changes without storing the action code, secrets or raw statement content.
 
@@ -494,14 +553,18 @@ Status: **Planned** (`/historico` is a placeholder).
 
 | Table | IDs and relations | Responsibility | Status |
 | --- | --- | --- | --- |
-| `TimelineEvent` | `id`, `profileId`, `importBatchId?`, `transactionId?` | redacted, reversible event | Planned |
-| `DatabaseBackup` | `id`, `profileId` | metadata of the local backup taken before a destructive migration | Planned |
+| `TimelineEvent` | `id`, `profileId`, `importBatchId?`, `transactionId?`, `transactionRevisionId?`, `reconciliationDecisionId?` | redacted, reversible event | **Current** |
+| `DatabaseBackup` | `id`, `profileId` | metadata of the local backup taken before a destructive migration | **Current** as a table; nothing writes it yet |
+
+**Migration:** `mvp_timeline_backup` (**Current**).
 
 **Done when:** events can be queried without exposing secrets, and destructive migrations require a validated local backup.
 
+**Met in the local MVP scope.** Imports, transaction edits and reconciliation decisions create redacted, reversible events; reverting goes through the original use case. The migration preflight blocks pending destructive SQL without a verified `DatabaseBackup` for the current version (`tests/timeline-contracts.test.mjs`). **Open:** the preflight runs only through `pnpm dev`/`pnpm dev:all` (not in Docker or the packaged app), and no feature creates `DatabaseBackup` rows yet, so a destructive migration could only be unlocked by a backup produced outside the application.
+
 ## Onboarding and initial financial snapshot
 
-Status: **Planned.** This section is normative for financial onboarding; the flow stays Planned until its routes, tables and screens are implemented and tested. Only the `/onboarding` placeholder is Current.
+Status: **Planned** as a whole. This section is normative for financial onboarding. **Current:** the minimal four-step flow of Feature 1 (profile with currency, time zone and privacy; accounts; current position through import; review), persisted in `OnboardingSession`/`OnboardingAnswer`. The block-by-block question map below remains a proposal until each block is implemented and tested.
 
 ### Problem
 
@@ -764,14 +827,15 @@ Every table has an `id`; relations use IDs. Names below are aligned with the imp
 
 | Table | Main relations | Role | Status |
 | --- | --- | --- | --- |
-| `OnboardingSession` | `profileId` | state, current step, version and reference date | Planned |
-| `OnboardingStepState` | `onboardingSessionId` | progress/validation of each step | Planned (candidate; Feature 1 lists `OnboardingAnswer`) |
+| `OnboardingSession` | `profileId` | state, current step, version and reference date | **Current** (no reference date) |
+| `OnboardingAnswer` | `onboardingSessionId`, `profileId` | simple answer per question key | **Current** (chosen by `mvp_onboarding` instead of `OnboardingStepState`) |
+| `OnboardingStepState` | `onboardingSessionId` | progress/validation of each step | Not adopted |
 | `FinancialBaseline` | `profileId`, `onboardingSessionId` | consolidated snapshot and confidence | Planned |
-| `IncomeSource` | `profileId`, `accountId?` | income, frequency and date range | Planned |
+| `IncomeSource` | `profileId`, `accountId?` | income, frequency and next expected date | **Current** |
 | `Institution` | `profileId` | locally registered institution | **Current** |
 | `Account` | `profileId`, `institutionId` | account, wallet or brokerage | **Current** |
-| `PixIdentifier` | `accountId` | encrypted own key, HMAC index, type and validity | Planned (name Open, L-6) |
-| `BalanceSnapshot` | `accountId`, `baselineId?` | balance, date, origin and confidence | **Current** for balance and date; `baselineId`, origin and confidence Planned (L-3) |
+| `PixIdentifier` | `profileId`, `accountId` | encrypted own key, HMAC index, type and validity | **Current** (name fixed, L-6) |
+| `BalanceSnapshot` | `accountId`, `baselineId?` | balance, date, origin and confidence | **Current** for balance, date and statement origin (`importBatchId`); `baselineId`, declared origin and confidence Planned (L-3) |
 | `CreditCard` | `profileId`, `institutionId`, `paymentAccountId?` | card and due dates | Planned (Stage 8) |
 | `Statement` | `creditCardId` | open/closed card statement | Planned (Stage 8) |
 | `ScheduledObligation` | `profileId`, `accountId?`, `categoryId?` | recurring bill or instalment | **Current** |
@@ -779,11 +843,11 @@ Every table has an `id`; relations use IDs. Names below are aligned with the imp
 | `Asset` | — | local identity of the asset/fund | Planned |
 | `Holding` | `accountId`, `assetId` | position held in the investment account | Planned |
 | `PositionSnapshot` | `holdingId`, `baselineId?` | quantity, average price, value and date | Planned |
-| `ImportBatch` | `profileId` | batch and fingerprint | **Current**; account/session links and covered period Planned (L-2) |
-| `ImportFile` | `importBatchId` | temporary file, type and hash | Planned |
-| `ImportIssue` | `importBatchId`, `transactionId?` | divergence or warning | Planned |
+| `ImportBatch` | `profileId`, `accountId?` | batch, fingerprint and covered period | **Current**; session link Planned |
+| `ImportFile` | `importBatchId` | file metadata, type and hash (content never retained) | **Current** |
+| `ImportIssue` | `importBatchId`, `transactionId?` | divergence or warning | **Current** |
 | `Transaction` | `profileId`, `accountId`, `importBatchId?`, `categoryId?` | normalised entry | **Current** |
-| `OwnAccountTransfer` | `outgoingTransactionId`, `incomingTransactionId` | pairing of a transfer between own accounts | Planned (Feature 6) |
+| `OwnAccountTransfer` | `outgoingTransactionId`, `incomingTransactionId` | pairing of a transfer between own accounts | **Current** (Feature 6) |
 
 Avoid a generic answers table as the final financial source. It eases prototyping but loses types, constraints and relations. UI state can be flexible; consolidated data must go into domain tables.
 
@@ -863,11 +927,11 @@ All **Open**:
 3. Will salary be an exact value, a range or both? Will it always be optional?
 4. Should cards/debts be asked in the first flow or right after the first Dashboard?
 5. Does a missing average price generate only a warning or a mandatory pending item?
-6. Is the original statement file discarded after confirming the import, or kept locally?
+6. ~~Is the original statement file discarded after confirming the import, or kept locally?~~ **Resolved by the importer:** the content is never retained; only entries and file metadata are stored.
 7. Does the onboarding completion state really need to go to D1?
-8. Does the first version accept multiple currencies? (Also blocks L-4.)
+8. Does the first version accept multiple currencies? (Also blocks L-4; the current onboarding screen offers only BRL.)
 9. Will the Pix key be typed, detected in the statement and confirmed, or both?
-10. Can the person register an old/inactive key to recognise history?
+10. ~~Can the person register an old/inactive key to recognise history?~~ **Resolved:** `PixIdentifier` accepts `isActive`, `validFrom` and `validUntil`.
 
 ### Criteria to promote this proposal to official
 
@@ -880,7 +944,7 @@ All **Open**:
 
 ## Dashboard specification
 
-Status: **Current** for the rules applied in `src/components/dashboard.tsx` and `src/server/dashboard-metrics.ts` and for seven of nine elements (see the [feasibility matrix](#feasibility-matrix)); individual items are marked where they remain Planned or Open.
+Status: **Current** for the rules applied in `src/components/dashboard.tsx` and `src/server/dashboard-metrics.ts` and for all nine elements (see the [feasibility matrix](#feasibility-matrix)); individual items are marked where they remain Planned or Open.
 
 This specification is normative for the design of any panel, indicator, chart or financial table in Talentum. It crosses three sources deliberately: patterns observed in the ten best-rated system dashboards of 2026; the method of *Storytelling with Data* by Cole Nussbaumer Knaflic, adopted as the theoretical basis; and a measured audit of the original repository dashboard (now historical). [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md) is the source of truth for visual identity and prevails in any unresolved conflict of colour, typography or spacing.
 
@@ -1030,7 +1094,7 @@ The order is narrative (Lesson 6, starting with the end): the answer first, then
 
 - **R-13. The brand stays in the chrome.** Talentum's institutional palette is warm and almost monochrome: excellent for interface, unsuitable as a categorical palette (the original two-brown chart pair failed luminance, chroma and normal-vision separation, ΔE 9.7 in dark mode). Amber (`#B8773D`, 3.60:1 light / 4.11:1 dark) is the **emphasis colour** — one highlighted series against grey — not a categorical slot.
 - **R-14. Semantic tokens are never series colours.** `--ok`, `--warn`, `--err` and `--info` mean state. They pass as text in both themes (measured: `--ok` 6.25:1 / 6.34:1, `--warn` 4.82:1 / 6.93:1, `--err` 8.97:1 / 5.93:1, `--info` 6.89:1 / 6.85:1 on `#FFFDF8` / `#2A2622`) but fail against each other as fills (`--err` ↔ `--ok` ΔE 6.0 under deuteranopia; `--info` ↔ `--ok` ΔE 10.1 with normal vision, below the floor of 15). Every semantic use comes with **icon and label**, never colour alone.
-- **R-15. Validated categorical palette.** Slot 1 and the de-emphasis grey are **ratified** in [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md) as `--data-1` and `--data-recessive` and are the ones the Dashboard uses (**Current**). The eight slots below remain **Open** until a multi-series chart exists:
+- **R-15. Validated categorical palette.** Slot 1, the de-emphasis grey and the gain/loss pair are **ratified** in [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md) as `--data-1`, `--data-recessive`, `--data-gain` and `--data-loss`, and are the ones the Dashboard uses (**Current**). The eight slots below remain **Open** until a multi-series categorical chart exists; none of the three current charts is of that kind:
 
 | Slot | Hue | Light | Dark |
 | --- | --- | --- | --- |
@@ -1054,8 +1118,8 @@ The light-theme contrast `WARN` (teal 2.77:1, yellow 2.13:1, magenta 2.65:1) is 
 - **R-16. Fixed order, never cycled.** Slots are assigned in sequence. A ninth series is never a generated hue: it becomes "Others", small multiples, or composite encoding.
 - **R-17. Colour follows the entity, not the position.** A filter that reduces the number of series must not repaint the survivors.
 - **R-18. Sequential is one hue; diverging is two plus grey.** Magnitude → one hue, light to dark. Polarity (above/below zero) → two opposite hues with a **neutral grey** in the middle. Never rainbow; never a hue at the midpoint.
-- **R-19. Gain and loss.** Green and red carry profit and loss, always with sign, arrow or label — never colour alone (about 1 in 12 men has a colour-vision deficiency).
-- **R-20. Validate, do not estimate.** No palette enters the product without passing the validator in both themes (see [Palette validation](#palette-validation); the validator is **Planned**).
+- **R-19. Gain and loss.** Green and red carry profit and loss, always with sign, arrow or label — never colour alone (about 1 in 12 men has a colour-vision deficiency). The tokens are `--data-gain` (`#157f52` light / `#4fbf85` dark) and `--data-loss` (`#b32d22` light / `#dd5d50` dark), distinct from the semantic tokens as R-14 requires (**Current**).
+- **R-20. Validate, do not estimate.** No palette enters the product without passing the validator in both themes (see [Palette validation](#palette-validation); the validator is **Current** and its verdicts are locked by `tests/palette.test.mjs`, which CI runs through `pnpm test`).
 
 #### Numerals and money
 
@@ -1111,10 +1175,10 @@ No element enters the screen without a closed formula and a confirmed data origi
 | **I-2** | Month spending | Context | Value + delta | *Am I spending more than last month?* | **Current** |
 | **I-3** | Daily average | Context | Value + delta + sparkline | *Has my spending pace accelerated?* | **Current** (pace comparison, not budget) |
 | **I-4** | Committed until end of period | Context | Value + count | *How much of the balance already has an owner?* | **Current** |
-| **A** | Reconciliation queue | Attention | Work queue | *What needs my decision now?* | **Current** as approximation |
-| **G-1** | Period cash projection | Trend | Step line | *Does the money last until the end of the period?* | Planned |
+| **A** | Reconciliation queue | Attention | Work queue | *What needs my decision now?* | **Current** |
+| **G-1** | Period cash projection | Trend | Step line | *Does the money last until the end of the period?* | **Current** |
 | **G-2** | Spending by category | Trend | Horizontal bar | *Where did the money go?* | **Current** |
-| **G-3** | Income and outflow per month | Trend | Diverging bar at zero | *Do I spend more than I earn?* | Planned, blocked by L-2 |
+| **G-3** | Income and outflow per month | Trend | Diverging bar at zero | *Do I spend more than I earn?* | **Current** |
 
 #### Formula conventions
 
@@ -1170,8 +1234,8 @@ An account without any snapshot **does not contribute zero**: it contributes "un
 | Active accounts | `Account.isActive` | **Current** |
 | Latest balance per account | `BalanceSnapshot` | **Current** |
 | Later entries | `Transaction` | **Current** |
-| Reference currency | `Account.currency` | **Current** field; consolidation does not filter by currency (L-4, Open) |
-| Balance origin and confidence | — | Planned (L-3) |
+| Reference currency | `Account.currency` | **Current** field; `GET /api/dashboard` does not filter by currency, the projection route keeps only `BRL` (L-4, Open) |
+| Balance origin and confidence | `BalanceSnapshot.importBatchId` | statement vs. hand-entered origin **Current**; confidence Planned (L-3) |
 
 #### I-2 — Month spending
 
@@ -1184,7 +1248,7 @@ MonthSpending = Σ (−Transaction.amountCents)
                   and the transaction does not belong to an own-transfer pair
 ```
 
-Mandatory comparison (R-4): the same day range of the previous month (day 1 up to today), not the whole previous month. Comparing 12 days against 30 produces a false drop at every month start. The own-transfer-pair filter is Planned until the reconciliation migration (L-5).
+Mandatory comparison (R-4): the same day range of the previous month (day 1 up to today), not the whole previous month. Comparing 12 days against 30 produces a false drop at every month start. Own-transfer pairs leave the aggregate because reconciliation pairs them under a `transfer`-kind category (**Current**, manual pairing); automatic detection is Planned (L-5).
 
 #### I-3 — Daily average
 
@@ -1205,11 +1269,11 @@ The subtrahend of V, exposed as its own number so the verdict is explainable wit
 
 #### A — Reconciliation queue
 
-A work queue, not a chart (BP-11): count and list of open `ReconciliationItem`s ordered by decreasing financial impact. Until the reconciliation migration exists, the substitute is `Transaction.status = 'pending'` (**Current** approximation): `status` marks the entry, not a pending item with reason and confidence.
+A work queue, not a chart (BP-11): count and list of open `ReconciliationItem`s. **Current:** `GET /api/dashboard` counts `ReconciliationItem.status = 'pending'`, and the queue screen lists up to 100 items oldest first; ordering by decreasing financial impact is Planned. Entries imported from statements are `posted`, so the former approximation by `Transaction.status = 'pending'` no longer applies; each uncategorized imported entry has its own item instead.
 
 #### G-1 — Period cash projection
 
-Status: **Planned.** The chart that carries the Big Idea and the only element showing the **future**.
+Status: **Current** (`GET /api/dashboard/risk-free-balance`, implemented on 12 September 2026). The chart that carries the Big Idea and the only element showing the **future**.
 
 ```text
 For each day d from today to endOfPeriod:
@@ -1218,7 +1282,7 @@ For each day d from today to endOfPeriod:
                           where status = 'open' and dueDate ≤ d
 ```
 
-Form: **step line**, single series, area below filled. Each step is an obligation falling due. Emphasis (R-10) on the zero-crossing point when it exists; direct labels only there and on the final value. Honesty rule: the line **never** incorporates expected income — otherwise it is a forecast, which needs another name on screen. All inputs exist; it waits for the obligation CRUD of Feature 3, because there is not yet an interface to register enough obligations.
+Form: **step line**, single series, area below filled. Each step is an obligation falling due. Emphasis (R-10) on the zero-crossing point when it exists; direct labels only there and on the final value. Honesty rule: the line **never** incorporates expected income — otherwise it is a forecast, which needs another name on screen. An obligation already overdue before the window weighs on the first day instead of disappearing: it is still owed. `shortfallDay` marks the first day the projected balance goes negative.
 
 #### G-2 — Spending by category
 
@@ -1236,7 +1300,7 @@ For the period:
 
 #### G-3 — Income and outflow per month
 
-Status: **Planned, blocked by L-2.**
+Status: **Current** (`GET /api/dashboard/cash-flow`, implemented on 12 September 2026, after `mvp_import_details` persisted the covered period).
 
 ```text
 Per month of the covered interval:
@@ -1245,7 +1309,7 @@ Per month of the covered interval:
   result  = income − outflow
 ```
 
-Form: **diverging bar anchored at zero** — income above, outflow below, neutral grey at the zero line (R-18). Two opposite hues, never two neighbouring warm ones. **Hard constraint: render only months with confirmed data coverage.** A month without an imported statement has zero income and outflow in the database, but that means "unknown", not "no movement"; rendering it as an empty bar repeats the "zero is a claim" error across the time axis. The values are computable today; the chart cannot be published honestly until the covered period is persisted.
+Form: **diverging bar anchored at zero** — income above, outflow below, neutral grey at the zero line (R-18). Two opposite hues, never two neighbouring warm ones. **Hard constraint: render only months with confirmed data coverage.** A month without an imported statement has zero income and outflow in the database, but that means "unknown", not "no movement"; rendering it as an empty bar repeats the "zero is a claim" error across the time axis. The route therefore **does not return** a month without statement coverage; a covered month without entries returns zeros, because there the zero is a fact; a month with a partial statement returns `coverage: "partial"` and is drawn faded and labelled, because half a month of statement looks like a month of low spending and nobody notices on their own.
 
 #### Feasibility matrix
 
@@ -1256,23 +1320,23 @@ Form: **diverging bar anchored at zero** — income above, outflow below, neutra
 | **I-2** | Month spending | **Current** | compared with the same range of the previous month |
 | **I-3** | Daily average | **Current** | pace comparison, not budget |
 | **I-4** | Committed in the period | **Current** | own number, makes V explainable |
-| **A** | Reconciliation queue | **Current** as approximation | uses `Transaction.status = 'pending'`; correct form waits for `ReconciliationItem` |
+| **A** | Reconciliation queue | **Current** | counts pending `ReconciliationItem`s |
 | **G-2** | Spending by category | **Current** | error strip with retry instead of disappearing; L-5 caveat remains |
-| **G-1** | Cash projection | Planned | waits for the obligation CRUD of Feature 3 |
-| **G-3** | Income and outflow per month | Planned, blocked | L-2 |
+| **G-1** | Cash projection | **Current** | `GET /api/dashboard/risk-free-balance`; step line with emphasis on the zero crossing |
+| **G-3** | Income and outflow per month | **Current** | `GET /api/dashboard/cash-flow`; only covered months, `partial` declared on screen |
 | — | Daily average vs. budget | Planned, blocked | `Budget` is Stage 9 |
 | — | ARCA, XP, news, cards | Outside the MVP | Stages 8, 14, 15, 16, 17 |
 
-Seven of nine elements are live (as of the 26 October 2026 update).
+**All nine elements are live.** G-1 and G-3 were implemented on 12 September 2026, after the obligation CRUD (Feature 3) and the temporal coverage of `ImportBatch` (L-2) removed both blockers. G-2 still carries the L-5 caveat for transfers that were not reconciled.
 
 ### Model limitations
 
 - **L-1 — Resolved (11 September 2026).** `ScheduledObligation` needed fields no document defined. Migration `mvp_scheduled_obligations` created it with `amountCents` (`BigInt`; no subtraction without a value), `dueDate` (civil date; no period or step without it), `status` (`open` / `paid` / `cancelled`; without it a paid obligation would keep being deducted and the verdict would be permanently pessimistic — the most critical field), `recurrence` (a monthly bill generates the period's occurrences) and `isEstimated` (onboarding accepts approximate values; the verdict signals estimates). See [DATABASE.md](DATABASE.md).
-- **L-2 — Open. `ImportBatch` does not record the covered period.** The schema has format, fingerprint, status, file name and `importedAt` — the import date, not the statement interval. Without `periodStart` and `periodEnd`, the system cannot distinguish "month without movement" from "month without statement". Blocks G-3 and the coverage metric onboarding requires. Feature 4 already expects the parser to detect the period; it must be persisted.
-- **L-3 — Open. `BalanceSnapshot` records neither origin nor confidence.** Onboarding asks "Did the balance come from the bank or is it estimated?" (`BANK_REPORTED` or `USER_DECLARED`). The model stores only value and instant. Without a `source` field the Dashboard cannot fully satisfy R-26 nor separate confirmed from declared values.
-- **L-4 — Open. Cross-currency consolidation is unresolved.** `Account.currency` exists with default `BRL`, but the consolidated balance sums cents from all active accounts without checking currency (verified in `src/app/api/dashboard/route.ts`). With an account in another currency the result is meaningless. Until onboarding decision 8 (multiple currencies) is made, the formula should filter by a reference currency and state on screen how many accounts were left out.
-- **L-5 — Open. Own-account transfers inflate spending until the reconciliation migration.** `OwnAccountTransfer` arrives with `mvp_reconciliation`. Before it, moving money between own accounts appears as expense in one and income in another, inflating I-2, G-2 and G-3. Available mitigation (**Current**): `Category.kind = 'transfer'`, applied manually. It is a palliative and must be stated in the interface, not hidden.
-- **L-6 — Partially resolved.** The obligation entity was called `ScheduledObligation` in some documents and `RecurringObligation` in others; the implemented schema fixed `ScheduledObligation`, used throughout this document. **Open:** `PixIdentifier` versus `PixKey` — no migration has fixed the name yet; the Pix migration must choose one and update every document in the same change set. This document uses `PixIdentifier` provisionally.
+- **L-2 — Resolved (12 September 2026).** Migration `mvp_import_details` added `periodStart` and `periodEnd` to `ImportBatch`, and the Feature 4 importer writes them from the interval detected in the file. Temporal coverage per account can now be queried, and G-3 shows it on the chart. Original record: the schema had only format, fingerprint, status, file name and `importedAt` — the import date, not the statement interval — so the system could not distinguish "month without movement" from "month without statement".
+- **L-3 — Partially resolved.** Migration `balance_snapshot_source` added `BalanceSnapshot.importBatchId`, so a balance from a statement is distinguishable from one entered by hand (`fromImport` in the API). **Open:** onboarding asks "Did the balance come from the bank or is it estimated?" (`BANK_REPORTED` or `USER_DECLARED`), and there is still no explicit origin/confidence field for hand-entered values. Without a `source` field the Dashboard cannot fully satisfy R-26 nor separate confirmed from declared values.
+- **L-4 — Open. Cross-currency consolidation is unresolved.** `Account.currency` exists with default `BRL`. `GET /api/dashboard` still sums cents from all active accounts without checking currency (verified in `src/app/api/dashboard/route.ts`), while `loadConsolidatedBalance` in `src/server/dashboard-queries.ts`, used by the projection route, keeps only `BRL` accounts, so verdict and projection can diverge. Onboarding offers only BRL. Until onboarding decision 8 (multiple currencies) is made, both routes should filter by the same reference currency and state on screen how many accounts were left out.
+- **L-5 — Partially resolved.** `OwnAccountTransfer` exists (`mvp_reconciliation`) and reconciliation can pair two entries as an own transfer under a `transfer`-kind category, which removes them from I-2, G-2 and G-3 (**Current**). **Open:** pairing is manual; until a pair is reconciled, moving money between own accounts still appears as expense in one account and income in the other. Automatic detection using the registered `PixIdentifier` values is Planned.
+- **L-6 — Resolved (12 September 2026).** `ScheduledObligation` was fixed by migration `mvp_scheduled_obligations` and `PixIdentifier` by migration `mvp_pix_identifiers`; `RecurringObligation` and `PixKey` are retired names.
 
 ### Historical note: audit of the original dashboard (10–11 September 2026)
 
@@ -1362,29 +1426,33 @@ Apply before approving any screen with numbers. A failed item blocks delivery.
 
 ### Palette validation
 
-Status: **Planned.** Colour checking is computable — so compute it; never estimate whether a pair is colour-blind safe. The intended invocation:
+Status: **Current** (versioned on 12 September 2026). Colour checking is computable — so compute it; never estimate whether a pair is colour-blind safe. Invocation:
 
 ```bash
-node scripts/validate_palette.js "<hex,hex,...>" --mode light --surface "#FFFDF8"
-node scripts/validate_palette.js "<hex,hex,...>" --mode dark  --surface "#2A2622"
+node scripts/validate-palette.mjs "<hex,hex,...>" --mode light --surface "#FFFDF8"
+node scripts/validate-palette.mjs "<hex,hex,...>" --mode dark  --surface "#2A2622"
 ```
 
 Add `--pairs all` for scatter, bubbles, maps and small multiples, where any two marks may sit side by side. Five computed checks: luminance range; chroma floor; separation under protanopia and deuteranopia (ΔE ≥ 8; floor 6–8 only with secondary encoding); normal-vision floor (ΔE ≥ 15, **hard gate**); contrast against the surface (≥ 3:1; below that a relief channel is required).
 
-The script used during the original research is **not versioned** in the repository (`scripts/` has no validator), and the repository has no CI. Versioning it, or an equivalent, and running it as an automated check is a prerequisite of R-20.
+The validator is versioned at `scripts/validate-palette.mjs` and covered by `tests/palette.test.mjs`, which runs in `pnpm test` and therefore in CI. The test does not only check that the validator runs: it requires the **verdicts to reproduce** those recorded in this document (the D-5 failures and the R-15 passes in both themes). If the validator disagrees with the document, one of them is wrong and the test fails.
+
+The script uses CIEDE2000 for perceptual difference, OKLCh for lightness and chroma, and the Viénot, Brettel & Mollon (1999) simulation for protanopia and deuteranopia. **The original research did not record which metrics it used**, so the ΔE values here do not match the annotated numbers digit for digit; the *verdicts* do. The OKLCh and contrast values match exactly (`#5C4033 L=0.399 C=0.045`; 2.77:1, 2.13:1 and 2.65:1), which confirms the colour pipeline. From now on the metrics are fixed and comparable.
+
+The chroma floor applies only to **categorical** marks. The de-emphasis grey is achromatic on purpose and must be declared with `--neutral`, by explicit choice of whoever runs the check: inferring it from low chroma would let defect D-5, in which Walnut read as grey by accident, pass unnoticed.
 
 ### Dashboard open decisions
 
-1. **Open:** ratify the **full** categorical palette of R-15 (only `--data-1` and `--data-recessive` are ratified).
-2. **Open:** define the exact financial gain and loss tokens, distinct from the four semantic tokens.
+1. **Open:** ratify the **full** categorical palette of R-15. The four tokens used today (`--data-1`, `--data-recessive`, `--data-gain`, `--data-loss`) are ratified with measurement in [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md); the eight slots stay open until a chart with multiple categorical series exists.
+2. **Resolved (12 September 2026):** gain and loss tokens `--data-gain` (`#157f52` light / `#4fbf85` dark) and `--data-loss` (`#b32d22` light / `#dd5d50` dark), distinct from the four semantic tokens as R-14 requires. Ratified with the validator in both themes and in `--pairs all` mode: all five checks pass, with a worst colour-vision-deficiency ΔE of 13.6 in light and 12.2 in dark, above the target of 8. In G-3 colour is never the only channel: income sits above and outflow below the zero line, and every value carries a sign.
 3. **Open:** whether density (comfortable/compact) is configurable in the MVP or later.
 4. **Open:** the default period of the Saldo Livre de Risco on screen: calendar month (current behaviour), next 30 days, or the person's choice.
-5. **Planned:** version the palette validator and run it automatically.
-6. **Resolved:** `ScheduledObligation` fields (migration `mvp_scheduled_obligations`). The CRUD and recurrences screen remain in Feature 3.
-7. **Open:** add `periodStart` and `periodEnd` to `ImportBatch` (L-2) and define how temporal coverage is displayed.
-8. **Open:** add `source` to `BalanceSnapshot` (L-3), aligned with `BANK_REPORTED` / `USER_DECLARED`.
+5. **Resolved:** the palette validator is versioned (`scripts/validate-palette.mjs`) and `tests/palette.test.mjs` locks the reproduction of the recorded verdicts; CI runs it through `pnpm test`.
+6. **Resolved:** `ScheduledObligation` fields (migration `mvp_scheduled_obligations`); the CRUD and recurrences screen are Current (Feature 3).
+7. **Resolved:** `periodStart` and `periodEnd` added by `mvp_import_details` (L-2); coverage is displayed on G-3 (partial months faded and labelled, uncovered months omitted).
+8. **Open:** add an explicit origin/confidence to `BalanceSnapshot` (L-3), aligned with `BANK_REPORTED` / `USER_DECLARED`; statement origin is already distinguishable through `importBatchId`.
 9. **Open:** resolve onboarding decision 8 (multiple currencies in the MVP), which blocks the L-4 fix.
-10. **Open:** fix the `PixIdentifier` / `PixKey` name (L-6) and update every divergent document in the same change set.
+10. **Resolved (12 September 2026):** the names are `ScheduledObligation` and `PixIdentifier`, fixed by their migrations (L-6).
 
 ## New-version notice and application update
 
@@ -1455,26 +1523,31 @@ Roadmap Stage 21 (automatic updates and release channels) remains responsible fo
 | --- | --- | --- | --- |
 | 1 | `init` | `LocalProfile`, `UserPreference` | **Current** |
 | 2 | `mvp_financial_core` | `Institution`, `Account`, `BalanceSnapshot`, `Category`, `ImportBatch`, `Transaction` | **Current** |
-| 3 | `mvp_onboarding` | `OnboardingSession`, `OnboardingAnswer` | Planned |
+| 3 | `mvp_onboarding` | `OnboardingSession`, `OnboardingAnswer` | **Current** |
 | 4 | `mvp_scheduled_obligations` | `ScheduledObligation` | **Current** |
-| 4b | `mvp_financial_planning` | `IncomeSource`, `MerchantRule`, `PixIdentifier` | Planned |
-| 5 | `mvp_import_details` | `ImportFile`, `CsvMappingProfile`, `ImportIssue` (and the covered period of `ImportBatch`, L-2) | Planned |
-| 6 | `mvp_reconciliation` | `ReconciliationItem`, `ReconciliationDecision`, `FinancialAdjustment`, `OwnAccountTransfer` | Planned |
-| 7 | `mvp_timeline_backup` | `TimelineEvent`, `DatabaseBackup` | Planned |
+| 4b | `mvp_income_merchant_rules` | `IncomeSource`, `MerchantRule` | **Current** |
+| 4c | `mvp_pix_identifiers` | `PixIdentifier`, with unique `(profileId, valueIndex)` | **Current** |
+| 5 | `mvp_import_details` | `ImportFile`, `CsvMappingProfile`, `ImportIssue`, period columns on `ImportBatch` and `Transaction.externalId` | **Current** |
+| 5b | `balance_snapshot_source` | `BalanceSnapshot.importBatchId`, so undoing an import does not delete a hand-entered balance | **Current** |
+| 5c | `transaction_revisions` | `TransactionRevision` | **Current** |
+| 6 | `mvp_reconciliation` | `ReconciliationItem`, `ReconciliationDecision`, `FinancialAdjustment`, `OwnAccountTransfer` | **Current** |
+| 7 | `mvp_timeline_backup` | `TimelineEvent`, `DatabaseBackup` | **Current** |
+
+The planned `mvp_financial_planning` migration was split into `mvp_income_merchant_rules` and `mvp_pix_identifiers`. The order column is the logical plan order; the timestamps in `prisma/migrations` give the applied order (see [DATABASE.md](DATABASE.md)).
 
 ### Feature implementation order
 
 1. Finish the cloud track for sign-up, session and download authorisation (core flow **Current**; remaining items Planned).
-2. Implement persistent onboarding.
-3. Finish institutions, accounts and snapshots.
-4. Implement categories, income and obligations.
-5. Implement CSV inspection and mapping.
-6. Implement the CSV/OFX parser and transactional import.
-7. Implement the real statement listing.
-8. Implement reconciliation and reversal.
-9. Finish the Dashboard and Saldo Livre de Risco (core **Current**; G-1, G-3 and the end-to-end test Planned).
-10. Implement history, migration backup and end-to-end tests.
-11. Package, sign, publish and validate Windows and Linux.
+2. ~~Implement persistent onboarding.~~ **Done.**
+3. ~~Finish institutions, accounts and snapshots.~~ **Done**, including editing, deactivation, balance history and own Pix keys.
+4. ~~Implement categories, income and obligations.~~ **Done.**
+5. ~~Implement CSV inspection and mapping.~~ **Done.**
+6. ~~Implement the CSV/OFX parser and transactional import.~~ **Done.**
+7. ~~Implement the real statement listing.~~ **Done.**
+8. ~~Implement reconciliation and reversal.~~ **Done**, with a persistent queue, auditable decisions and atomic reversal.
+9. ~~Finish the Dashboard and Saldo Livre de Risco.~~ **Done:** the nine elements are live, including the cash projection and monthly flow.
+10. ~~Implement history, migration backup gate and end-to-end tests.~~ **Done in the local MVP scope**, with timeline, reversal by use case, preflight and automated coverage. Cloud E2EE backup stays outside the MVP; the gate's coverage gaps are Open (Feature 8).
+11. Package, sign, publish and validate Windows and Linux. **Partial:** `electron-builder` packaging is configured ([ADR 0004](decisions/0004-electron-packaging.md)) and CI validates builds; signing, publication and validation of a packaged build are **Planned**.
 
 ### MVP Definition of Done
 
@@ -1493,16 +1566,17 @@ Roadmap Stage 21 (automatic updates and release channels) remains responsible fo
 
 Product-level items that need a decision. Onboarding decisions 1–10 and Dashboard decisions are listed in their sections; this list collects the remaining ones and cross-document conflicts.
 
-1. **Onboarding statement requirement:** `COMPLETED` requires at least one statement, with `PARTIAL` allowed otherwise (onboarding decision 1 and Step 5).
-2. **Onboarding persistence model:** Feature 1 plans `OnboardingSession` + `OnboardingAnswer`, while the candidate model uses `OnboardingSession` + `OnboardingStepState` + `FinancialBaseline` and warns against a generic answers table as the final financial source. The `mvp_onboarding` migration must choose and update this document.
-3. **Pix entity name:** `PixIdentifier` vs. `PixKey` (L-6).
-4. **Covered period of `ImportBatch`:** L-2, blocks G-3 and `GET /api/dashboard/cash-flow`.
-5. **Balance origin:** L-3.
-6. **Multi-currency:** L-4 and onboarding decision 8; the current consolidated balance sums all currencies.
+1. **Onboarding statement requirement:** the proposal is that `COMPLETED` requires at least one statement, with `PARTIAL` allowed otherwise (onboarding decision 1 and Step 5). The implemented flow completes without a statement or account and has only `draft` and `completed`; confirm that behaviour or add the partial state.
+2. ~~**Onboarding persistence model.**~~ **Resolved:** `mvp_onboarding` chose `OnboardingSession` + `OnboardingAnswer`. Answers hold only the interface draft; consolidated financial data goes to the typed domain tables. `FinancialBaseline` remains a Planned candidate.
+3. ~~**Pix entity name.**~~ **Resolved:** `PixIdentifier` (L-6).
+4. ~~**Covered period of `ImportBatch`.**~~ **Resolved:** L-2; G-3 and `GET /api/dashboard/cash-flow` are Current.
+5. **Balance origin:** L-3 (partially resolved through `importBatchId`).
+6. **Multi-currency:** L-4 and onboarding decision 8; `GET /api/dashboard` sums all currencies while the projection keeps only BRL.
 7. **Default Dashboard period:** calendar month today (Dashboard decision 4).
 8. **`GET /api/health/live` without action code:** the project rule says every frontend-to-backend request except the bootstrap uses an action code. The liveness probe is used by the Docker Compose health check and returns no data, so it is an exception candidate; confirm and record it in [ARCHITECTURE.md](ARCHITECTURE.md) and [SECURITY.md](SECURITY.md), or change it.
 9. **Cloud-track operational state:** Worker publication and remote D1 migration status were reported in the original plan but cannot be verified from the repository.
-10. **Import formats in onboarding copy:** this document uses CSV and OFX for the MVP (Feature 4); the earlier onboarding draft mentioned OFX only. Confirm CSV and OFX for the onboarding flow.
+10. **Import formats in onboarding copy:** this document uses CSV and OFX for the MVP (Feature 4), and the implemented onboarding step leads to an importer that accepts both; the earlier onboarding draft and ROADMAP MVP 4 mention OFX only. Confirm CSV and OFX in the remaining copy.
+11. **Packaged-app smoke test:** the per-run bootstrap secret and migration startup of the packaged app are unverified end to end (see [ARCHITECTURE.md](ARCHITECTURE.md)).
 
 ## References
 
@@ -1562,8 +1636,8 @@ The original vision also listed technology and data choices that the current rep
 | Original assumption | Current reality |
 | --- | --- |
 | Next.js with Tailwind CSS for the UI | Tailwind is configured in PostCSS but not imported; the UI is hand-written CSS (see [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md)). |
-| Local database file `local.db` | The local database file is `temp/talentum-local.db` in development and `/data/talentum-local.db` in Docker (see [ARCHITECTURE.md](ARCHITECTURE.md)). |
-| PDF and OFX parsing with PDF.js and Node-OFX | The MVP imports CSV and OFX; `pdfjs-dist` and `ofx-data-extractor` are installed but unused, and no parser exists yet. |
+| Local database file `local.db` | The local database file is `temp/talentum-local.db` in development, `/data/talentum-local.db` in Docker and `talentum-local.db` in the Electron `userData` directory when packaged (see [ARCHITECTURE.md](ARCHITECTURE.md)). |
+| PDF and OFX parsing with PDF.js and Node-OFX | The MVP imports CSV and OFX with own bounded parsers in `src/server/import/`; `ofx-data-extractor` was removed ([ADR 0002](decisions/0002-own-ofx-parser.md)) and `pdfjs-dist` is installed but unused (PDF is Stage 7). |
 | D1 stores account metadata, licence control and encrypted backup references | D1 stores minimal identity, sessions, consents, releases and download grants; it receives no financial data. Encrypted backup is **Planned**. |
 | AES-256-GCM end-to-end encrypted SQLite snapshot sent to D1 (zero-knowledge) | **Planned**, not implemented; any cloud backup needs an explicit, documented and reviewed requirement. |
 | Prisma models `UsuarioMetadados`, `Transacao`, `AtivoArca`, `HistoricoTimeline` with `Float` money | Superseded by the Prisma schema in [DATABASE.md](DATABASE.md) (`BigInt` cents, `profileId` scoping, opaque IDs). |
