@@ -12,7 +12,11 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const hooks = ['pre-commit', 'pre-push'];
-const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+/* Dentro de um hook o Git exporta GIT_DIR e GIT_INDEX_FILE. Herdá-los fazia o
+   `git init` do repositório temporário reinicializar o repositório real como
+   bare; todo comando git deste teste roda sem eles. */
+const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
+const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', env }).trim();
 
 test('hooks versionados como executáveis (100755), não 100644', () => {
   for (const hook of hooks) {
@@ -31,7 +35,7 @@ test('hooks:install ativa .githooks e torna os hooks executáveis num clone sem 
       chmodSync(join(repo, '.githooks', hook), 0o644);
     }
 
-    execFileSync(process.execPath, [join(root, 'scripts', 'install-hooks.mjs')], { cwd: repo, stdio: 'pipe' });
+    execFileSync(process.execPath, [join(root, 'scripts', 'install-hooks.mjs')], { cwd: repo, stdio: 'pipe', env });
 
     assert.equal(git(repo, 'config', '--get', 'core.hooksPath'), '.githooks');
     if (process.platform !== 'win32') {
