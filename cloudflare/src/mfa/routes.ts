@@ -18,6 +18,7 @@ import { base32Decode, base32Encode, matchingStep, otpauthUri } from './totp.ts'
    - Falhas consecutivas por conta abrem bloqueio crescente: 5 erros = 5 min,
      dobrando a cada 5 erros seguintes, até 1 hora. Por IP, o balde `mfa-ip`. */
 
+// Exatamente 32 símbolos: `byte & 0x1f` escolhe cada um com a mesma chance.
 const RECOVERY_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const RECOVERY_COUNT = 10;
 const PENDING_WINDOW_MS = 15 * 60_000;
@@ -31,7 +32,7 @@ function keyMaterial(e: Env): string {
 
 function recoveryCode(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(8));
-  const chars = [...bytes].map((b) => RECOVERY_ALPHABET[b % RECOVERY_ALPHABET.length]).join('');
+  const chars = [...bytes].map((b) => RECOVERY_ALPHABET[b & 0x1f]).join('');
   return `${chars.slice(0, 4)}-${chars.slice(4)}`;
 }
 

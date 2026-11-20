@@ -9,6 +9,7 @@
    depois da migração. */
 
 import { randomBytes } from 'node:crypto';
+import { constants as fsConstants } from 'node:fs';
 import { open as openFile, readFile, rename, rm, stat } from 'node:fs/promises';
 import { type Client, createClient } from '@libsql/client';
 import { PrismaLibSQL } from '@prisma/adapter-libsql';
@@ -122,9 +123,13 @@ export async function copyPlaintextToEncrypted(source: string, target: string, d
 export async function secureRemove(path: string): Promise<void> {
   for (const file of [path, ...SIDE_FILES.map((suffix) => path + suffix)]) {
     try {
-      const { size } = await stat(file);
-      const handle = await openFile(file, 'r+');
+      // Abre sem seguir link simbólico e mede pelo próprio descritor: entre um
+      // `stat` pelo caminho e a abertura, o arquivo poderia ser trocado por um
+      // link, e a sobrescrita destruiria o arquivo apontado.
+      const handle = await openFile(file, fsConstants.O_RDWR | fsConstants.O_NOFOLLOW);
       try {
+        const { size, isFile } = await handle.stat().then((info) => ({ size: info.size, isFile: info.isFile() }));
+        if (!isFile) continue;
         const chunk = 1024 * 1024;
         for (let offset = 0; offset < size; offset += chunk) {
           const length = Math.min(chunk, size - offset);

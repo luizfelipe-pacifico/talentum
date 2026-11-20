@@ -96,7 +96,9 @@ test('o QR Code do autenticador é gerado no servidor, sem serviço externo', as
   // Mandar o endereço otpauth a um gerador de QR externo entregaria o segredo TOTP.
   const page = await read('apps/web/src/app/conta/mfa/page.tsx');
   assert.match(page, /encodeQr\(otpauthUri\)/);
-  assert.doesNotMatch(page, /https?:\/\/(?!www\.w3\.org)/);
+  // Nenhum endereço externo além do namespace do SVG: o QR não sai do servidor.
+  const urls = [...page.matchAll(/\bhttps?:\/\/[^\s'"`)]+/g)].map((match) => match[0]);
+  assert.deepEqual(urls.filter((url) => !url.startsWith('http://www.w3.org/')), []);
   // Bits de formato do nível M conferidos com a tabela da norma ISO/IEC 18004.
   assert.equal(qr.formatBits(0), 0b101010000010010);
   assert.equal(qr.formatBits(1), 0b101000100100101);

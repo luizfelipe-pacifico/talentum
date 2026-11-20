@@ -26,8 +26,7 @@ export function parseMoneyInput(text: string, options: { allowZero?: boolean } =
 
 /** Taxa em porcentagem ("12,5") para pontos-base inteiros (1250). */
 export function parsePercentToBps(text: string): number | null {
-  const value = text.trim().replace('%', '').replace(',', '.');
-  const match = /^(\d{1,3})(?:\.(\d{1,2}))?$/.exec(value);
+  const match = /^(\d{1,3})(?:[.,](\d{1,2}))?\s*%?$/.exec(text.trim());
   if (!match) return null;
   return Number(match[1]) * 100 + Number((match[2] ?? '').padEnd(2, '0') || '0');
 }
