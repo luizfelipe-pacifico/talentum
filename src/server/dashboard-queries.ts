@@ -10,6 +10,7 @@
 import { db } from '@/server/db';
 import {
   consolidatedBalance,
+  splitByReferenceCurrency,
   type ConsolidatedBalance,
   type CategoryKind,
   type TransactionInput,
@@ -46,16 +47,22 @@ export function toTransactionInput(row: TransactionRow): TransactionInput {
 }
 
 /**
- * Saldo consolidado das contas ativas.
+ * Saldo consolidado das contas ativas na moeda de referência.
  *
  * Último snapshot de cada conta mais os lançamentos posteriores a ele. Conta sem
  * snapshot é contada à parte: desconhecido não é zero (docs/PRODUCT.md, I-1).
+ * Conta em outra moeda também fica de fora e é contada em
+ * `accountsInOtherCurrency`, para a tela dizer que o número não a inclui (L-4).
+ * O veredito (`GET /api/dashboard`) e a projeção leem esta mesma função.
  */
-export async function loadConsolidatedBalance(profileId: string): Promise<ConsolidatedBalance> {
-  const accounts = await db.account.findMany({
-    where: { profileId, isActive: true, currency: 'BRL' },
+export async function loadConsolidatedBalance(
+  profileId: string,
+): Promise<ConsolidatedBalance & { accountsInOtherCurrency: number }> {
+  const active = await db.account.findMany({
+    where: { profileId, isActive: true },
     select: {
       id: true,
+      currency: true,
       balanceSnapshots: {
         orderBy: { capturedAt: 'desc' },
         take: 1,
@@ -63,6 +70,8 @@ export async function loadConsolidatedBalance(profileId: string): Promise<Consol
       },
     },
   });
+
+  const { included: accounts, excludedCount } = splitByReferenceCurrency(active);
 
   // Os lançamentos posteriores ao snapshot podem ser anteriores ao período
   // exibido, então a janela começa no snapshot mais antigo entre as contas.
@@ -79,13 +88,14 @@ export async function loadConsolidatedBalance(profileId: string): Promise<Consol
       })
     : [];
 
-  return consolidatedBalance(
+  const balance = consolidatedBalance(
     accounts.map((account) => ({
       accountId: account.id,
       snapshot: account.balanceSnapshots[0] ?? null,
     })),
     settlementRows.map(toTransactionInput),
   );
+  return { ...balance, accountsInOtherCurrency: excludedCount };
 }
 
 /** Obrigações abertas com vencimento até o limite informado. */
@@ -95,6 +105,38 @@ export async function loadOpenObligations(profileId: string, until: Date) {
     orderBy: { dueDate: 'asc' },
     select: { id: true, description: true, amountCents: true, dueDate: true, status: true, isEstimated: true },
   });
+}
+
+/**
+ * Faturas de cartão em aberto com vencimento até o limite, com o total já pago.
+ *
+ * Entram no comprometido do período pelo que ainda falta pagar
+ * (`cardStatementObligations`, docs/PRODUCT.md, V). A descrição usa só o apelido
+ * do cartão, nunca número.
+ */
+export async function loadOpenCardStatements(profileId: string, until: Date) {
+  const rows = await db.cardStatement.findMany({
+    where: { profileId, status: 'open', dueDate: { lte: until } },
+    orderBy: { dueDate: 'asc' },
+    select: {
+      id: true,
+      dueDate: true,
+      totalCents: true,
+      isEstimated: true,
+      status: true,
+      creditCard: { select: { name: true } },
+      payments: { select: { amountCents: true } },
+    },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    description: `Fatura ${row.creditCard.name}`,
+    dueDate: row.dueDate,
+    totalCents: row.totalCents,
+    paidCents: row.payments.reduce((total, payment) => total + payment.amountCents, 0n),
+    status: row.status,
+    isEstimated: row.isEstimated,
+  }));
 }
 
 /**
@@ -115,6 +157,45 @@ export async function loadCoverage(profileId: string) {
     .filter((batch): batch is { periodStart: Date; periodEnd: Date } =>
       batch.periodStart !== null && batch.periodEnd !== null)
     .map((batch) => ({ start: batch.periodStart, end: batch.periodEnd }));
+}
+
+/**
+ * O que os alertas locais precisam (src/server/alerts.ts).
+ *
+ * Obrigações abertas que vencem antes de `horizon`, inclusive as já vencidas, e
+ * a data do dado mais recente de cada conta ativa: saldo informado, fim do
+ * extrato importado e último lançamento. Nenhuma descrição de lançamento sai
+ * daqui; a descrição é a da obrigação, que a pessoa mesma cadastrou e que a
+ * projeção do Saldo Livre de Risco já mostra.
+ */
+export async function loadAlertInputs(profileId: string, horizon: Date) {
+  const [obligations, accounts] = await Promise.all([
+    db.scheduledObligation.findMany({
+      where: { profileId, status: 'open', dueDate: { lt: horizon } },
+      orderBy: { dueDate: 'asc' },
+      select: { id: true, description: true, amountCents: true, dueDate: true, isEstimated: true },
+    }),
+    db.account.findMany({
+      where: { profileId, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        balanceSnapshots: { orderBy: { capturedAt: 'desc' }, take: 1, select: { capturedAt: true } },
+        importBatches: { where: { profileId, periodEnd: { not: null } }, orderBy: { periodEnd: 'desc' }, take: 1, select: { periodEnd: true } },
+        transactions: { where: { profileId }, orderBy: { occurredOn: 'desc' }, take: 1, select: { occurredOn: true } },
+      },
+    }),
+  ]);
+  return {
+    obligations,
+    accounts: accounts.map((account) => ({
+      id: account.id,
+      name: account.name,
+      lastBalanceAt: account.balanceSnapshots[0]?.capturedAt ?? null,
+      lastStatementAt: account.importBatches[0]?.periodEnd ?? null,
+      lastEntryAt: account.transactions[0]?.occurredOn ?? null,
+    })),
+  };
 }
 
 export { transactionSelect };

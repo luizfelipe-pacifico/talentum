@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { consumeActionCode } from '@/server/action-codes';
+import { readSessionToken } from '@/server/vault/session';
 import { db } from '@/server/db';
 import { getLocalProfileId } from '@/server/profile';
 import {
@@ -12,7 +13,7 @@ import {
 const path = '/api/dashboard/categories';
 
 export async function GET(request: Request) {
-  if (!consumeActionCode(request.headers.get('X-Action-Code'), 'GET', path)) {
+  if (!consumeActionCode(request.headers.get('X-Action-Code'), 'GET', path, readSessionToken(request))) {
     return NextResponse.json(
       { error: { code: 'INVALID_ACTION_CODE', message: 'A ação não pôde ser validada.' } },
       { status: 403, headers: { 'Cache-Control': 'no-store' } },

@@ -1,24 +1,171 @@
-import type { D1Database } from '@cloudflare/workers-types';
+import * as account from './account.ts';
+import * as auth from './auth.ts';
+import * as community from './community.ts';
+import type { Ctx } from './context.ts';
+import type { Env } from './env.ts';
+import { now, sha, rnd, th } from './lib/crypto.ts';
+import { body, fail, foreignOrigin, HttpError, json, preflight, withCors } from './lib/http.ts';
+import { BUCKETS, clientIp, limit } from './lib/limits.ts';
+import { purge } from './maintenance.ts';
+import * as mfa from './mfa/routes.ts';
+import * as news from './news/routes.ts';
+import * as releases from './releases.ts';
 
-export interface Env { DB:D1Database; APP_ENV:string; ALLOWED_ORIGIN:string; PUBLIC_WEB_URL:string; SESSION_SIGNING_SECRET:string; TOKEN_HASH_PEPPER:string; BFF_SHARED_SECRET:string; GOOGLE_CLIENT_ID:string; GOOGLE_CLIENT_SECRET:string }
-type Obj=Record<string,unknown>; const enc=new TextEncoder();
-const b64=(x:Uint8Array)=>btoa(String.fromCharCode(...x)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-const rnd=(n=32)=>{const x=crypto.getRandomValues(new Uint8Array(n));return b64(x)};
-const now=(add=0)=>new Date(Date.now()+add).toISOString();
-const sha=async(x:string)=>b64(new Uint8Array(await crypto.subtle.digest('SHA-256',enc.encode(x))));
-const th=(e:Env,x:string)=>sha(`${e.TOKEN_HASH_PEPPER}:${x}`);
-const json=(body:Obj,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; frame-ancestors 'none'",'Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'}});
-const fail=(code:string,status:number)=>json({error:{code,message:'A solicitação não pôde ser concluída.'}},status);
-async function bff(r:Request,e:Env){const v=r.headers.get('X-Talentum-BFF')??'';return v.length>0&&await sha(v)===await sha(e.BFF_SHARED_SECRET)}
-async function action(r:Request,e:Env,path:string){const v=r.headers.get('X-Action-Code');if(!v)return false;const q=await e.DB.prepare('UPDATE action_codes SET consumed_at=? WHERE code_hash=? AND method=? AND path=? AND context_hash=? AND consumed_at IS NULL AND expires_at>?').bind(now(),await th(e,v),r.method,path,await sha(e.BFF_SHARED_SECRET),now()).run();return q.meta.changes===1}
-async function limit(r:Request,e:Env,name:string,max:number){const key=await sha(`${e.TOKEN_HASH_PEPPER}:${name}:${r.headers.get('X-Talentum-Client-IP')??r.headers.get('CF-Connecting-IP')??'local'}`), t=now();const row=await e.DB.prepare('SELECT id,window_started_at,request_count FROM rate_limit_windows WHERE bucket_hash=?').bind(key).first<{id:string;window_started_at:string;request_count:number}>();if(!row||Date.now()-Date.parse(row.window_started_at)>60000){await e.DB.prepare('INSERT INTO rate_limit_windows(id,bucket_hash,window_started_at,request_count,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(bucket_hash) DO UPDATE SET window_started_at=excluded.window_started_at,request_count=1,updated_at=excluded.updated_at').bind(crypto.randomUUID(),key,t,1,t).run();return true}if(row.request_count>=max)return false;await e.DB.prepare('UPDATE rate_limit_windows SET request_count=request_count+1,updated_at=? WHERE id=?').bind(t,row.id).run();return true}
-async function crypt(e:Env,v:string,decrypt=false){const raw=await crypto.subtle.digest('SHA-256',enc.encode(e.SESSION_SIGNING_SECRET)),key=await crypto.subtle.importKey('raw',raw,'AES-GCM',false,[decrypt?'decrypt':'encrypt']);if(!decrypt){const iv=crypto.getRandomValues(new Uint8Array(12)),out=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},key,enc.encode(v)));return `${b64(iv)}.${b64(out)}`}const dec=(s:string)=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0)),[iv,data]=v.split('.').map(dec);return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv},key,data))}
-async function google(jwt:string,e:Env,nonce:string){const [h,p,s]=jwt.split('.'),dec=(x:string)=>JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(x.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0))));if(!h||!p||!s)throw 0;const hd=dec(h) as {alg:string;kid:string},cl=dec(p) as {iss:string;aud:string;exp:number;nonce:string;sub:string;email:string;email_verified:boolean;name?:string;picture?:string};if(hd.alg!=='RS256')throw 0;const keys=await fetch('https://www.googleapis.com/oauth2/v3/certs').then(x=>x.json()) as {keys:(JsonWebKey&{kid?:string})[]},jwk=keys.keys.find(x=>x.kid===hd.kid);if(!jwk)throw 0;const key=await crypto.subtle.importKey('jwk',jwk,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['verify']),sig=Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));if(!await crypto.subtle.verify('RSASSA-PKCS1-v1_5',key,sig,enc.encode(`${h}.${p}`)))throw 0;if(!['accounts.google.com','https://accounts.google.com'].includes(cl.iss)||cl.aud!==e.GOOGLE_CLIENT_ID||cl.exp*1000<=Date.now()||cl.nonce!==nonce||!cl.sub||!cl.email||!cl.email_verified)throw 0;return cl}
-async function current(r:Request,e:Env){const v=r.headers.get('Authorization')?.match(/^Bearer (.+)$/)?.[1];return v?e.DB.prepare('SELECT id,user_id FROM auth_sessions WHERE token_hash=? AND revoked_at IS NULL AND expires_at>?').bind(await th(e,v),now()).first<{id:string;user_id:string}>():null}
-async function route(r:Request,e:Env){const u=new URL(r.url),p=u.pathname;if(r.method==='GET'&&p==='/health'){const x=await e.DB.prepare('SELECT 1 healthy').first<{healthy:number}>();return json({status:x?.healthy===1?'ok':'degraded',service:'talentum-cloud-api'})}if(!await bff(r,e))return fail('BFF_REQUIRED',403);
-if(r.method==='POST'&&p==='/api/action-codes'){if(!await limit(r,e,'codes',30))return fail('RATE_LIMITED',429);const x=await r.json().catch(()=>null) as {method?:string;path?:string}|null;if(!x||!['GET','POST','PUT','PATCH','DELETE'].includes(x.method??'')||!x.path?.startsWith('/api/')||x.path===p)return fail('INVALID_ACTION_TARGET',400);const code=rnd();await e.DB.prepare('INSERT INTO action_codes(id,code_hash,method,path,context_hash,expires_at,created_at) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),await th(e,code),x.method,x.path,await sha(e.BFF_SHARED_SECRET),now(60000),now()).run();return json({actionCode:code,expiresInSeconds:60})}if(!await action(r,e,p))return fail('INVALID_ACTION_CODE',403);
-if(r.method==='POST'&&p==='/api/auth/start'){if(!await limit(r,e,'login',10))return fail('RATE_LIMITED',429);const state=rnd(),nonce=rnd(),verifier=rnd(48),redirect=`${e.PUBLIC_WEB_URL}/api/auth/callback`;await e.DB.prepare('INSERT INTO auth_transactions(id,state_hash,nonce_hash,code_verifier_ciphertext,redirect_uri,return_to,expires_at,created_at) VALUES(?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),await th(e,state),await th(e,nonce),await crypt(e,`${nonce}:${verifier}`),redirect,'/downloads',now(600000),now()).run();const a=new URL('https://accounts.google.com/o/oauth2/v2/auth');Object.entries({client_id:e.GOOGLE_CLIENT_ID,redirect_uri:redirect,response_type:'code',scope:'openid email profile',state,nonce,code_challenge:await sha(verifier),code_challenge_method:'S256',prompt:'select_account'}).forEach(([k,v])=>a.searchParams.set(k,v));return json({authorizationUrl:a.toString()})}
-if(r.method==='POST'&&p==='/api/auth/callback'){const x=await r.json().catch(()=>null) as {code?:string;state?:string}|null;if(!x?.code||!x.state)return fail('INVALID_CALLBACK',400);const tx=await e.DB.prepare('SELECT id,code_verifier_ciphertext,redirect_uri FROM auth_transactions WHERE state_hash=? AND consumed_at IS NULL AND expires_at>?').bind(await th(e,x.state),now()).first<{id:string;code_verifier_ciphertext:string;redirect_uri:string}>();if(!tx)return fail('INVALID_AUTH_TRANSACTION',400);const used=await e.DB.prepare('UPDATE auth_transactions SET consumed_at=? WHERE id=? AND consumed_at IS NULL').bind(now(),tx.id).run();if(used.meta.changes!==1)return fail('INVALID_AUTH_TRANSACTION',400);const [nonce,verifier]=(await crypt(e,tx.code_verifier_ciphertext,true)).split(':');const tr=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({code:x.code,client_id:e.GOOGLE_CLIENT_ID,client_secret:e.GOOGLE_CLIENT_SECRET,redirect_uri:tx.redirect_uri,grant_type:'authorization_code',code_verifier:verifier})});if(!tr.ok)return fail('OAUTH_EXCHANGE_FAILED',401);const id=(await tr.json() as {id_token?:string}).id_token;if(!id)return fail('OAUTH_EXCHANGE_FAILED',401);let cl;try{cl=await google(id,e,nonce)}catch{return fail('INVALID_ID_TOKEN',401)}const t=now(),newId=crypto.randomUUID();await e.DB.batch([e.DB.prepare("INSERT INTO users(id,email_normalized,status,email_verified_at,created_at,updated_at) VALUES(?,?,'ACTIVE',?,?,?) ON CONFLICT(email_normalized) DO UPDATE SET email_verified_at=excluded.email_verified_at,updated_at=excluded.updated_at").bind(newId,cl.email.toLowerCase(),t,t,t),e.DB.prepare("INSERT INTO oauth_identities(id,user_id,provider,provider_subject,created_at,updated_at) SELECT ?,id,'GOOGLE',?,?,? FROM users WHERE email_normalized=? ON CONFLICT(provider,provider_subject) DO UPDATE SET updated_at=excluded.updated_at").bind(crypto.randomUUID(),cl.sub,t,t,cl.email.toLowerCase()),e.DB.prepare('INSERT INTO user_profiles(id,user_id,public_name,avatar_url,created_at,updated_at) SELECT ?,id,?,?,?,? FROM users WHERE email_normalized=? ON CONFLICT(user_id) DO NOTHING').bind(crypto.randomUUID(),cl.name??'Pessoa usuária',cl.picture??null,t,t,cl.email.toLowerCase())]);const user=await e.DB.prepare('SELECT id FROM users WHERE email_normalized=?').bind(cl.email.toLowerCase()).first<{id:string}>();if(!user)return fail('AUTH_FAILED',500);const access=rnd(),refresh=rnd(48),sid=crypto.randomUUID(),fid=crypto.randomUUID();await e.DB.batch([e.DB.prepare('INSERT INTO auth_sessions(id,user_id,token_hash,expires_at,created_at) VALUES(?,?,?,?,?)').bind(sid,user.id,await th(e,access),now(900000),t),e.DB.prepare('INSERT INTO refresh_token_families(id,session_id,created_at) VALUES(?,?,?)').bind(fid,sid,t),e.DB.prepare('INSERT INTO refresh_tokens(id,family_id,token_hash,expires_at,created_at) VALUES(?,?,?,?,?)').bind(crypto.randomUUID(),fid,await th(e,refresh),now(2592000000),t)]);return json({accessToken:access,accessExpiresInSeconds:900,refreshToken:refresh,refreshExpiresInSeconds:2592000})}
-if(r.method==='POST'&&p==='/api/auth/refresh'){const x=await r.json().catch(()=>null) as {refreshToken?:string}|null;if(!x?.refreshToken)return fail('INVALID_REFRESH',401);const old=await e.DB.prepare('SELECT rt.id,rt.family_id,rt.consumed_at,rt.expires_at,rf.session_id FROM refresh_tokens rt JOIN refresh_token_families rf ON rf.id=rt.family_id WHERE rt.token_hash=? AND rt.revoked_at IS NULL AND rf.revoked_at IS NULL').bind(await th(e,x.refreshToken)).first<{id:string;family_id:string;consumed_at:string|null;expires_at:string;session_id:string}>();if(!old||Date.parse(old.expires_at)<=Date.now())return fail('INVALID_REFRESH',401);if(old.consumed_at){await e.DB.batch([e.DB.prepare('UPDATE refresh_token_families SET revoked_at=?,compromise_detected_at=? WHERE id=?').bind(now(),now(),old.family_id),e.DB.prepare('UPDATE auth_sessions SET revoked_at=? WHERE id=?').bind(now(),old.session_id)]);return fail('REFRESH_REUSE_DETECTED',401)}const access=rnd(),refresh=rnd(48),nid=crypto.randomUUID(),t=now();const claim=await e.DB.prepare('UPDATE refresh_tokens SET consumed_at=? WHERE id=? AND consumed_at IS NULL').bind(t,old.id).run();if(claim.meta.changes!==1){await e.DB.batch([e.DB.prepare('UPDATE refresh_token_families SET revoked_at=?,compromise_detected_at=? WHERE id=?').bind(now(),now(),old.family_id),e.DB.prepare('UPDATE auth_sessions SET revoked_at=? WHERE id=?').bind(now(),old.session_id)]);return fail('REFRESH_REUSE_DETECTED',401)}await e.DB.batch([e.DB.prepare('INSERT INTO refresh_tokens(id,family_id,token_hash,expires_at,created_at) VALUES(?,?,?,?,?)').bind(nid,old.family_id,await th(e,refresh),now(2592000000),t),e.DB.prepare('UPDATE refresh_tokens SET successor_token_id=? WHERE id=?').bind(nid,old.id),e.DB.prepare('UPDATE auth_sessions SET token_hash=?,expires_at=?,last_seen_at=? WHERE id=?').bind(await th(e,access),now(900000),t,old.session_id)]);return json({accessToken:access,accessExpiresInSeconds:900,refreshToken:refresh,refreshExpiresInSeconds:2592000})}
-const me=await current(r,e);if(!me)return fail('AUTH_REQUIRED',401);if(r.method==='POST'&&p==='/api/auth/logout'){await e.DB.batch([e.DB.prepare('UPDATE auth_sessions SET revoked_at=? WHERE id=?').bind(now(),me.id),e.DB.prepare('UPDATE refresh_token_families SET revoked_at=? WHERE session_id=?').bind(now(),me.id)]);return json({ok:true})}if(r.method==='GET'&&p==='/api/me'){const user=await e.DB.prepare('SELECT u.id,p.public_name,p.avatar_url FROM users u JOIN user_profiles p ON p.user_id=u.id WHERE u.id=?').bind(me.user_id).first();return json({user})}if(r.method==='GET'&&p==='/api/releases'){const q=await e.DB.prepare("SELECT r.id,r.version,r.channel,a.id artifactId,a.platform,a.architecture,a.sha256,a.signature FROM releases r JOIN release_artifacts a ON a.release_id=r.id WHERE r.status='PUBLISHED' ORDER BY r.published_at DESC").all();return json({releases:q.results})}const m=p.match(/^\/api\/releases\/([^/]+)\/download-grants$/);if(r.method==='POST'&&m){const x=await r.json().catch(()=>({})) as {artifactId?:string},a=await e.DB.prepare("SELECT a.id,a.download_url FROM release_artifacts a JOIN releases r ON r.id=a.release_id WHERE a.id=? AND r.id=? AND r.status='PUBLISHED'").bind(x.artifactId??'',m[1]).first<{id:string;download_url:string}>();if(!a)return fail('RELEASE_NOT_FOUND',404);const grant=rnd();await e.DB.prepare('INSERT INTO download_grants(id,user_id,artifact_id,grant_hash,expires_at,created_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID(),me.user_id,a.id,await th(e,grant),now(300000),now()).run();return json({downloadUrl:a.download_url,grant,expiresInSeconds:300})}return fail('NOT_FOUND',404)}
-export default{async fetch(r:Request,e:Env){try{return await route(r,e)}catch{return fail('INTERNAL_ERROR',500)}}};
+export type { Env } from './env.ts';
+
+/* Worker da nuvem do Talentum. Contratos: docs/ARCHITECTURE.md §3.5.
+
+   Ordem de toda requisição: preflight/CORS → origem → BFF ou rota pública →
+   código de ação (método + caminho, uso único) → rota (sessão, autorização,
+   rate limit, validação). Rotas públicas existem para o backend local do app
+   desktop, que não tem o segredo do BFF: notícias e o login do desktop. */
+
+type Handler = (ctx: Ctx) => Promise<Response>;
+type Route = { method: string; pattern: RegExp; handler: Handler; public?: boolean };
+
+const ID = '([A-Za-z0-9_-]{1,64})';
+const p = (path: string) => new RegExp(`^${path.replaceAll(':id', ID)}$`);
+
+const ROUTES: Route[] = [
+  { method: 'POST', pattern: p('/api/auth/start'), handler: auth.start },
+  { method: 'POST', pattern: p('/api/auth/callback'), handler: auth.callback },
+  { method: 'POST', pattern: p('/api/auth/mfa/verify'), handler: auth.mfaVerify },
+  { method: 'POST', pattern: p('/api/auth/refresh'), handler: auth.refresh },
+  { method: 'POST', pattern: p('/api/auth/logout'), handler: auth.logout },
+  { method: 'POST', pattern: p('/api/auth/desktop/handoff'), handler: auth.desktopHandoff },
+  { method: 'GET', pattern: p('/api/me'), handler: account.me },
+  { method: 'PATCH', pattern: p('/api/me'), handler: account.updateMe },
+  { method: 'DELETE', pattern: p('/api/me'), handler: account.deleteMe },
+  { method: 'GET', pattern: p('/api/me/sessions'), handler: account.sessions },
+  { method: 'DELETE', pattern: p('/api/me/sessions/:id'), handler: account.revokeSession },
+  { method: 'GET', pattern: p('/api/me/mfa'), handler: mfa.status },
+  { method: 'POST', pattern: p('/api/me/mfa/totp/enroll'), handler: mfa.enroll },
+  { method: 'GET', pattern: p('/api/me/mfa/totp/pending'), handler: mfa.pending },
+  { method: 'POST', pattern: p('/api/me/mfa/totp/activate'), handler: mfa.activate },
+  { method: 'POST', pattern: p('/api/me/mfa/totp/disable'), handler: mfa.disable },
+  { method: 'POST', pattern: p('/api/me/mfa/recovery-codes'), handler: mfa.regenerate },
+  { method: 'POST', pattern: p('/api/me/mfa/recovery-codes/reveal'), handler: mfa.reveal },
+  { method: 'GET', pattern: p('/api/releases'), handler: releases.list },
+  { method: 'POST', pattern: p('/api/releases/:id/download-grants'), handler: releases.createGrant },
+  { method: 'POST', pattern: p('/api/download-grants/redeem'), handler: releases.redeemGrant },
+  { method: 'GET', pattern: p('/api/feedback/posts'), handler: community.listPosts },
+  { method: 'POST', pattern: p('/api/feedback/posts'), handler: community.createPost },
+  { method: 'GET', pattern: p('/api/feedback/posts/:id'), handler: community.getPost },
+  { method: 'PATCH', pattern: p('/api/feedback/posts/:id'), handler: community.updatePost },
+  { method: 'DELETE', pattern: p('/api/feedback/posts/:id'), handler: community.deletePost },
+  { method: 'POST', pattern: p('/api/feedback/posts/:id/comments'), handler: community.createComment },
+  { method: 'PATCH', pattern: p('/api/feedback/comments/:id'), handler: community.updateComment },
+  { method: 'DELETE', pattern: p('/api/feedback/comments/:id'), handler: community.deleteComment },
+  { method: 'PUT', pattern: p('/api/feedback/posts/:id/vote'), handler: community.votePost },
+  { method: 'DELETE', pattern: p('/api/feedback/posts/:id/vote'), handler: community.votePost },
+  { method: 'PUT', pattern: p('/api/feedback/comments/:id/vote'), handler: community.voteComment },
+  { method: 'DELETE', pattern: p('/api/feedback/comments/:id/vote'), handler: community.voteComment },
+  { method: 'POST', pattern: p('/api/feedback/reports'), handler: community.report },
+  { method: 'GET', pattern: p('/api/feedback/profiles/:id'), handler: community.profile },
+  { method: 'GET', pattern: p('/api/feedback/moderation/reports'), handler: community.moderationQueue },
+  { method: 'POST', pattern: p('/api/feedback/moderation/actions'), handler: community.moderate },
+  // Públicas: aceitam código emitido por /api/public/action-codes (sem o segredo do BFF).
+  { method: 'GET', pattern: p('/api/news'), handler: news.listNews, public: true },
+  { method: 'GET', pattern: p('/api/news/:id'), handler: news.getNews, public: true },
+  { method: 'POST', pattern: p('/api/news/:id/summary'), handler: news.summarize, public: true },
+  { method: 'POST', pattern: p('/api/desktop/auth/start'), handler: auth.desktopStart, public: true },
+  { method: 'POST', pattern: p('/api/desktop/auth/token'), handler: auth.desktopToken, public: true },
+  { method: 'POST', pattern: p('/api/desktop/auth/refresh'), handler: auth.desktopRefresh, public: true },
+  { method: 'POST', pattern: p('/api/desktop/auth/logout'), handler: auth.desktopLogout, public: true },
+  { method: 'GET', pattern: p('/api/desktop/me'), handler: auth.desktopMe, public: true },
+];
+
+function match(method: string, path: string): { route: Route; params: string[] } | null {
+  for (const route of ROUTES) {
+    if (route.method !== method) continue;
+    const m = path.match(route.pattern);
+    if (m) return { route, params: m.slice(1) };
+  }
+  return null;
+}
+
+async function isBff(r: Request, e: Env) {
+  const v = r.headers.get('X-Talentum-BFF') ?? '';
+  return v.length > 0 && (await sha(v)) === (await sha(e.BFF_SHARED_SECRET));
+}
+
+/** Contexto do código: o do BFF (hash do segredo) ou o público. Um não serve no outro. */
+const contextHash = async (e: Env, viaBff: boolean) => (viaBff ? sha(e.BFF_SHARED_SECRET) : sha('talentum-public-action-code'));
+
+async function issueCode(e: Env, viaBff: boolean, method: string, path: string) {
+  const code = rnd();
+  await e.DB.prepare('INSERT INTO action_codes(id,code_hash,method,path,context_hash,expires_at,created_at) VALUES(?,?,?,?,?,?,?)')
+    .bind(crypto.randomUUID(), await th(e, code), method, path, await contextHash(e, viaBff), now(60000), now())
+    .run();
+  return json({ actionCode: code, expiresInSeconds: 60 });
+}
+
+async function consumeCode(r: Request, e: Env, path: string, viaBff: boolean) {
+  const v = r.headers.get('X-Action-Code');
+  if (!v || v.length > 128) return false;
+  const q = await e.DB.prepare(
+    'UPDATE action_codes SET consumed_at=? WHERE code_hash=? AND method=? AND path=? AND context_hash=? AND consumed_at IS NULL AND expires_at>?',
+  )
+    .bind(now(), await th(e, v), r.method, path, await contextHash(e, viaBff), now())
+    .run();
+  return q.meta.changes === 1;
+}
+
+async function route(r: Request, e: Env): Promise<Response> {
+  const url = new URL(r.url);
+  const path = url.pathname;
+  const pre = preflight(r, e);
+  if (pre) return pre;
+  if (r.method === 'GET' && path === '/health') {
+    const x = await e.DB.prepare('SELECT 1 healthy').first<{ healthy: number }>();
+    return json({ status: x?.healthy === 1 ? 'ok' : 'degraded', service: 'talentum-cloud-api' });
+  }
+  if (foreignOrigin(r, e)) return fail('ORIGIN_NOT_ALLOWED', 403);
+  const viaBff = await isBff(r, e);
+  const ip = clientIp(r, viaBff);
+
+  if (r.method === 'POST' && path === '/api/action-codes') {
+    if (!viaBff) return fail('BFF_REQUIRED', 403);
+    await limit(e, BUCKETS.codes, ip);
+    const x = await body<{ method?: unknown; path?: unknown }>(r);
+    const method = typeof x.method === 'string' ? x.method : '';
+    const target = typeof x.path === 'string' ? x.path : '';
+    if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method) || !target.startsWith('/api/') || target.length > 200 || !match(method, target))
+      return fail('INVALID_ACTION_TARGET', 400);
+    return issueCode(e, true, method, target);
+  }
+  if (r.method === 'POST' && path === '/api/public/action-codes') {
+    await limit(e, BUCKETS.publicCodes, ip);
+    const x = await body<{ method?: unknown; path?: unknown }>(r);
+    const target = typeof x.path === 'string' && x.path.length <= 200 ? match(String(x.method), x.path) : null;
+    if (!target?.route.public) return fail('INVALID_ACTION_TARGET', 400);
+    return issueCode(e, false, String(x.method), x.path as string);
+  }
+
+  const found = match(r.method, path);
+  if (!found) return viaBff ? fail('NOT_FOUND', 404) : fail('BFF_REQUIRED', 403);
+  if (!found.route.public && !viaBff) return fail('BFF_REQUIRED', 403);
+  if (!(await consumeCode(r, e, path, viaBff))) return fail('INVALID_ACTION_CODE', 403);
+  return found.route.handler({ r, e, url, path, ip, viaBff, params: found.params });
+}
+
+export default {
+  async fetch(r: Request, e: Env) {
+    try {
+      return withCors(r, e, await route(r, e));
+    } catch (error) {
+      if (error instanceof HttpError) return withCors(r, e, fail(error.code, error.status));
+      return fail('INTERNAL_ERROR', 500);
+    }
+  },
+  /* Cron (wrangler.jsonc, `triggers.crons`): retenção e busca de notícias. */
+  async scheduled(_event: unknown, e: Env, ctx: { waitUntil(promise: Promise<unknown>): void }) {
+    ctx.waitUntil(
+      (async () => {
+        await purge(e).catch(() => undefined);
+        await news.ingestNews(e).catch(() => undefined);
+      })(),
+    );
+  },
+};
+

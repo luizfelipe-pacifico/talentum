@@ -27,11 +27,13 @@ export type PreviewRow = {
   occurredOn: string;
   description: string;
   amountCents: string;
+  /** Só em PDF: confiança de cada campo lido (ADR 0006). */
+  confidence?: { date: number; amount: number; description: number; overall: number } | null;
 };
 
 export type InspectionPayload = {
   hasProfile: true;
-  format: 'csv' | 'ofx';
+  format: 'csv' | 'ofx' | 'pdf';
   encoding: string;
   repairedEncoding: boolean;
   fingerprint: string;
@@ -55,6 +57,16 @@ export type InspectionPayload = {
   mappingSource: 'inferido' | 'salvo' | 'informado';
   savedMapping: { id: string; name: string; institutionName: string | null } | null;
   canRememberMapping: boolean;
+  /** Leitor de PDF usado, quando o arquivo é PDF. */
+  pdf?: {
+    parserName: string;
+    parserVersion: number;
+    kind: 'bank' | 'card';
+    pageCount: number;
+    lowConfidenceCount: number;
+    threshold: number;
+    activeContent: boolean;
+  } | null;
 };
 
 export type CommitPayload = {

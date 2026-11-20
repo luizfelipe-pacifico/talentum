@@ -1,2 +1,2 @@
-import { ContributionsPage } from '@/components/demo-pages';
-export default function Page() { return <ContributionsPage />; }
+import { NextContributionPage } from '@/components/net-worth';
+export default function Page() { return <NextContributionPage />; }

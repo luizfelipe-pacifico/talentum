@@ -13,13 +13,16 @@ export class ApiError extends Error {
   /** Mensagem já redigida pelo backend, segura para exibir. */
   readonly publicMessage?: string;
   readonly status?: number;
+  /** Segundos de espera informados pelo backend (atraso entre tentativas de desbloqueio). */
+  readonly retryAfterSeconds?: number;
 
-  constructor(code: string, publicMessage?: string, status?: number) {
+  constructor(code: string, publicMessage?: string, status?: number, retryAfterSeconds?: number) {
     super(code);
     this.name = 'ApiError';
     this.code = code;
     this.publicMessage = publicMessage;
     this.status = status;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -55,6 +58,11 @@ async function issueActionCode(method: HttpMethod, path: string, signal?: AbortS
     cache: 'no-store',
     signal,
   });
+  if (response.status === 401) {
+    // Sem sessão local: o cofre está bloqueado. A tela de bloqueio assume (src/components/vault-gate.tsx).
+    announceVaultLocked();
+    throw new ApiError('VAULT_LOCKED', 'O Talentum está bloqueado. Desbloqueie para continuar.', 401);
+  }
   if (!response.ok) throw new ApiError('ACTION_CODE_FAILED');
 
   const { actionCode } = (await response.json()) as { actionCode?: string };
@@ -62,11 +70,18 @@ async function issueActionCode(method: HttpMethod, path: string, signal?: AbortS
   return actionCode;
 }
 
+/** Evento que a tela de bloqueio escuta: qualquer chamada que descubra o cofre fechado o dispara. */
+export const VAULT_LOCKED_EVENT = 'talentum:vault-locked';
+
+function announceVaultLocked() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(VAULT_LOCKED_EVENT));
+}
+
 /** Extrai o erro no formato de `docs/ARCHITECTURE.md`, sem inventar mensagem. */
 async function toApiError(response: Response): Promise<ApiError> {
   try {
-    const body = (await response.json()) as { error?: { code?: string; message?: string } };
-    return new ApiError(body.error?.code ?? 'REQUEST_FAILED', body.error?.message, response.status);
+    const body = (await response.json()) as { error?: { code?: string; message?: string; retryAfterSeconds?: number } };
+    return new ApiError(body.error?.code ?? 'REQUEST_FAILED', body.error?.message, response.status, body.error?.retryAfterSeconds);
   } catch {
     return new ApiError('REQUEST_FAILED', undefined, response.status);
   }
@@ -96,7 +111,11 @@ export async function callApi<T>(method: HttpMethod, path: string, options: Requ
   }
 
   const response = await fetch(path, { method, headers, body, cache: 'no-store', signal: options.signal });
-  if (!response.ok) throw await toApiError(response);
+  if (!response.ok) {
+    const error = await toApiError(response);
+    if (error.code === 'VAULT_LOCKED') announceVaultLocked();
+    throw error;
+  }
 
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
@@ -114,9 +133,47 @@ export function postForm<T>(path: string, form: FormData, signal?: AbortSignal):
   return callApi<T>('POST', path, { form, signal });
 }
 
+export function patchJson<T>(path: string, json: unknown, signal?: AbortSignal): Promise<T> {
+  return callApi<T>('PATCH', path, { json, signal });
+}
+
 export function deleteJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   return callApi<T>('DELETE', path, { signal });
 }
 
 /** Mantido para as telas que já usavam o cliente somente-leitura. */
 export const getWithActionCode = getJson;
+
+/**
+ * Chamada cuja resposta é um arquivo (exportação, backup cifrado). Segue o
+ * mesmo protocolo de código de ação; o nome vem do `Content-Disposition`
+ * montado pelo backend.
+ */
+export async function callApiFile(method: HttpMethod, path: string, options: RequestOptions = {}): Promise<{ blob: Blob; fileName: string }> {
+  const actionCode = await issueActionCode(method, path, options.signal);
+  const headers: Record<string, string> = { 'X-Action-Code': actionCode };
+  let body: BodyInit | undefined;
+  if (options.form) body = options.form;
+  else if (options.json !== undefined) {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify(options.json);
+  }
+  const response = await fetch(path, { method, headers, body, cache: 'no-store', signal: options.signal });
+  if (!response.ok) throw await toApiError(response);
+  const disposition = response.headers.get('Content-Disposition') ?? '';
+  const fileName = /filename="([a-z0-9][a-z0-9.-]{0,80})"/.exec(disposition)?.[1] ?? 'talentum-arquivo';
+  return { blob: await response.blob(), fileName };
+}
+
+/** Entrega o arquivo ao navegador como download, sem abrir nova janela. */
+export function saveFile(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.rel = 'noopener';
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}

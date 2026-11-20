@@ -39,5 +39,7 @@ jobs:
       - run: pnpm build
       - run: pnpm web:typecheck
       - run: pnpm web:build
+      # Prova que o pacote da Vercel não alcança desktop, Prisma, SQLite nem o Worker.
+      - run: node scripts/web-isolation-check.mjs
       - run: pnpm cloudflare:build
       - run: pnpm cloudflare:test

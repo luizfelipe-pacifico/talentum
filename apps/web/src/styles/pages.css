@@ -1,0 +1,991 @@
+/* Talentum: páginas internas do site (entrar, conta, comunidade, documentos).
+   Usa os tokens --lp-* de lp.css e fica escopada em .lp-root, como a folha da
+   página inicial. O site é só claro (docs/DESIGN-SYSTEM.md, Landing page tokens).
+
+   Token novo, só destas páginas: --lp-danger, para ações destrutivas
+   (excluir conta, sugestão ou comentário; desativar verificação). #8b2e24 sobre
+   a superfície #fffdf8 tem contraste de cerca de 8:1 (WCAG AA e AAA). */
+
+.lp-shell {
+  --lp-danger: #8b2e24;
+  --lp-danger-s: #f6e7e3;
+  --lp-ok-s: #e8efe4;
+  display: flex;
+  flex-direction: column;
+}
+
+.lp-shell-main {
+  flex: 1;
+}
+
+/* Texto só para leitores de tela (por exemplo, a unidade da contagem de apoios). */
+.lp-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── Cabeçalho e menu ─────────────────────────────────────────── */
+
+.lp-root .lp-shell-nav {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.lp-root .lp-shell-nav a,
+.lp-root .lp-shell-menu-list a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: var(--lp-radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--lp-ink2);
+}
+
+.lp-root .lp-shell-nav a:hover,
+.lp-root .lp-shell-menu-list a:hover {
+  color: var(--lp-ink);
+  background: var(--lp-sunken);
+  text-decoration: none;
+}
+
+.lp-root .lp-shell-nav a[aria-current='page'],
+.lp-root .lp-shell-menu-list a[aria-current='page'] {
+  color: var(--lp-ink);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--lp-amber-strong); /* taste-skill-ignore: marcador da página atual, não sombra */
+}
+
+.lp-shell-menu {
+  display: none;
+  margin-left: auto;
+}
+
+.lp-shell-menu summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--lp-line-strong);
+  border-radius: var(--lp-radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  transition: border-color 160ms ease, transform 160ms var(--lp-ease-out);
+}
+
+.lp-shell-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.lp-shell-menu summary:active {
+  transform: scale(0.97);
+}
+
+.lp-shell-menu[open] summary {
+  border-color: var(--lp-amber-strong);
+}
+
+/* O cabeçalho sticky é o bloco de contenção: o painel ocupa a largura toda. */
+.lp-root .lp-shell-menu-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 2px;
+  padding: 8px 16px 14px;
+  background: var(--lp-surface);
+  box-shadow: var(--lp-shadow-md); /* taste-skill-ignore: o menu aberto flutua sobre a página */
+}
+
+.lp-shell-menu[open] .lp-shell-menu-list {
+  animation: lp-menu-in 200ms var(--lp-ease-out);
+}
+
+.lp-root .lp-shell-menu-list a {
+  font-size: 15px;
+}
+
+@media (max-width: 639px) {
+  .lp-root .lp-shell-nav {
+    display: none;
+  }
+
+  .lp-shell-menu {
+    display: block;
+  }
+}
+
+/* ── Rodapé ───────────────────────────────────────────────────── */
+
+.lp-shell-footer {
+  background: var(--lp-sunken);
+  padding-block: 28px;
+  font-size: 13px;
+  color: var(--lp-ink2);
+}
+
+.lp-shell-footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lp-root .lp-shell-footer ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+
+.lp-root .lp-shell-footer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--lp-ink2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── Estrutura da página ──────────────────────────────────────── */
+
+.lp-page {
+  padding-block: clamp(32px, 6vw, 72px) clamp(56px, 8vw, 96px);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Formulários e leitura: largura de linha confortável, centrada. */
+.lp-page-narrow {
+  max-width: calc(760px + 48px);
+}
+
+.lp-page-prose {
+  max-width: calc(var(--lp-prose) + 120px);
+}
+
+.lp-page-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lp-page-head-row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.lp-page-head-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: var(--lp-prose);
+}
+
+.lp-root .lp-back a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--lp-ink2);
+}
+
+.lp-root .lp-page-aside a,
+.lp-root .lp-page-head a,
+.lp-root .lp-panel-card p a,
+.lp-root .lp-comments p a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lp-panel-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: clamp(18px, 3vw, 28px);
+  background: var(--lp-surface);
+  border-radius: var(--lp-radius-lg);
+}
+
+.lp-root .lp-plain-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--lp-ink2);
+}
+
+.lp-plain-list li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.lp-plain-list li > i {
+  margin-top: 4px;
+  color: var(--lp-ok);
+  flex: none;
+}
+
+.lp-root .lp-plain-list-tight {
+  list-style: disc;
+  padding-left: 20px;
+  gap: 4px;
+}
+
+.lp-root .lp-plain-list-tight li {
+  display: list-item;
+}
+
+/* ── Avisos ───────────────────────────────────────────────────── */
+
+.lp-root .lp-notice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 16px;
+  border-radius: var(--lp-radius-md);
+  font-size: 15px;
+  line-height: 23px;
+  color: var(--lp-ink);
+}
+
+.lp-notice i {
+  margin-top: 3px;
+  flex: none;
+}
+
+.lp-notice-ok {
+  background: var(--lp-ok-s);
+}
+
+.lp-notice-ok i {
+  color: var(--lp-ok);
+}
+
+.lp-notice-warn {
+  background: var(--lp-warn-s);
+}
+
+.lp-notice-warn i {
+  color: var(--lp-warn);
+}
+
+.lp-chip-ok {
+  border-color: var(--lp-ok);
+  background: var(--lp-ok-s);
+  color: var(--lp-ok);
+}
+
+.lp-root .lp-chip-sm {
+  padding: 1px 8px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+/* ── Formulários ──────────────────────────────────────────────── */
+
+.lp-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.lp-form-inline {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.lp-form-inline .lp-field {
+  flex: 1 1 260px;
+}
+
+.lp-form-end {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.lp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--lp-ink);
+}
+
+.lp-field small {
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.lp-root .lp-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--lp-line-strong);
+  border-radius: var(--lp-radius-md);
+  background: #fff;
+  color: var(--lp-ink);
+  font: inherit;
+  font-size: 16px; /* 16px evita o zoom automático do iOS ao focar. */
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.lp-root textarea.lp-input {
+  resize: vertical;
+}
+
+.lp-root .lp-input:focus-visible {
+  outline: 2px solid var(--lp-amber-strong);
+  outline-offset: 1px;
+  border-color: var(--lp-amber-strong);
+}
+
+.lp-root .lp-input-code {
+  max-width: 14ch;
+  font-family: var(--lp-mono);
+  font-size: 20px;
+  letter-spacing: 0.18em;
+}
+
+.lp-root .lp-btn-wide {
+  width: 100%;
+  justify-content: center;
+}
+
+.lp-root .lp-btn[disabled] {
+  opacity: 0.6;
+  cursor: progress;
+  transform: none;
+}
+
+.lp-root .lp-btn-danger {
+  border-color: var(--lp-danger);
+  color: var(--lp-danger);
+}
+
+.lp-root .lp-btn-danger:hover {
+  background: var(--lp-danger);
+  border-color: var(--lp-danger);
+  color: var(--lp-on-amber);
+}
+
+.lp-danger-zone h2 {
+  color: var(--lp-danger);
+}
+
+.lp-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font-size: 14px;
+}
+
+.lp-choice legend {
+  width: 100%;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.lp-choice label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.lp-choice input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--lp-amber-strong);
+}
+
+.lp-turnstile {
+  min-height: 65px;
+  width: 100%;
+  max-width: 400px;
+}
+
+/* Ação secundária que abre no lugar (responder, editar, denunciar, moderar). */
+.lp-disclosure {
+  width: 100%;
+}
+
+.lp-disclosure summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--lp-ink2);
+  cursor: pointer;
+  list-style: none;
+}
+
+.lp-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.lp-disclosure[open] summary {
+  color: var(--lp-amber-text);
+}
+
+/* O formulário surge no lugar, sem salto: entrada curta, saída instantânea. */
+.lp-disclosure[open] > form {
+  transition: opacity 180ms var(--lp-ease-out), transform 180ms var(--lp-ease-out);
+}
+
+@starting-style {
+  .lp-disclosure[open] > form {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+/* O formulário aberto não vira um cartão dentro do cartão: só recua e
+   separa por espaço, sob o rótulo que o abriu. */
+.lp-disclosure > form,
+.lp-disclosure > div {
+  margin-top: 4px;
+  padding: 4px 0 8px 4px;
+}
+
+/* ── Documentos jurídicos em página ───────────────────────────── */
+
+.lp-legal-page h2 {
+  font-family: var(--lp-display);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+  margin: 32px 0 10px;
+}
+
+.lp-legal-page h2:first-child {
+  margin-top: 0;
+}
+
+.lp-root .lp-legal-page p,
+.lp-root .lp-legal-page ul {
+  font-size: 15px;
+  line-height: 25px;
+}
+
+.lp-root .lp-legal-page a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* A tabela rola dentro do próprio bloco em telas estreitas; a página não. */
+.lp-table-scroll {
+  overflow-x: auto;
+  margin-bottom: 16px;
+  border: 1px solid var(--lp-line);
+  border-radius: var(--lp-radius-md);
+  background: var(--lp-surface);
+}
+
+.lp-legal-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 21px;
+}
+
+.lp-legal-table th,
+.lp-legal-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--lp-line);
+}
+
+.lp-legal-table th {
+  background: var(--lp-sunken);
+  font-weight: 700;
+}
+
+.lp-legal-table td {
+  color: var(--lp-ink2);
+}
+
+.lp-legal-table td:first-child {
+  color: var(--lp-ink);
+}
+
+.lp-legal-table tr:last-child td {
+  border-bottom: 0;
+}
+
+/* ── Conta e verificação ──────────────────────────────────────── */
+
+.lp-resume {
+  align-items: flex-start;
+}
+
+.lp-root .lp-session-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.lp-session-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: var(--lp-radius-md);
+}
+
+.lp-session-list li:nth-child(odd) {
+  background: var(--lp-bg);
+}
+
+.lp-session-list li > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.lp-root .lp-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lp-qr {
+  display: block;
+  width: min(240px, 100%);
+  height: auto;
+  border-radius: var(--lp-radius-md);
+}
+
+.lp-secret code {
+  display: inline-block;
+  padding: 8px 12px;
+  background: var(--lp-sunken);
+  border-radius: var(--lp-radius-sm);
+  font-family: var(--lp-mono);
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.lp-root .lp-recovery-codes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0;
+}
+
+.lp-recovery-codes code {
+  display: block;
+  padding: 8px 10px;
+  background: var(--lp-sunken);
+  border-radius: var(--lp-radius-sm);
+  font-family: var(--lp-mono);
+  font-size: 16px;
+  text-align: center;
+  user-select: all;
+}
+
+/* ── Comunidade ───────────────────────────────────────────────── */
+
+.lp-root .lp-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.lp-root .lp-tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--lp-ink2);
+  border-bottom: 2px solid transparent;
+}
+
+.lp-root .lp-tabs a:hover {
+  color: var(--lp-ink);
+  text-decoration: none;
+}
+
+.lp-root .lp-tabs a[aria-current='page'] {
+  color: var(--lp-ink);
+  border-bottom-color: var(--lp-amber-strong);
+}
+
+.lp-root .lp-post-list,
+.lp-root .lp-report-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lp-post-card {
+  display: flex;
+  gap: 16px;
+  padding: 18px 20px;
+  background: var(--lp-surface);
+  border-radius: var(--lp-radius-lg);
+  transition: background 160ms ease;
+}
+
+
+
+.lp-post-count {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 44px;
+  padding-top: 2px;
+  color: var(--lp-ink2);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-post-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.lp-post-title {
+  font-family: var(--lp-display);
+  font-size: 19px;
+  line-height: 26px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.lp-root .lp-post-title a {
+  color: var(--lp-ink);
+}
+
+.lp-root .lp-post-title a:hover {
+  color: var(--lp-amber-text);
+}
+
+/* Área de clique do cartão inteiro, sem aninhar links (o autor continua clicável). */
+.lp-post-card {
+  position: relative;
+}
+
+.lp-root .lp-post-title a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.lp-root .lp-post-meta a {
+  position: relative;
+  z-index: 1;
+}
+
+.lp-post-excerpt {
+  color: var(--lp-ink2);
+  font-size: 15px;
+  line-height: 23px;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.lp-root .lp-post-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--lp-ink2);
+}
+
+.lp-root .lp-post-meta a {
+  color: var(--lp-ink);
+  font-weight: 600;
+}
+
+/* Texto escrito por pessoas: texto puro, quebras de linha preservadas pelo CSS. */
+.lp-user-text {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.lp-post-body {
+  font-size: 16px;
+  line-height: 27px;
+  max-width: var(--lp-prose);
+}
+
+.lp-post {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: 8px;
+}
+
+.lp-post-actions,
+.lp-comment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 4px 12px;
+}
+
+/* Bloco aberto ocupa a linha inteira; os fechados ficam lado a lado. */
+.lp-post-actions .lp-disclosure,
+.lp-comment-actions .lp-disclosure {
+  width: auto;
+}
+
+.lp-post-actions .lp-disclosure[open],
+.lp-comment-actions .lp-disclosure[open] {
+  flex-basis: 100%;
+  order: 1;
+}
+
+.lp-vote {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--lp-line-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--lp-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 140ms var(--lp-ease-out);
+}
+
+
+
+.lp-vote:active {
+  transform: scale(0.96);
+}
+
+.lp-vote-on {
+  border-color: var(--lp-amber-strong);
+  background: color-mix(in srgb, var(--lp-amber) 14%, var(--lp-surface));
+  color: var(--lp-amber-text);
+}
+
+.lp-vote-count {
+  font-variant-numeric: tabular-nums;
+  min-width: 2ch;
+  font-weight: 700;
+}
+
+.lp-root .lp-vote-static {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  color: var(--lp-ink2);
+  font-size: 14px;
+}
+
+.lp-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.lp-root .lp-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Respostas recuadas por um fio, não por margem crescente: um nível só, legível em 320 px. */
+.lp-root .lp-thread-replies {
+  margin-top: 10px;
+  padding-left: clamp(16px, 4vw, 40px);
+}
+
+.lp-comment {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  background: var(--lp-surface);
+  border-radius: var(--lp-radius-md);
+  scroll-margin-top: 96px;
+}
+
+/* Comentário de destino (link com #comentario-…): um passo de tom, sem contorno. */
+.lp-comment:target {
+  background: color-mix(in srgb, var(--lp-amber) 10%, var(--lp-surface));
+}
+
+.lp-comment-removed {
+  color: var(--lp-ink2);
+  font-style: italic;
+}
+
+.lp-report-preview {
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--lp-bg);
+  border-radius: var(--lp-radius-md);
+  color: var(--lp-ink2);
+}
+
+.lp-root .lp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: clamp(32px, 6vw, 64px) 16px;
+  text-align: center;
+}
+
+.lp-pager {
+  display: flex;
+  justify-content: center;
+}
+
+/* Hover só onde existe ponteiro fino: no toque, o estado ficaria preso depois do toque. */
+@media (hover: hover) and (pointer: fine) {
+  .lp-post-card:hover {
+    background: #fff;
+  }
+
+  .lp-vote:hover {
+    border-color: var(--lp-amber-strong);
+  }
+
+  .lp-disclosure summary:hover {
+    color: var(--lp-amber-text);
+  }
+}
+
+@media (max-width: 559px) {
+  .lp-post-card {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .lp-root .lp-recovery-codes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lp-page-head-row .lp-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* TV e telas largas: a coluna de leitura não cresce além da medida de leitura. */
+@media (min-width: 1600px) {
+  .lp-page-narrow {
+    max-width: calc(820px + 48px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-shell-menu[open] .lp-shell-menu-list {
+    animation: none;
+  }
+
+  .lp-vote,
+  .lp-post-card,
+  .lp-shell-menu summary {
+    transition: none;
+  }
+
+  /* Movimento reduzido mantém só a opacidade, que ajuda a perceber a abertura. */
+  .lp-disclosure[open] > form {
+    transition: opacity 180ms ease;
+  }
+
+  @starting-style {
+    .lp-disclosure[open] > form {
+      opacity: 0;
+      transform: none;
+    }
+  }
+}
+
+/* ── Downloads: um cartão por sistema (Windows, Linux, macOS) ──────────────
+   Uma coluna no celular; três lado a lado a partir de 900 px, para que três
+   cartões nunca quebrem em dois mais um (docs/DESIGN-SYSTEM.md, breakpoints). */
+.lp-root .lp-download-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 900px) {
+  .lp-root .lp-download-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.lp-root .lp-download-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lp-root .lp-download-item + .lp-download-item {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--lp-line);
+}
+
+.lp-root .lp-hash {
+  display: block;
+  margin: 0.25rem 0 1rem;
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+  color: var(--lp-ink2);
+}
+
+/* Na LP, os três sistemas ficam lado a lado a partir de 720 px. */
+@media (min-width: 720px) {
+  .lp-root .lp-download.lp-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

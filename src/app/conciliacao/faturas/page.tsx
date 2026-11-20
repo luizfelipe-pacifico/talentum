@@ -1,2 +1,2 @@
-import { InvoiceCheckPage } from '@/components/demo-pages';
+import { InvoiceCheckPage } from '@/components/invoice-check';
 export default function Page() { return <InvoiceCheckPage />; }

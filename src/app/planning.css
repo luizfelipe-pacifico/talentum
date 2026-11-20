@@ -1,0 +1,564 @@
+/* Planejamento e patrimônio: orçamento, metas, dívidas, modo sobrevivência,
+   quatro pilares e próximo aporte (Stages 9, 12, 13 e 14).
+
+   Importado pelos componentes dessas telas. Nenhuma cor, raio ou espaçamento
+   novo: tudo reusa os tokens de globals.css (docs/DESIGN-SYSTEM.md). Marcas de
+   dado usam os tokens de visualização (`--data-*`), nunca os semânticos. */
+
+.stack-xs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Recarregar mantém o conteúdo anterior, levemente apagado (R-30). */
+.is-refreshing {
+  opacity: 0.6;
+  transition: opacity 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-refreshing {
+    transition: none;
+  }
+}
+
+/* Valor em linha: símbolo mais leve que o número (R-24), nunca quebra (R-23). */
+.money {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.money-symbol {
+  font-weight: 500;
+  color: var(--ink2);
+}
+.money.figure-negative,
+.money.figure-negative .money-symbol {
+  color: var(--err);
+}
+.figure .money {
+  font-variant-numeric: proportional-nums;
+}
+.figure .money-symbol {
+  font-size: 0.52em;
+}
+
+.planning-notice {
+  align-items: flex-start;
+}
+.planning-notice i {
+  margin-top: 2px;
+}
+
+/* Bloco recuado dentro de um cartão: formulário aberto por um botão. */
+.inset {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+
+.plain-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+/* ── Barra de progresso ───────────────────────────────────────── */
+
+.progress {
+  display: block;
+  width: 100%;
+  height: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--sunken);
+  overflow: hidden;
+}
+.progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-sm);
+  background: var(--data-1);
+}
+.progress-over .progress-fill {
+  background: var(--data-loss);
+}
+.progress-done .progress-fill {
+  background: var(--data-gain);
+}
+
+/* ── Orçamento ────────────────────────────────────────────────── */
+
+.month-nav {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+.month-nav h2 {
+  text-align: center;
+}
+
+.budget-totals dd .money {
+  font-size: 20px;
+  line-height: 28px;
+}
+.budget-totals dd.small {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.budget-table th[scope='row'] {
+  font-weight: 600;
+  white-space: normal;
+}
+.budget-table td {
+  vertical-align: top;
+}
+.budget-table th[scope='col'] + th[scope='col'],
+.budget-table td {
+  padding-left: 16px;
+}
+.budget-usage {
+  display: grid;
+  gap: 6px;
+  min-width: 180px;
+  max-width: 320px;
+}
+.budget-actions {
+  min-width: 190px;
+}
+.limit-editor {
+  display: grid;
+  gap: 8px;
+}
+.limit-editor .field input {
+  max-width: 180px;
+}
+
+.review-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+.review-list li {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 22px;
+}
+.review-list i {
+  color: var(--ink2);
+  line-height: 22px;
+}
+
+/* ── Metas ────────────────────────────────────────────────────── */
+
+.goal-list,
+.debt-list,
+.asset-list,
+.arca-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.goal-row {
+  display: grid;
+  gap: 8px;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+}
+.goal-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.goal-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.goal-name {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--ink);
+}
+.goal-progress {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+.goal-progress-lg .progress {
+  height: 12px;
+}
+.goal-progress-lg {
+  grid-template-columns: 1fr;
+}
+
+.segmented-field {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.segmented-field legend {
+  padding: 0;
+  margin-bottom: 6px;
+}
+
+/* Dois cartões lado a lado no desktop; empilhados abaixo de 1040 px. */
+.planning-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+/* ── Dívidas e modo sobrevivência ─────────────────────────────── */
+
+.survival-banner {
+  align-items: flex-start;
+}
+
+.debt-item {
+  display: grid;
+  gap: 12px;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+}
+.debt-item:first-child {
+  border-top: 0;
+}
+.debt-item-paid .debt-name strong {
+  color: var(--ink2);
+}
+.debt-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.debt-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+}
+/* Posição na ordem: número em texto, não só ordem visual. */
+.debt-rank {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink2);
+  font-variant-numeric: tabular-nums;
+}
+.debt-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.debt-facts dt,
+.asset-group-title,
+.split-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink2);
+}
+.debt-facts dd {
+  margin: 4px 0 0;
+  font-size: 14px;
+}
+.payoff-order {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 4px;
+}
+
+.split-title {
+  text-align: left;
+  margin: 0 0 8px;
+}
+.split-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px;
+}
+.essential-grid {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0 16px;
+}
+.essential-grid legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+.essential-grid .check-field {
+  margin-top: 8px;
+  min-height: 24px;
+}
+.survival-figure {
+  display: grid;
+  gap: 4px;
+}
+
+/* ── Quatro pilares ───────────────────────────────────────────── */
+
+.arca-row {
+  display: grid;
+  gap: 8px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.arca-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.arca-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.arca-name {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.arca-letter {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--ink2);
+  min-width: 14px;
+}
+/* Trilha de 0% até a escala: banda de equilíbrio sombreada, meta como fio
+   vertical e participação como barra da série única (`--data-1`). */
+.arca-track {
+  position: relative;
+  height: 14px;
+  border-radius: var(--radius-sm);
+  background: var(--sunken);
+  overflow: hidden;
+}
+.arca-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--data-recessive) 34%, transparent);
+}
+.arca-fill {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--data-1);
+}
+.arca-target {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--ink);
+}
+.arca-figures {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0;
+}
+.arca-share {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink);
+}
+.legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0;
+}
+.arca-legend-fill {
+  background: var(--data-1);
+}
+.arca-legend-band {
+  background: color-mix(in srgb, var(--data-recessive) 34%, var(--surface));
+  border: 1px solid var(--line-strong);
+}
+
+.asset-group + .asset-group {
+  margin-top: 8px;
+}
+.asset-item {
+  display: grid;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.asset-list .asset-item:first-child {
+  border-top: 0;
+}
+.asset-item-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.asset-value {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.calc-steps {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+  line-height: 20px;
+}
+.cell-sub {
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+.contribution-table .is-receiver th[scope='row'] {
+  font-weight: 700;
+}
+
+/* ── Responsivo ───────────────────────────────────────────────── */
+
+@media (max-width: 1040px) {
+  .planning-split,
+  .split-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Celular e tablet pequeno: a tabela do orçamento vira lista, uma categoria
+   por bloco, com o rótulo de cada valor escrito (padrão de extrato dos apps
+   de banco; docs/DESIGN-SYSTEM.md, Tables and financial lists). */
+@media (max-width: 720px) {
+  .budget-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .budget-table,
+  .budget-table tbody,
+  .budget-table tr,
+  .budget-table th[scope='row'],
+  .budget-table td {
+    display: block;
+    width: 100%;
+  }
+  .budget-table tr {
+    padding: 14px 0;
+    border-top: 1px solid var(--line);
+  }
+  .budget-table tbody tr:first-child {
+    border-top: 0;
+  }
+  .budget-table th[scope='row'],
+  .budget-table td {
+    padding: 4px 0;
+    border: 0;
+    text-align: left;
+  }
+  .budget-table th[scope='row'] {
+    font-size: 16px;
+  }
+  .budget-table td.right {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    text-align: right;
+  }
+  .budget-table td.right::before {
+    content: attr(data-label);
+    color: var(--ink2);
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .budget-usage {
+    max-width: none;
+  }
+  .budget-actions {
+    min-width: 0;
+    padding-top: 8px;
+  }
+  .limit-editor .field input {
+    max-width: none;
+  }
+
+  .debt-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .goal-progress {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  .asset-item-main {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .asset-value {
+    text-align: left;
+  }
+}
+
+@media (max-width: 600px) {
+  .month-nav {
+    gap: 8px;
+  }
+  .month-nav h2 {
+    font-size: 18px;
+    line-height: 24px;
+  }
+  /* Ações em blocos de largura total, fáceis de tocar (R-33). */
+  .debt-item .row-tight > .btn,
+  .asset-item .row-tight > .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* Grupo de botões alternáveis como fieldset: zera o estilo nativo para herdar
+   o visual de `.segmented` de globals.css. */
+fieldset.segmented {
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+  align-self: flex-start;
+}
+.segmented-field .segmented {
+  align-self: flex-start;
+}

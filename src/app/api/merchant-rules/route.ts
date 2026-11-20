@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { db } from '@/server/db';
-import { fail, guardWithProfile, isDenied, ok, readJson } from '@/server/http';
+import { fail, guardWithProfile, isDenied, ok, prismaFailure, readJson } from '@/server/http';
 
 const schema = z.object({
   categoryId: z.string().uuid(), pattern: z.string().trim().min(2).max(120),
@@ -10,7 +10,7 @@ const schema = z.object({
 
 export async function GET(request: Request) {
   const guarded = await guardWithProfile(request); if (isDenied(guarded)) return guarded.response;
-  const rules = await db.merchantRule.findMany({ where: { profileId: guarded.profileId, isActive: true }, orderBy: [{ priority: 'desc' }, { pattern: 'asc' }], select: { id: true, categoryId: true, pattern: true, matchType: true, priority: true } });
+  const rules = await db.merchantRule.findMany({ where: { profileId: guarded.profileId, isActive: true }, orderBy: [{ priority: 'desc' }, { pattern: 'asc' }], select: { id: true, categoryId: true, pattern: true, matchType: true, priority: true, category: { select: { name: true } } } });
   return ok({ hasProfile: true, rules });
 }
 
@@ -19,8 +19,17 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(await readJson(request)); if (!parsed.success) return fail('INVALID_MERCHANT_RULE', 'A regra informada é inválida.', 400);
   const category = await db.category.findFirst({ where: { id: parsed.data.categoryId, profileId: guarded.profileId }, select: { id: true } });
   if (!category) return fail('CATEGORY_NOT_FOUND', 'A categoria não foi encontrada.', 404);
-  const duplicate = await db.merchantRule.findFirst({ where: { profileId: guarded.profileId, pattern: parsed.data.pattern, matchType: parsed.data.matchType }, select: { id: true } });
+  const duplicate = await db.merchantRule.findFirst({ where: { profileId: guarded.profileId, pattern: parsed.data.pattern, matchType: parsed.data.matchType }, select: { id: true, isActive: true } });
+  // Recriar uma regra desativada a reativa com a categoria nova, em vez de recusar.
+  if (duplicate && !duplicate.isActive) {
+    await db.merchantRule.updateMany({ where: { id: duplicate.id, profileId: guarded.profileId }, data: { isActive: true, categoryId: parsed.data.categoryId, priority: parsed.data.priority } });
+    return ok({ ruleId: duplicate.id }, 201);
+  }
   if (duplicate) return fail('MERCHANT_RULE_EXISTS', 'Essa regra já existe.', 409);
-  const rule = await db.merchantRule.create({ data: { profileId: guarded.profileId, ...parsed.data }, select: { id: true } });
-  return ok({ ruleId: rule.id }, 201);
+  try {
+    const rule = await db.merchantRule.create({ data: { profileId: guarded.profileId, ...parsed.data }, select: { id: true } });
+    return ok({ ruleId: rule.id }, 201);
+  } catch (error) {
+    return prismaFailure(error, { conflict: { code: 'MERCHANT_RULE_EXISTS', message: 'Essa regra já existe.' } });
+  }
 }

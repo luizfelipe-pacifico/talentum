@@ -1,2 +1,2 @@
-import { PortfolioPage } from '@/components/demo-pages';
-export default function Page() { return <PortfolioPage />; }
+import { NetWorthPage } from '@/components/net-worth';
+export default function Page() { return <NetWorthPage />; }

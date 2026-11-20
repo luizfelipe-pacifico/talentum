@@ -35,6 +35,10 @@ id_ecdsa
 id_ed25519
 *.asc
 
+# Cofre local (chaves embrulhadas do banco cifrado, ADR 0009) e sessão da conta no desktop
+*.vault
+talentum-cloud-session.bin
+
 # Bancos locais, dumps e backups
 *.db
 *.db-shm
@@ -49,6 +53,9 @@ id_ed25519
 *.sql.gz
 *.bak
 *.backup
+# Pontos de restauração e backups cifrados do Talentum (ficam ao lado do banco).
+talentum-backups/
+*.talentum
 temp/
 tmp
 *.tsbuildinfo
@@ -117,3 +124,4 @@ yarn-error.log*
 .vscode/
 .idea/
 *.swp
+.claude/worktrees/

@@ -24,7 +24,8 @@ export type StateArtName =
   | 'sem-notificacoes'
   | 'sem-contas'
   | 'nao-encontrada'
-  | 'erro-tela';
+  | 'erro-tela'
+  | 'nova-versao';
 
 /* Uma variante por tema, gerada por scripts/gerar-estados.mjs com o papel na
    cor exata da superfície. O CSS mostra só a do tema ativo, sem esperar

@@ -46,7 +46,7 @@
       "linter": { "rules": { "suspicious": { "useIterableCallbackReturn": "off" } } }
     },
     {
-      "includes": ["src/server/import/**", "tests/regression/offensive-review-findings.test.mjs"],
+      "includes": ["src/server/import/**", "src/server/updates.ts", "cloudflare/src/lib/text.ts", "tests/regression/offensive-review-findings.test.mjs"],
       "linter": { "rules": { "suspicious": { "noControlCharactersInRegex": "off" } } }
     },
     {

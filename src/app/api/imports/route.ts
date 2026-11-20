@@ -2,8 +2,10 @@ import { z } from 'zod';
 import { db } from '@/server/db';
 import { fail, guardWithProfile, isDenied, ok } from '@/server/http';
 import { inspectStatement } from '@/server/import/inspect';
+import { inspectStatementFile } from '@/server/import/inspect-file';
 import { findSavedMapping, rememberMapping } from '@/server/import/mapping-profiles';
 import { ImportPersistError, isUniqueViolation, persistImport } from '@/server/import/persist';
+import { PARSE_TIMEOUT_MS } from '@/server/import/limits';
 import {
   CLIENT_ERROR_STATUS,
   IMPORT_ERROR_MESSAGES,
@@ -77,9 +79,12 @@ export async function POST(request: Request) {
   if (!parsedAccount.success) return fail('ACCOUNT_REQUIRED', 'É preciso escolher a conta de destino.', 400);
   const accountId = parsedAccount.data;
 
+  // Um prazo só para a requisição inteira, inclusive a releitura com o mapeamento salvo.
+  const deadline = Date.now() + PARSE_TIMEOUT_MS;
   let inspection;
   try {
-    inspection = inspectStatement(upload.bytes, { mapping: upload.mapping, dialect: upload.dialect });
+    // CSV, OFX ou PDF, decidido pelo conteúdo (ADR 0006 para o PDF).
+    inspection = await inspectStatementFile(upload.bytes, { mapping: upload.mapping, dialect: upload.dialect, deadline });
   } catch (error) {
     const code = (error as { code?: string }).code ?? 'UNSUPPORTED_FORMAT';
     return fail(code, IMPORT_ERROR_MESSAGES[code] ?? 'O arquivo não pôde ser lido.', CLIENT_ERROR_STATUS[code] ?? 400);
@@ -94,6 +99,7 @@ export async function POST(request: Request) {
         inspection = inspectStatement(upload.bytes, {
           mapping: saved.mapping,
           dialect: { ...saved.dialect, ...upload.dialect },
+          deadline,
         });
       } catch {
         // Layout mudou: segue com a inferência já calculada.
@@ -130,6 +136,8 @@ export async function POST(request: Request) {
         periodStart: result.periodStart?.toISOString() ?? null,
         periodEnd: result.periodEnd?.toISOString() ?? null,
         balanceRecorded: result.balanceRecorded,
+        autoCategorizedCount: result.autoCategorizedCount,
+        transferSuggestionCount: result.transferSuggestionCount,
         savedMapping: savedMapping ? { id: savedMapping.id, name: savedMapping.name } : null,
       },
       201,

@@ -1,0 +1,450 @@
+/* Telas do cofre local (primeiro uso, desbloqueio, recuperação) e
+   Configurações > Segurança. Só tokens de globals.css; nada de cor solta,
+   exceto o QR, que é sempre escuro sobre claro para qualquer leitor ler.
+   docs/DESIGN-SYSTEM.md, "Lock and first-run screens". */
+
+.vault-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 40px 16px;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.vault-panel {
+  width: min(100%, 440px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 32px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.vault-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.vault-logo-dark {
+  display: none;
+}
+
+html.dark .vault-logo-light {
+  display: none;
+}
+
+html.dark .vault-logo-dark {
+  display: inline-flex;
+}
+
+.vault-wordmark {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.vault-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.vault-title:focus {
+  outline: none;
+}
+
+.vault-lead {
+  margin: 0;
+  font-size: 15px;
+  line-height: 23px;
+  color: var(--ink2);
+}
+
+.vault-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.vault-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vault-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.vault-input-row {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.vault-input-row:focus-within {
+  border-color: var(--amber);
+}
+
+.vault-input-row input,
+.vault-code-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  /* 16 px evita o zoom automático do iOS ao focar o campo. */
+  font-size: 16px;
+  font-family: var(--font-body);
+  padding: 11px 12px;
+}
+
+.vault-input-row input:focus-visible {
+  outline: none;
+}
+
+.vault-code-input {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+}
+
+.vault-input-row input[aria-invalid='true'] {
+  box-shadow: inset 3px 0 0 var(--err);
+}
+
+.vault-reveal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink2);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.vault-reveal:hover {
+  color: var(--amber);
+}
+
+.vault-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--ink2);
+}
+
+.vault-field-error,
+.vault-error {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--err);
+  font-weight: 600;
+}
+
+.vault-error {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--err-s);
+}
+
+.vault-note,
+.vault-warning {
+  margin: 0;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.vault-note {
+  background: var(--info-s);
+  color: var(--ink);
+}
+
+.vault-note i {
+  color: var(--info);
+}
+
+.vault-warning {
+  background: var(--warn-s);
+  color: var(--ink);
+}
+
+.vault-warning i {
+  color: var(--warn);
+}
+
+.vault-submit {
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  font-size: 15px;
+}
+
+.vault-secondary {
+  align-self: center;
+  min-height: 44px;
+}
+
+.vault-footnote {
+  text-align: center;
+}
+
+.vault-strength {
+  display: grid;
+  gap: 6px;
+}
+
+.vault-strength-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.vault-strength-bar span {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.vault-strength[data-tone='err'] .vault-strength-bar span[data-filled='true'] {
+  background: var(--err);
+}
+
+.vault-strength[data-tone='warn'] .vault-strength-bar span[data-filled='true'] {
+  background: var(--warn);
+}
+
+.vault-strength[data-tone='ok'] .vault-strength-bar span[data-filled='true'] {
+  background: var(--ok);
+}
+
+.vault-strength-label {
+  margin: 0;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--ink2);
+}
+
+.vault-strength-label strong {
+  color: var(--ink);
+}
+
+.vault-code {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  justify-content: center;
+  gap: 8px 14px;
+  padding: 16px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--sunken);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+  user-select: all;
+}
+
+.vault-copy {
+  align-self: flex-start;
+}
+
+.vault-check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+  padding-top: 10px;
+}
+
+.vault-check input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--amber);
+}
+
+.vault-checking {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink2);
+  /* A consulta costuma responder em milissegundos: a frase só aparece se
+     demorar, para a troca de tela não piscar um texto que ninguém lê. */
+  animation: vault-checking-in 200ms cubic-bezier(0.16, 1, 0.3, 1) 400ms both;
+}
+
+@keyframes vault-checking-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vault-checking { animation: none; }
+}
+
+/* Configurações > Segurança */
+
+.security-header {
+  align-items: center;
+}
+
+.security-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.security-done {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--ok);
+  font-weight: 600;
+}
+
+.security-steps {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 21px;
+}
+
+.security-qr-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.security-qr {
+  width: 176px;
+  height: 176px;
+  flex: none;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+}
+
+.security-secret {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.security-secret p {
+  margin: 0;
+}
+
+.security-secret-value {
+  margin-top: 6px !important;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.security-backup {
+  margin: 0;
+  padding: 12px;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  background: var(--sunken);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1040px) {
+  .security-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .vault-screen {
+    place-items: start center;
+    padding: 24px 16px;
+  }
+
+  .vault-panel {
+    padding: 24px 20px;
+  }
+
+  .vault-title {
+    font-size: 24px;
+    line-height: 32px;
+  }
+
+  .vault-code {
+    grid-template-columns: repeat(2, auto);
+    font-size: 17px;
+  }
+
+  .security-actions > .btn {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+}
+
+/* TV e telas grandes vistas de longe: mesmo layout, em escala maior. */
+@media (min-width: 1900px) and (min-height: 1000px) {
+  .vault-panel {
+    width: min(100%, 520px);
+    padding: 40px;
+  }
+
+  .vault-title {
+    font-size: 32px;
+    line-height: 40px;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .vault-panel,
+  .vault-input-row,
+  .vault-code-input {
+    border-color: var(--ink);
+  }
+}
+
+/* O estado de cada fator é lido, não só notado: nunca abaixo de 12 px. */
+.security-header .chip {
+  font-size: 12px;
+  line-height: 16px;
+}

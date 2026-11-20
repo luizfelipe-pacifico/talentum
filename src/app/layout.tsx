@@ -6,9 +6,12 @@ import '@fontsource/montserrat/700.css';
 import '@fontsource/playfair-display/600.css';
 import '@fontsource/playfair-display/700.css';
 import './globals.css';
+import './vault.css';
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { AppShell } from '@/components/app-shell';
 import { AppStateProvider } from '@/components/app-state';
+import { VaultGate } from '@/components/vault-gate';
 
 export const metadata: Metadata = {
   title: 'Talentum',
@@ -27,15 +30,24 @@ export const metadata: Metadata = {
    regras de src/components/app-state.tsx. */
 const THEME_BOOTSTRAP = `try{var t=localStorage.getItem("talentum:tema");if(t==="Escuro"||(t==="Sistema"&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark")}catch(e){}`;
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+/* O nonce da Content-Security-Policy chega do middleware (src/middleware.ts).
+   Ler o cabeçalho torna as páginas dinâmicas, que é o que permite um nonce novo
+   a cada requisição; o app é local e não perde nada com isso. */
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+        {/* O navegador esconde o valor do nonce do DOM depois de aplicá-lo; sem
+            suppressHydrationWarning, o React acusaria `nonce=""` como divergência. */}
+        <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
       <body>
         <AppStateProvider>
-          <AppShell>{children}</AppShell>
+          {/* Nada do aplicativo é montado antes do desbloqueio do cofre local. */}
+          <VaultGate>
+            <AppShell>{children}</AppShell>
+          </VaultGate>
         </AppStateProvider>
       </body>
     </html>

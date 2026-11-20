@@ -8,6 +8,10 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 export const ACCESS_COOKIE = '__Host-talentum-access';
 export const REFRESH_COOKIE = '__Host-talentum-refresh';
 export const OAUTH_STATE_COOKIE = '__Host-talentum-oauth-state';
+/** Estado "verificação em duas etapas pendente" entre o callback e o código. */
+export const MFA_COOKIE = '__Host-talentum-mfa';
+/** Destino depois do login (um dos valores de `safeReturn`). */
+export const RETURN_COOKIE = '__Host-talentum-return';
 
 /** Duração do vínculo do login: a mesma da transação OAuth no Worker. */
 export const OAUTH_STATE_MAX_AGE = 600;

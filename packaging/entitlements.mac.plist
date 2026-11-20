@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Entitlements do Talentum no macOS, com hardened runtime (docs/decisions/0004-electron-packaging.md).
+
+  Só o mínimo que o Electron exige: o V8 gera código em tempo de execução (JIT),
+  o que o hardened runtime proíbe sem esta permissão. Ficam de fora, de propósito:
+  disable-library-validation (bibliotecas carregadas precisam ter a mesma
+  assinatura do app), allow-dyld-environment-variables (DYLD_* injetaria código),
+  allow-unsigned-executable-memory, câmera, microfone, localização, contatos e
+  qualquer acesso de rede de entrada. O app não usa App Sandbox.
+-->
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+</dict>
+</plist>

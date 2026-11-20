@@ -31,19 +31,18 @@ Status: **Current** (verified 2026-11-20).
 
 What exists today:
 
-- A local Next.js application (UI plus local API) with 39 local API route handlers covering MVP features 1 to 8 (listed in [ARCHITECTURE.md](ARCHITECTURE.md)).
-- Local action codes: opaque, single-use, 60-second codes issued by `/api/action-codes` and required by every other local route except `health/live`.
-- Prisma/SQLite with 24 models created by 11 migrations, with money stored as `BigInt` cents.
-- Persistent onboarding; profile, institutions, accounts, balance history and encrypted own Pix keys; categories, income sources, obligations and merchant rules (CRUD); CSV and OFX import with an own bounded OFX reader, reusable column mappings, deduplication and batch undo; transaction listing, detail, edit and history; a persistent reconciliation queue with reversible decisions; a local timeline with reversal; a destructive-migration preflight.
-- A dashboard with all nine elements, including the cash projection and the monthly cash flow, with pure, tested formulas in `src/server/dashboard-metrics.ts`.
-- A hardened Electron shell (context isolation, sandbox, no Node integration, navigation and window-open guards, deny-all permissions, trusted-sender IPC) and `electron-builder` packaging for NSIS and AppImage; when packaged, the shell starts its own backend on a random loopback port with a per-run bootstrap secret (unverified end to end).
-- A Cloudflare Worker with Google OAuth/OIDC Authorization Code plus PKCE, opaque hashed sessions, refresh-token rotation with reuse detection and family revocation, logout, `/api/me`, `/api/releases`, release download grants, Worker action codes stored in D1, IP-keyed rate limits for code issuance and login, and two D1 migrations.
-- The public landing page (`apps/web`) with its BFF (auth start, callback, refresh and logout routes, download-grant form handler) and the protected `/downloads` page, served with CSP and HSTS.
-- A Node test suite of 38 files in `tests/` (including a regression suite in `tests/regression/`, an in-memory D1 Worker harness and two end-to-end files that run against a live local backend) enforced by versioned Git hooks and by CI (`.github/workflows/ci.yml`).
-- A `LICENSE` file, `CONTRIBUTING`, `CODE_OF_CONDUCT` and a vulnerability-reporting policy in `.github/`, and ADRs 0002 to 0004.
-- Brand vectors and per-theme state illustrations generated from versioned sources, and Docker images for the local application and the landing page.
+- A local Next.js application (UI plus local API) with 101 local API route files (listed in [ARCHITECTURE.md](ARCHITECTURE.md) §4.8), covering MVP features 1 to 8 and Stages 7 to 14 and 17 to 19.
+- A local vault ([ADR 0009](decisions/0009-local-vault-and-encrypted-database.md)): local password and one-time recovery code, the whole SQLite file encrypted at rest with libSQL, a session required by every route except the vault routes and the liveness probe, idle auto-lock, optional local TOTP, and its own migration runner.
+- Local action codes: opaque, single-use, 60-second codes bound to method and path, issued only to an unlocked session.
+- Prisma/SQLite (through the libSQL adapter) with 37 models created by 15 migrations, money stored as `BigInt` cents.
+- CSV, OFX and PDF import; automatic categorization by merchant rules with confidence; own-transfer suggestions; quick cash entries; the reconciliation queue; cards, statements, benefits and statement-payment checks; budget, goals, debts and survival mode; net worth with the ARCA methodology; local notifications; restore points, a passphrase-encrypted backup, JSON and CSV export and local data deletion; habit-based gamification; a redacted timeline with reversal; the dashboard with local alerts; the new-version notice.
+- A hardened Electron shell with fuses, a nonce CSP, lock on sleep and screen lock, desktop "Entrar com Google" through the system browser (RFC 8252) with the token in the OS keychain, and `electron-builder` targets for Windows, Linux and macOS (no build signed or exercised end to end).
+- A Cloudflare Worker with Google OAuth/OIDC plus PKCE, TOTP two-step verification, exact CORS, Turnstile verification, per-route and per-person rate limits, security and audit events, enforced download grants, account deletion, consent records, the feedback community, public news with AI summaries and a non-AI fallback, a retention cron, and four D1 migrations.
+- The public landing page (`apps/web`) with its BFF, sign-in, two-step verification, account, community, terms and privacy (drafts pending legal review) and the protected `/downloads` page with Windows, Linux and macOS ("em breve").
+- 79 Node test files (including `tests/regression/`) and a Playwright suite over the twelve viewport classes in both themes, enforced by versioned Git hooks and CI; CI also runs gitleaks, dependency review, CodeQL and a Vercel-isolation check, and Dependabot is configured.
+- ADRs 0001 to 0009.
 
-What does not exist yet: PDF import, automatic categorization by rules, automatic own-transfer detection, a local app CSP, Turnstile, CORS handling, per-user rate limits, the update notice, signed or published installers, a validated packaged build, CI secret scanning and CodeQL, a real linter and formatter.
+What does not exist yet: signed or published installers and a validated packaged build on any platform; provider-side settings (Turnstile widget, Worker secrets, remote D1 migrations, WAF rules, Workers AI, the production domain); process isolation of the import parsers; legal review of the terms, privacy and debt copy; Stages 21 (beyond the notice) to 25.
 
 ## Cross-cutting rules for every stage
 
@@ -61,7 +60,7 @@ A stage ends only when it includes implementation, tests, applicable migrations 
 
 ## Pre-MVP: new version notice
 
-Status: **Planned.** The full specification is in [PRODUCT.md](PRODUCT.md). The `nova-versao` state illustration exists; no update-check code exists.
+Status: **Partial.** `GET /api/updates` queries GitHub Releases from the backend and the app shell shows the `nova-versao` dialog with `Baixar agora` and `Adiar` (24 hours per version). Installation is gated: the Electron main process verifies checksum and signature and refuses everything while no signing public key exists, so the dialog links to the release page. **Planned:** the signing key and signed installers.
 
 The application queries the releases of the official GitHub repository and, when a stable version newer than the installed one exists, opens a dialog with the `nova-versao` illustration and two buttons: `Baixar agora` (download now), which downloads the Windows installer, verifies checksum and signature, closes the app and opens the installer; and `Adiar` (postpone), which suppresses the notice for that version for 24 hours.
 
@@ -88,7 +87,7 @@ The MVP ends when a person can sign up, install Talentum, import a CSV or OFX fi
 
 **Exit:** web and Electron start in development, CI passes and no frontend layer accesses persistence directly.
 
-Partial state (**Current**): the Next.js application, local REST API, Prisma/SQLite, Docker files, layer separation, Bootstrap Icons (Lucide removed), local and Worker action codes, typecheck, the Biome linter, the test suite with regression tests, the Playwright end-to-end suite, the Git hooks, CI (`.github/workflows/ci.yml`: Prisma, typecheck, lint, tests, end-to-end tests and the three builds), the `LICENSE` file, contribution guide, code of conduct and security policy, and the packaging ADR ([0004](decisions/0004-electron-packaging.md)). The Workers versus Vercel decision is recorded in [decisions/0001-web-hosting.md](decisions/0001-web-hosting.md). Still missing (**Planned**): enforcing the Biome formatter (after the one-time formatting commit), and CodeQL, dependency analysis and secret scanning in CI.
+Partial state (**Current**): everything in the list above, plus Biome, the Playwright suite, CI with Prisma, typecheck, lint, tests, end-to-end tests, the three builds, gitleaks, dependency review, CodeQL and Dependabot. **Planned:** enforcing the Biome formatter after a one-time formatting commit.
 
 ### MVP 1 — Landing page, sign-up and downloads
 
@@ -96,7 +95,7 @@ Partial state (**Current**): the Next.js application, local REST API, Prisma/SQL
 
 - Responsive landing page with value proposition, privacy, platforms and license.
 - Publish only the landing page and BFF on Vercel, with a deploy context isolated from the desktop system.
-- OAuth/OIDC Authorization Code plus PKCE.
+- OAuth/OIDC Authorization Code plus PKCE, account creation with Google and two-step verification with an authenticator app (added by the maintainer on 2026-11-20).
 - Short access token, rotating refresh token, revocation and reuse detection.
 - Cloud tables for user, profile, identity, session, tokens, consent, release, artifact and grant.
 - Protected page with Windows and Linux buttons.
@@ -106,7 +105,7 @@ Partial state (**Current**): the Next.js application, local REST API, Prisma/SQL
 
 **Exit:** only a validated user obtains an authentic, temporarily authorized installer.
 
-Partial state (**Current**): the landing page, the BFF, Google OAuth/OIDC with PKCE, opaque sessions, refresh rotation with reuse detection, logout, `/api/me`, release listing, download grants recorded in D1, the protected `/downloads` page, Worker action codes, IP-keyed rate limits on code issuance and login, CSP and HSTS on the landing page, and the D1 cloud schema exist. **Planned:** Turnstile, CORS handling (`ALLOWED_ORIGIN` is declared but unused), per-user rate limits, WAF rules, an allowlist-verified isolated Vercel deploy context, signed installers in GitHub Releases, terms, privacy, account deletion and retention.
+Partial state (**Current**): landing page, BFF, Google OAuth/OIDC with PKCE, TOTP two-step verification with recovery codes, refresh rotation with reuse detection, exact CORS, Turnstile verification (fails closed in production without its secret), per-route and per-person rate limits, security and audit events, enforced single-use download grants, consent records, account deletion with tombstones, a retention cron, CSP and HSTS. **Planned:** provider settings (Turnstile widget, Worker secrets, WAF rules, isolated Vercel root), signed installers in GitHub Releases and legal review of the terms and privacy drafts.
 
 **Open:** the production domain is undecided; see [ARCHITECTURE.md §3.4](ARCHITECTURE.md#34-domain).
 
@@ -114,7 +113,9 @@ Partial state (**Current**): the landing page, the BFF, Google OAuth/OIDC with P
 
 **Goal:** install, authenticate and create the local environment.
 
-- Signed builds for Windows and Linux.
+- Local login on the installed app (password, recovery code, auto-lock, optional TOTP) and the whole database encrypted at rest (added by the maintainer on 2026-11-20).
+
+- Signed builds for Windows, Linux and macOS (macOS added by the maintainer on 2026-11-20; signing and notarization need an Apple Developer ID).
 - `contextIsolation`, sandbox, CSP, `nodeIntegration: false`, minimal IPC and fuses.
 - Local backend on loopback with a per-run ephemeral secret.
 - Login through the system browser and the refresh token in the OS keychain.
@@ -125,7 +126,7 @@ Partial state (**Current**): the landing page, the BFF, Google OAuth/OIDC with P
 
 **Exit:** the installed application opens securely and prepares the local database without sending finances to the cloud.
 
-Partial state (**Current**): context isolation, sandbox, `nodeIntegration: false`, navigation and permission guards, trusted-sender IPC, loopback-only binding, automatic SQLite migration on start (development, Docker and, in code, the packaged app), the four-step persistent onboarding with currency and time-zone selection, and, for the packaged app only, a random loopback port with a per-run bootstrap secret. **Open:** the packaged startup and the delivery of the bootstrap secret to the renderer are unverified. **Planned:** signed builds, a CSP for the local application, Electron fuses, system-browser login with keychain storage and the fuller progressive snapshot of [PRODUCT.md](PRODUCT.md).
+Partial state (**Current**): the local vault (password, recovery code, encrypted database, session, auto-lock, local TOTP), the nonce CSP, Electron fuses (`runAsNode` stays on), lock on sleep, system-browser Google sign-in with the token in the OS keychain, macOS lifecycle handling, the four-step onboarding and the encrypted migration runner. **Open:** the packaged startup is unverified on every platform and the packaged app has no Worker URL until the domain is decided. **Planned:** signed builds and the fuller progressive snapshot of [PRODUCT.md](PRODUCT.md).
 
 ### MVP 3 — Accounts, categories and obligations
 
@@ -141,7 +142,7 @@ Partial state (**Current**): context isolation, sandbox, `nodeIntegration: false
 
 **Exit:** the user configures the bases needed to interpret a statement.
 
-Status (**Current**): profile, institutions, accounts, balances, income sources, categories, merchant rules and obligations have CRUD routes with validation, screens and relations by IDs, with money in `BigInt` cents; own Pix keys are encrypted and HMAC-indexed with a local device key ([ADR 0003](decisions/0003-local-device-key.md)). **Planned:** automatic identification of own transfers and automatic application of merchant rules.
+Status (**Current**): profile, institutions, accounts, balances, income sources, categories, merchant rules (applied automatically) and obligations, encrypted own Pix keys, and own-transfer suggestions by amount, date and Pix key.
 
 ### MVP 4 — CSV and OFX import
 
@@ -156,7 +157,7 @@ Status (**Current**): profile, institutions, accounts, balances, income sources,
 
 **Exit:** a valid CSV or OFX file produces local transactions traceable to their source batch.
 
-Status (**Current**): OFX (SGML and XML) and CSV import with content-based detection, size, row and column limits, a two-step inspect-then-write flow, file fingerprint and per-entry deduplication, file metadata without content retention, per-line issues, the covered period and batch undo, all with synthetic fixtures. `ofx-data-extractor` was replaced by an own bounded reader ([ADR 0002](decisions/0002-own-ofx-parser.md)). **Open:** the parse timeout is declared but not enforced and the parser runs in-process.
+Status (**Current**): CSV, OFX and PDF import with content-based detection, enforced limits (size by `Content-Length` before buffering, rows, columns, parse deadline), two-step inspect-then-write, fingerprint and per-entry deduplication, batch undo and synthetic fixtures. **Open:** the parsers run in the request process.
 
 ### MVP 5 — Categorization and reconciliation
 
@@ -171,7 +172,7 @@ Status (**Current**): OFX (SGML and XML) and CSV import with content-based detec
 
 **Exit:** the user corrects ambiguities without losing the original data.
 
-Status (**Current**): a persistent pending queue (one item per uncategorized imported entry), decisions to confirm, categorize, link an obligation, record interest/fee/discount/correction or pair an own transfer, before/after snapshots, transaction edit history and atomic reversal. **Planned:** deterministic categorization by local rules, confidence scoring, quick cash entries and automatic transfer detection.
+Status (**Current**): deterministic categorization by local rules with confidence (exact and starts-with rules apply, contains rules suggest), the persistent queue, own-transfer suggestions, quick cash entries, reversible decisions with before/after snapshots and transaction edit history.
 
 ### MVP 6 — Dashboard and Risk-Free Balance
 
@@ -187,7 +188,7 @@ Status (**Current**): a persistent pending queue (one item per uncategorized imp
 
 **Exit:** the first MVP release for Windows and Linux, with installation, usage, security and limitations documentation.
 
-Partial state (**Current**): the dashboard reads SQLite and computes consolidated balance, committed obligations up to period end, risk-free balance with its daily projection, monthly income and outflow limited to covered months, daily average, period-over-period change and category breakdown in a pure module with unit tests; the gain/loss chart tokens are ratified; empty and error state illustrations exist for both themes; end-to-end tests of the import flow exist and run against a live backend. **Open:** the verdict and the projection disagree on currency filtering (L-4 in [PRODUCT.md](PRODUCT.md)). **Planned:** local due-date and stale-data alerts and the release documentation.
+Partial state (**Current**): all dashboard elements with pure tested formulas, open card statements counted as committed, one balance and one reference currency for the verdict and the projection (L-4 resolved), local due-date and stale-data alerts, empty and error states in both themes and end-to-end tests. **Open:** a bill entered both as an obligation and as a card statement is subtracted twice. **Planned:** release documentation for the first installer.
 
 ## Later stages: one macro-feature per stage
 
@@ -195,61 +196,91 @@ Every stage below is a **Next stage** and **Planned** unless marked **Open**.
 
 ### Stage 7 — PDF import
 
+**Current** ([ADR 0006](decisions/0006-pdf-import.md)): local PDF.js extraction under page, character and time limits, a versioned layout-reader registry with two generic readers, per-field confidence and hostile synthetic fixtures. **Open:** process isolation; no institution-specific reader yet.
+
 Local parsers per institution/layout, defensive extraction, per-field confidence, tests with hostile synthetic files and versioned parser maintenance. Open Finance is not part of this stage.
 
 ### Stage 8 — Cards, statements and benefits
+
+**Current:** cards, closing and due dates, statements and items (typed or imported), statement-to-bank-statement payment checks, annual fee, the fee-waiver thermometer and benefits with expiration. **Planned:** instalment projection, available limit and benefit earning rules.
 
 Cards, closing/due dates, statement items, statement-to-bank-statement reconciliation, annual fee, fee-waiver thermometer, cashback, points, miles and expiration.
 
 ### Stage 9 — Budget and monthly planning
 
+**Current:** limits per category and month, planned versus actual, projection, three-month average from fully covered months, surplus and the monthly review.
+
 Limits per category, planned versus actual comparison, projections, moving average, surplus and monthly review, without personalized financial recommendations.
 
 ### Stage 10 — Notification center
+
+**Current:** notifications derived from local data with read and dismissed state, per-kind preferences, quiet mode, deduplication by key, the header bell and `/notificacoes`.
 
 Actionable local notifications for bills, statements, pending imports and budget; preferences, quiet mode, deduplication and accessibility. Remote push requires its own ADR.
 
 ### Stage 11 — History and restoration
 
-Filterable timeline, events per domain, restore points, safe undo/redo, snapshots before migrations and a secret-free trail. **Current** groundwork from the MVP: a redacted local timeline for imports, edits and reconciliation with reversal, `DatabaseBackup` metadata and a destructive-migration preflight; no code creates backups yet.
+**Current:** timeline filtered by domain and period, encrypted restore points (manual, before migrations, before a restore and before deletion), verified restore applied at the next unlock, and the destructive-migration gate.
+
+Filterable timeline, events per domain, restore points, safe undo/redo, snapshots before migrations and a secret-free trail. **Current** groundwork from the MVP: a redacted local timeline for imports, edits and reconciliation with reversal, `DatabaseBackup` metadata and a destructive-migration gate; Stage 11 added encrypted restore points, including an automatic `pre_migration` point at unlock (ADR 0007 amendment).
 
 ### Stage 12 — Goals and savings pots
+
+**Current:** goals, dated contributions with idempotency, required monthly amount, feasibility and an arithmetic surplus split.
 
 Objectives, target value, deadline, contributions, monthly calculation, feasibility, progress and suggestions for allocating the surplus.
 
 ### Stage 13 — Survival mode and debts
 
+**Current:** debts, avalanche and snowball orders, payoff simulation and survival mode with essential categories. **Open:** legal review of the copy.
+
 Debts, interest, arrears, priority by cost, payoff plan and a liquidity focus. Requires legal review and clear financial-education copy.
 
 ### Stage 14 — Net worth and the ARCA methodology
+
+**Current:** assets with dated values, the four pillars, the 22.5%–27.5% band and a contribution simulation that only allocates new money, with attribution and a no-recommendation notice.
 
 Assets and snapshots, four pillars, the 22.5%–27.5% band, balance status and next-contribution simulation without suggesting sales. Attribution of the methodology and a no-recommendation notice are mandatory.
 
 ### Stage 15 — Economic news
 
+**Current:** the Worker aggregates one permitted source (Agência Brasil Economia) with credit and a defensive parser; `/invest` reads it through the local backend. **Open:** further sources whose reuse terms are unconfirmed.
+
 Server-side aggregation from permitted sources, RSS/licenses, general filters and credit/link to the original. Detailed portfolio data is not sent to the cloud; personalization must be local or minimized.
 
 ### Stage 16 — AI summaries
+
+**Current:** on-demand summaries through the Workers AI binding with prompt-injection hardening, a global budget and a deterministic non-AI fallback. **Planned:** enabling the binding (provider setting, with cost).
 
 On-demand summaries of public content through Workers AI, prompt-injection protection, quality/cost evaluation and a fallback without AI. Ollama remains a future option after an ADR.
 
 ### Stage 17 — Gamification
 
+**Current:** XP for habits only, levels, missions and badges, local, with no ranking.
+
 XP for useful habits, levels, missions and badges. Scoring avoids incentives for artificial spending or contributions; social ranking stays opt-in and never reveals financial values.
 
 ### Stage 18 — E2EE backup and restoration
+
+**Partial** ([ADR 0007](decisions/0007-local-encrypted-backup.md)): a local passphrase-encrypted backup (AES-256-GCM, scrypt) with verified restore and no key recovery. **Open:** any cloud storage provider.
 
 **Open.** Encrypted local snapshot with AEAD, versioning, key recovery, retention, validated restoration and disaster tests. D1 may store only metadata; no snapshot will be stored in it. A suitable provider needs a future ADR. Do not advertise "zero knowledge" before an audit.
 
 ### Stage 19 — Export, portability and deletion
 
+**Current:** JSON and CSV export with formula neutralization, local data deletion with a restore point first, and cloud account deletion with session revocation.
+
 JSON/CSV export, schema documentation, local/cloud deletion, session revocation, retention and a verifiable portability flow.
 
 ### Stage 20 — Feedback community
 
+**Current:** Worker routes and landing-page screens for posts, comments, votes, reports and moderation, with Turnstile, rate limits, idempotency and tombstones. **Open:** a published community policy and appeal channel.
+
 Public posts, comments/replies, likes, reports and moderation through the Worker and D1; dedicated tables with IDs, a minimal public profile, anti-spam, rate limiting, Turnstile, tombstones, auditing and a community policy. **Current:** the D1 feedback tables exist from the initial migration; no Worker route serves them.
 
 ### Stage 21 — Automatic updates and release channels
+
+**Partial:** the new-version notice (see Pre-MVP). **Planned:** everything else in this stage.
 
 Signed manifests, stable/beta channels, differential updates when safe, rollback, release notes, SBOM, provenance and a response plan for compromised artifacts.
 
@@ -263,7 +294,7 @@ Signed manifests, stable/beta channels, differential updates when safe, rollback
 
 ### Stage 24 — Internationalization and platform expansion
 
-Languages, currencies, regional formats and evaluation of macOS. Each platform requires its own signing, packaging and test matrix.
+Languages, currencies and regional formats. macOS is no longer evaluated here: it ships with the desktop releases (MVP 2). Each platform requires its own signing, packaging and test matrix.
 
 ### Stage 25 — Webhooks and event-driven integrations
 

@@ -1,2 +1,2 @@
-import { ProfilePage } from '@/components/demo-pages';
-export default function Page() { return <ProfilePage />; }
+import { ProfileProgressScreen } from '@/components/profile-progress';
+export default function Page() { return <ProfileProgressScreen />; }

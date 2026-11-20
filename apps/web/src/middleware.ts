@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { privatePageFor } from './server/return-to';
 import { siteUrl } from './server/site-url';
 
 function contentSecurityPolicy(nonce: string) {
@@ -14,11 +15,18 @@ function contentSecurityPolicy(nonce: string) {
     "img-src 'self' data:",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${devEval}`,
+    // 'strict-dynamic' autoriza o script do Turnstile inserido pelo widget;
+    // o host fica listado para navegadores sem suporte a 'strict-dynamic'.
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://challenges.cloudflare.com${devEval}`,
+    // O desafio do Turnstile roda num iframe desse host (docs/SECURITY.md).
+    'frame-src https://challenges.cloudflare.com',
     `connect-src 'self'${devSocket}`,
     "frame-ancestors 'none'",
     "base-uri 'self'",
-    "form-action 'self'",
+    // O Chrome aplica form-action também ao redirecionamento que responde ao
+    // envio: o login (POST /api/auth/start) termina no Google e o download
+    // (POST .../download-grants) no GitHub Releases. Só esses destinos fixos.
+    "form-action 'self' https://accounts.google.com https://github.com https://*.githubusercontent.com",
   ].join('; ');
 }
 
@@ -30,9 +38,13 @@ export function middleware(request: NextRequest) {
   requestHeaders.set('Content-Security-Policy', csp);
 
   let response: NextResponse;
-  if (request.nextUrl.pathname.startsWith('/downloads') && !request.cookies.has('__Host-talentum-access')) {
-    const target = request.cookies.has('__Host-talentum-refresh') ? '/api/auth/refresh' : '/api/auth/start';
-    response = NextResponse.redirect(siteUrl(target, request));
+  const privatePage = privatePageFor(request.nextUrl.pathname);
+  if (privatePage && !request.cookies.has('__Host-talentum-access')) {
+    // A renovação é um POST com checagem de origem (docs/SECURITY.md, Open
+    // items, item 1): a página /entrar a dispara quando existe cookie de
+    // renovação e, sem ele, pede o login.
+    response = NextResponse.redirect(siteUrl(`/entrar?retorno=${encodeURIComponent(privatePage)}`, request));
+    response.headers.set('Cache-Control', 'no-store');
   } else {
     response = NextResponse.next({ request: { headers: requestHeaders } });
   }

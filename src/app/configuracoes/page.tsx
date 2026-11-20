@@ -1,2 +1,2 @@
-import { SettingsPage } from '@/components/demo-pages';
-export default function Page() { return <SettingsPage />; }
+import { SettingsScreen } from '@/components/settings';
+export default function Page() { return <SettingsScreen />; }

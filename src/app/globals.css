@@ -1456,7 +1456,7 @@ p {
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   padding: 2px 8px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--ink2);
 }
@@ -1501,7 +1501,7 @@ p {
   align-items: center;
   gap: 7px;
   margin: 0 0 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1641,6 +1641,8 @@ p {
 
 .field select,
 .field input {
+  min-width: 0;
+  max-width: 100%;
   background: var(--surface);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-md);
@@ -3025,7 +3027,7 @@ html.dark .state-art-escuro {
   .spec-grid,
   .mapping-grid,
   .field-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -3123,5 +3125,343 @@ html.dark .state-art-escuro {
 @media (prefers-reduced-motion: reduce) {
   .chart svg {
     transition: none;
+  }
+}
+
+/* ── Cartões, faturas e benefícios (Stage 8) ──────────────────────── */
+/* Nenhuma cor, raio ou espaçamento novo: tudo reusa os tokens do topo do
+   arquivo. As listas usam `.entity-list`, que já é uma linha por item em
+   qualquer largura, o padrão de extrato dos apps de banco
+   (docs/DESIGN-SYSTEM.md, Tables and financial lists). */
+
+.card-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card-tile {
+  height: 100%;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 120ms ease;
+}
+
+.card-tile:hover,
+.card-tile:focus-visible {
+  border-color: var(--amber);
+}
+
+.stack-tight {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stack-tight.right,
+.entity-list .right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.entity-list li.is-selected > span:first-child strong {
+  color: var(--amber);
+}
+
+.h-sub {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* Formulário dentro de um cartão: separado do conteúdo por um fio. */
+.subform {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.fieldset-plain {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fieldset-plain legend {
+  padding: 0;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+@media (max-width: 600px) {
+  /* No telefone, valor e ação descem para baixo da descrição em vez de
+     espremer a coluna de texto. */
+  .entity-list li {
+    flex-wrap: wrap;
+  }
+
+  .stack-tight.right,
+  .entity-list .right {
+    align-items: flex-start;
+    text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-tile {
+    transition: none;
+  }
+}
+
+/* ── Alertas locais, lançamento em dinheiro e aviso de nova versão ── */
+
+.stack-sm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.alert-card > .bi {
+  font-size: 18px;
+  line-height: 22px;
+}
+
+.alert-title {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.alert-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--ink);
+}
+
+.alert-list li + li {
+  margin-top: 4px;
+}
+
+/* Gasto ou entrada: escolha de dois valores mutuamente exclusivos, como o
+   seletor de tipo dos apps de banco. A direção também aparece no rótulo do
+   botão principal, então a cor nunca é o único sinal. */
+.segmented {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  gap: 3px;
+  background: var(--bg);
+}
+
+.segmented label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink2);
+  cursor: pointer;
+}
+
+.segmented input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.segmented label:has(input:checked) {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgb(26 17 10 / 12%));
+}
+
+.segmented label:has(input:focus-visible) {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+.field-hint {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink2);
+}
+
+.update-notes {
+  margin: 0;
+  max-height: 168px;
+  overflow-y: auto;
+  white-space: pre-line;
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--ink);
+}
+
+.update-versions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink2);
+}
+
+.update-versions strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Cabeçalho de folha: título à esquerda e Fechar sempre na mesma linha, mesmo
+   no celular, onde o título quebra antes do botão descer. */
+.dialog-head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.dialog-head > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.dialog-head > .close-button {
+  flex: none;
+}
+
+/* ── Invest: notícias públicas (src/components/invest) ───────────
+   Só tokens do tema: claro e escuro vêm das variáveis, sem cor fixa. */
+
+.news-intro,
+.news-excerpt {
+  margin: 0;
+  max-width: 72ch;
+  color: var(--ink2);
+}
+
+/* Feed num único cartão com divisórias, como as listas de leitura de apps de
+   notícia; título primeiro, fonte e data logo abaixo. */
+.news-list > .news-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 24px;
+}
+
+.news-list > .news-row + .news-row {
+  border-top: 1px solid var(--line);
+}
+
+.news-title {
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.news-title a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+/* Sublinhado em vez de troca de cor: Âmbar como texto não passa AA em
+   tamanho pequeno, e a tinta do tema vale no claro e no escuro. */
+.news-title a:hover,
+.news-title a:focus-visible {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.news-byline {
+  margin: 0;
+}
+
+.news-excerpt,
+.news-summary-text {
+  overflow-wrap: anywhere;
+}
+
+.news-summary-title {
+  margin: 0 0 6px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.callout .news-summary-text {
+  margin: 0 0 8px;
+  max-width: 72ch;
+  color: var(--ink);
+}
+
+@media (pointer: coarse) {
+  .news-filter .chip-toggle {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 600px) {
+  .news-list > .news-row {
+    padding: 16px;
+  }
+}
+
+.news-filter {
+  flex-wrap: wrap;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.news-source {
+  align-items: center;
+}
+
+.news-source p {
+  margin: 0;
+  max-width: 60ch;
+}
+
+/* Celular: as ações ficam numa linha e o título inteiro logo abaixo, como o
+   título grande do iOS e a top app bar do Material. Com Lançar dinheiro,
+   Bloquear e Notificações na mesma linha, o título virava "Dashb…". */
+@media (max-width: 600px) {
+  .topbar { flex-wrap: wrap; }
+  .topbar .row-tight {
+    order: 1;
+    margin-left: auto;
+  }
+  .topbar-heading {
+    order: 2;
+    flex: 1 1 100%;
+  }
+  .topbar-heading .page-title {
+    white-space: normal;
+    overflow: visible;
   }
 }

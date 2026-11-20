@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { consumeActionCode } from '@/server/action-codes';
+import { readSessionToken } from '@/server/vault/session';
 import { db } from '@/server/db';
 import { getLocalProfileId } from '@/server/profile';
+import { DUE_SOON_DAYS, localAlerts } from '@/server/alerts';
+import { loadAlertInputs, loadConsolidatedBalance, loadOpenCardStatements } from '@/server/dashboard-queries';
 import {
+  cardStatementObligations,
   committedSummary,
-  consolidatedBalance,
   dailyAverageCents,
   endOfMonth,
   expensesCents,
@@ -47,7 +50,7 @@ const toInput = (row: TransactionRow): TransactionInput => ({
 });
 
 export async function GET(request: Request) {
-  if (!consumeActionCode(request.headers.get('X-Action-Code'), 'GET', path)) return denied();
+  if (!consumeActionCode(request.headers.get('X-Action-Code'), 'GET', path, readSessionToken(request))) return denied();
 
   const profileId = await getLocalProfileId();
   const headers = { 'Cache-Control': 'no-store' };
@@ -72,18 +75,11 @@ export async function GET(request: Request) {
     category: { select: { kind: true } },
   } as const;
 
-  const [accounts, currentRows, previousRows, obligations, pendingCount, importCount] = await Promise.all([
-    db.account.findMany({
-      where: { profileId, isActive: true },
-      select: {
-        id: true,
-        balanceSnapshots: {
-          orderBy: { capturedAt: 'desc' },
-          take: 1,
-          select: { balanceCents: true, capturedAt: true },
-        },
-      },
-    }),
+  const alertHorizon = new Date(now.getFullYear(), now.getMonth(), now.getDate() + DUE_SOON_DAYS + 1);
+
+  const [balance, currentRows, previousRows, obligations, pendingCount, importCount, alertInputs] = await Promise.all([
+    // O mesmo saldo da projeção: as duas rotas filtram pela moeda de referência (L-4).
+    loadConsolidatedBalance(profileId),
     db.transaction.findMany({
       where: { profileId, occurredOn: { gte: current.start, lte: current.end } },
       select: transactionSelect,
@@ -98,34 +94,18 @@ export async function GET(request: Request) {
     }),
     db.reconciliationItem.count({ where: { profileId, status: 'pending' } }),
     db.importBatch.count({ where: { profileId, status: 'completed' } }),
+    // Alertas de vencimento olham alguns dias além do mês: o dia 2 do mês
+    // seguinte vence "em breve" quando hoje é dia 30.
+    loadAlertInputs(profileId, alertHorizon),
   ]);
 
-  // O saldo precisa dos lançamentos posteriores ao snapshot, que podem ser
-  // anteriores ao período exibido; por isso a consulta é própria.
-  const oldestCapture = accounts.reduce<Date | null>((oldest, account) => {
-    const capturedAt = account.balanceSnapshots[0]?.capturedAt;
-    if (!capturedAt) return oldest;
-    return !oldest || capturedAt < oldest ? capturedAt : oldest;
-  }, null);
-
-  const settlementRows = oldestCapture
-    ? await db.transaction.findMany({
-        where: { profileId, occurredOn: { gt: oldestCapture } },
-        select: transactionSelect,
-      })
-    : [];
-
-  const balance = consolidatedBalance(
-    accounts.map((account) => ({
-      accountId: account.id,
-      snapshot: account.balanceSnapshots[0] ?? null,
-    })),
-    settlementRows.map(toInput),
-  );
+  const alerts = localAlerts({ now, ...alertInputs });
 
   const currentExpenses = expensesCents(currentRows.map(toInput));
   const previousExpenses = expensesCents(previousRows.map(toInput));
-  const committed = committedSummary(obligations, periodEnd);
+  // Faturas de cartão em aberto são o segundo termo do comprometido (docs/PRODUCT.md, V).
+  const cardStatements = await loadOpenCardStatements(profileId, periodEnd);
+  const committed = committedSummary([...obligations, ...cardStatementObligations(cardStatements)], periodEnd);
 
   return NextResponse.json(
     {
@@ -146,8 +126,21 @@ export async function GET(request: Request) {
       ),
       accountsWithKnownBalance: balance.knownAccounts,
       accountsWithUnknownBalance: balance.unknownAccounts,
+      accountsInOtherCurrency: balance.accountsInOtherCurrency,
       pendingCount,
       importCount,
+      alerts: alerts.map((alert) =>
+        alert.kind === 'stale_data'
+          ? { ...alert, accounts: alert.accounts.map((account) => ({ ...account, lastDataAt: account.lastDataAt.toISOString() })) }
+          : {
+              ...alert,
+              obligations: alert.obligations.map((obligation) => ({
+                ...obligation,
+                amountCents: cents(obligation.amountCents),
+                dueDate: obligation.dueDate.toISOString(),
+              })),
+            },
+      ),
     },
     { headers },
   );

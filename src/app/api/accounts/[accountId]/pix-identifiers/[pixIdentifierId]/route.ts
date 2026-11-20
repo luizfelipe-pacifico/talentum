@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { db } from '@/server/db';
-import { fail, guardWithProfile, isDenied, ok, readJson } from '@/server/http';
+import { fail, guardWithProfile, isDenied, ok, prismaFailure, readJson } from '@/server/http';
 import { decryptPixKey } from '@/server/pix';
 
 /* Uma chave PIX própria.
@@ -91,7 +91,10 @@ export async function PATCH(request: Request, context: Context) {
   /* O valor da chave não é editável: mudá-lo trocaria o índice de comparação e
      o histórico de pareamento deixaria de fazer sentido. Para outra chave,
      cadastre outra — e desative esta, que continua explicando extratos antigos. */
-  const updated = await db.pixIdentifier.update({
+  const notFound = { code: 'PIX_KEY_NOT_FOUND', message: 'A chave informada não existe.' };
+  let updated;
+  try {
+    updated = await db.pixIdentifier.update({
     where: { id: identifier.id, profileId: guarded.profileId },
     data: {
       ...(input.label !== undefined ? { label: input.label } : {}),
@@ -104,7 +107,10 @@ export async function PATCH(request: Request, context: Context) {
         : {}),
     },
     select: { id: true, type: true, label: true, maskedValue: true, isActive: true },
-  });
+    });
+  } catch (error) {
+    return prismaFailure(error, { notFound });
+  }
 
   return ok({ pixIdentifier: updated });
 }
@@ -117,6 +123,11 @@ export async function DELETE(request: Request, context: Context) {
   const identifier = await ownedIdentifier(guarded.profileId, accountId, pixIdentifierId);
   if (!identifier) return fail('PIX_KEY_NOT_FOUND', 'A chave informada não existe.', 404);
 
-  await db.pixIdentifier.delete({ where: { id: identifier.id, profileId: guarded.profileId } });
+  try {
+    await db.pixIdentifier.delete({ where: { id: identifier.id, profileId: guarded.profileId } });
+  } catch (error) {
+    // Removida em outra janela entre a leitura e a exclusão.
+    return prismaFailure(error, { notFound: { code: 'PIX_KEY_NOT_FOUND', message: 'A chave informada não existe.' } });
+  }
   return ok({ removed: true });
 }

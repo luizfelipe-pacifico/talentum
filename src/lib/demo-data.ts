@@ -16,6 +16,7 @@ export const NAV: NavEntry[] = [
   { href: '/dashboard', icon: 'bi-speedometer2', label: 'Dashboard' },
   { href: '/extratos', icon: 'bi-receipt', label: 'Extratos' },
   { href: '/conciliacao', icon: 'bi-check2-square', label: 'Conciliação' },
+  { href: '/planejamento', icon: 'bi-calendar2-range', label: 'Planejamento' },
   { href: '/patrimonio', icon: 'bi-columns-gap', label: 'Patrimônio' },
   { href: '/invest', icon: 'bi-newspaper', label: 'Invest' },
   { href: '/historico', icon: 'bi-clock-history', label: 'Histórico' },
@@ -27,8 +28,9 @@ export const HOME_AREAS: { href: string; icon: string; label: string; text: stri
   { href: '/contas', icon: 'bi-bank', label: 'Contas', text: 'Instituições, saldos informados e chaves PIX próprias.' },
   { href: '/extratos', icon: 'bi-receipt', label: 'Extratos', text: 'Lançamentos importados, cartões e recorrências.' },
   { href: '/conciliacao', icon: 'bi-check2-square', label: 'Conciliação', text: 'Confirme ou corrija o que ficou em dúvida.' },
-  { href: '/patrimonio', icon: 'bi-columns-gap', label: 'Patrimônio', text: 'Ativos, metas e destinação de aportes.' },
-  { href: '/invest', icon: 'bi-newspaper', label: 'Invest', text: 'Economia e mercado ligados aos seus ativos.' },
+  { href: '/planejamento', icon: 'bi-calendar2-range', label: 'Planejamento', text: 'Orçamento do mês, dívidas e rendas previstas.' },
+  { href: '/patrimonio', icon: 'bi-columns-gap', label: 'Patrimônio', text: 'Bens, quatro pilares, próximo aporte e metas.' },
+  { href: '/invest', icon: 'bi-newspaper', label: 'Invest', text: 'Notícias de economia de fontes públicas, com a fonte citada.' },
   { href: '/historico', icon: 'bi-clock-history', label: 'Histórico', text: 'Trilha de eventos, dados locais e backup.' },
 ];
 

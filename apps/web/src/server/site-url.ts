@@ -11,11 +11,16 @@ function publicHost(headers: Headers): string | null {
  *
  * Compara o Origin com o Host acessado. Comparar com `request.url` falhava em
  * `next dev`, que monta a URL como localhost mesmo quando a pessoa usa
- * 127.0.0.1. Sem Origin, a proteção fica com o cookie `SameSite=Lax`.
+ * 127.0.0.1.
+ *
+ * Sem Origin a mutação é recusada: navegadores atuais enviam Origin em todo
+ * POST, inclusive de formulário, e a OWASP trata a ausência como não confiável.
+ * Antes a decisão ficava só com `SameSite=Lax` (docs/SECURITY.md, Open items,
+ * item 2).
  */
 export function sameOrigin(headers: Headers): boolean {
   const origin = headers.get('origin');
-  if (origin === null) return true;
+  if (origin === null) return false;
   try {
     return new URL(origin).host === publicHost(headers);
   } catch {

@@ -355,7 +355,7 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                 </p>
                 <ul className="lp-hero-meta">
                   <li>
-                    <Icon name="bi-windows" /> Windows e Linux
+                    <Icon name="bi-windows" /> Windows e Linux; macOS em breve
                   </li>
                   <li>
                     <Icon name="bi-hdd" /> SQLite no seu dispositivo
@@ -864,29 +864,28 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                 </Reveal>
                 <Reveal delay={140}>
                   <p className="lp-lede">
-                    O repositório já tem a visão consolidada, a documentação técnica, a identidade visual, a base
-                    Next.js full-stack, uma API local inicial, Prisma com SQLite, Docker e o shell do Electron. Os
-                    módulos financeiros e os serviços de borda ainda serão implementados, nesta ordem:
+                    O código já cobre o primeiro uso: conta com login do Google, importação de CSV e OFX,
+                    conciliação e o dashboard com o Saldo Livre de Risco, todos rodando no seu computador. Ainda
+                    não há instalador publicado: falta assinar e distribuir o aplicativo.
                   </p>
                 </Reveal>
                 <Reveal delay={200}>
                   <ol className="lp-timeline">
                     {[
-                      { title: 'Fundação técnica e segurança', state: 'em andamento' },
-                      { title: 'Cadastro, sessão e downloads autorizados', state: 'planejado' },
-                      { title: 'Electron seguro e primeiro acesso', state: 'planejado' },
-                      { title: 'Contas, categorias e obrigações', state: 'planejado' },
-                      { title: 'Importação de OFX', state: 'planejado' },
-                      { title: 'Categorização e conciliação', state: 'planejado' },
-                      { title: 'Dashboard e Saldo Livre de Risco', state: 'planejado' },
-                    ].map((item, index) => (
+                      { title: 'Cadastro, sessão e downloads autorizados', state: 'no código' },
+                      { title: 'Contas, categorias e obrigações', state: 'no código' },
+                      { title: 'Importação de CSV e OFX', state: 'no código' },
+                      { title: 'Conciliação', state: 'no código' },
+                      { title: 'Dashboard e Saldo Livre de Risco', state: 'no código' },
+                      { title: 'Aplicativo desktop assinado e publicado', state: 'em andamento' },
+                    ].map((item) => (
                       <li key={item.title}>
                         <span className="lp-timeline-dot" aria-hidden="true">
-                          {index === 0 ? <Icon name="bi-record-circle" /> : <Icon name="bi-circle" />}
+                          {item.state === 'no código' ? <Icon name="bi-check2-circle" /> : <Icon name="bi-record-circle" />}
                         </span>
                         <span>
                           <strong>{item.title}</strong>
-                          <span className={`lp-state lp-state-${index === 0 ? 'now' : 'next'}`}>{item.state}</span>
+                          <span className={`lp-state lp-state-${item.state === 'no código' ? 'now' : 'next'}`}>{item.state}</span>
                         </span>
                       </li>
                     ))}
@@ -901,7 +900,7 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
               </Reveal>
             </div>
 
-            <div className="lp-grid lp-grid-2 lp-download">
+            <div className="lp-grid lp-grid-3 lp-download">
               <Reveal as="article" className="lp-platform">
                 <Icon name="bi-windows" />
                 <div>
@@ -917,6 +916,14 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                   <p>Mesmo pipeline, mesmo checksum verificável e a mesma exigência de conta.</p>
                 </div>
                 <span className="lp-chip">Planejado</span>
+              </Reveal>
+              <Reveal as="article" delay={220} className="lp-platform">
+                <Icon name="bi-apple" />
+                <div>
+                  <h3>macOS</h3>
+                  <p>Para MacBook. Publicado só depois de assinado e notarizado pela Apple.</p>
+                </div>
+                <span className="lp-chip">Em breve</span>
               </Reveal>
             </div>
           </div>
@@ -1009,7 +1016,10 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                   </a>
                 </li>
                 <li>
-                  <span>Comunidade de feedback: planejada</span>
+                  <a href="/comunidade">Comunidade de sugestões</a>
+                </li>
+                <li>
+                  <a href="/entrar">Entrar na conta</a>
                 </li>
               </ul>
             </div>

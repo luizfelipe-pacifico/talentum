@@ -6,7 +6,7 @@ import { useApp } from '@/components/app-state';
 import { StateArt } from '@/components/state-art';
 import { CashFlowChart, CashProjectionChart } from '@/components/dashboard-charts';
 import { useCategoryBreakdown } from '@/hooks/use-category-breakdown';
-import { useDashboardData, type DashboardMetrics } from '@/hooks/use-dashboard-data';
+import { useDashboardData, type DashboardAlert, type DashboardMetrics } from '@/hooks/use-dashboard-data';
 import { shareOfTotal } from '@/lib/chart';
 import { formatCents, formatDay, formatPercent, formatPeriod } from '@/lib/format';
 
@@ -209,7 +209,91 @@ function CategoryChart() {
   );
 }
 
-function Metrics({ data }: { data: DashboardMetrics }) {
+/** Data por extenso, com o ano quando não é o ano corrente (regra 6 de UX writing). */
+function dayLabel(iso: string) {
+  const date = new Date(iso);
+  return date.getFullYear() === new Date().getFullYear()
+    ? formatDay(iso)
+    : new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+}
+
+function dueLabel(iso: string) {
+  const due = new Date(iso);
+  const today = new Date();
+  const sameDay = due.getFullYear() === today.getFullYear() && due.getMonth() === today.getMonth() && due.getDate() === today.getDate();
+  return sameDay ? `vence hoje, ${dayLabel(iso)}` : `vence em ${dayLabel(iso)}`;
+}
+
+const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+
+/* Alertas locais (MVP 6): calculados no backend a partir do que está gravado.
+   Ficam na faixa de atenção, junto da fila de conciliação, porque pedem uma
+   ação da pessoa; cada um diz o que aconteceu e qual é o próximo passo. */
+function Alerts({ alerts, onImport }: { alerts: DashboardAlert[]; onImport: () => void }) {
+  if (alerts.length === 0) return null;
+  return (
+    <section className="stack" aria-label="Alertas">
+      {alerts.map((alert) => {
+        if (alert.kind === 'stale_data') {
+          return (
+            <article key={alert.kind} className="callout callout-info alert-card">
+              <i className="bi bi-hourglass-split" aria-hidden="true" />
+              <div className="stack-sm">
+                <h2 className="alert-title">
+                  {plural(alert.count, 'conta está', 'contas estão')} sem dados novos há mais de 30 dias
+                </h2>
+                <ul className="alert-list">
+                  {alert.accounts.map((account) => (
+                    <li key={account.id}>
+                      <strong>{account.name}</strong> · último dado em {dayLabel(account.lastDataAt)}
+                    </li>
+                  ))}
+                </ul>
+                <p className="small">O saldo e os gastos dessas contas podem estar desatualizados. Importe o extrato mais recente ou informe o saldo atual.</p>
+                <div className="row-tight">
+                  <button type="button" className="btn btn-sm btn-neutral" onClick={onImport}>Importar extrato</button>
+                  <Link className="btn btn-sm btn-quiet" href="/contas">Informar saldo em Contas</Link>
+                </div>
+              </div>
+            </article>
+          );
+        }
+        const overdue = alert.kind === 'obligation_overdue';
+        return (
+          <article key={alert.kind} className={`callout ${overdue ? 'callout-err' : 'callout-warn'} alert-card`}>
+            <i className={`bi ${overdue ? 'bi-exclamation-octagon' : 'bi-calendar-event'}`} aria-hidden="true" />
+            <div className="stack-sm">
+              <h2 className="alert-title">
+                {overdue
+                  ? plural(alert.count, 'obrigação vencida', 'obrigações vencidas')
+                  : `${plural(alert.count, 'obrigação vence', 'obrigações vencem')} nos próximos 3 dias`}
+              </h2>
+              <ul className="alert-list">
+                {alert.obligations.map((obligation) => (
+                  <li key={obligation.id}>
+                    <strong>{obligation.description}</strong> · R$ {formatCents(obligation.amountCents).value}
+                    {obligation.isEstimated && ' (estimado)'} · {overdue ? `venceu em ${dayLabel(obligation.dueDate)}` : dueLabel(obligation.dueDate)}
+                  </li>
+                ))}
+              </ul>
+              {alert.count > alert.obligations.length && (
+                <p className="small">e mais {plural(alert.count - alert.obligations.length, 'obrigação', 'obrigações')}.</p>
+              )}
+              <p className="small">
+                {overdue
+                  ? 'Obrigações vencidas continuam descontadas do Saldo Livre de Risco até serem marcadas como pagas.'
+                  : 'Esses valores já estão descontados do Saldo Livre de Risco.'}
+              </p>
+              <Link className="btn btn-sm btn-neutral" href="/extratos/recorrencias">Abrir obrigações</Link>
+            </div>
+          </article>
+        );
+      })}
+    </section>
+  );
+}
+
+function Metrics({ data, onImport }: { data: DashboardMetrics; onImport: () => void }) {
   const period = formatPeriod(data.period.start, data.period.end);
   const incomplete = data.accountsWithUnknownBalance > 0;
 
@@ -244,6 +328,15 @@ function Metrics({ data }: { data: DashboardMetrics }) {
               {data.accountsWithUnknownBalance}{' '}
               {data.accountsWithUnknownBalance === 1 ? 'conta ainda não tem' : 'contas ainda não têm'}{' '}
               saldo informado. O valor acima está incompleto.
+            </span>
+          </p>
+        )}
+        {data.accountsInOtherCurrency > 0 && (
+          <p className="callout callout-info">
+            <i className="bi bi-currency-exchange" aria-hidden="true" />
+            <span className="small">
+              {plural(data.accountsInOtherCurrency, 'conta em outra moeda ficou', 'contas em outra moeda ficaram')} fora deste
+              valor. O Saldo Livre de Risco soma apenas contas em real, porque somar moedas diferentes sem cotação daria um número falso.
             </span>
           </p>
         )}
@@ -282,6 +375,8 @@ function Metrics({ data }: { data: DashboardMetrics }) {
           </p>
         </Card>
       </section>
+
+      <Alerts alerts={data.alerts ?? []} onImport={onImport} />
 
       {data.pendingCount > 0 && (
         <section className="card attention">
@@ -326,5 +421,5 @@ export function DashboardPage() {
     data.accountsWithUnknownBalance === 0 &&
     data.importCount === 0;
 
-  return withoutBase ? <EmptyState onImport={app.openImport} /> : <Metrics data={data} />;
+  return withoutBase ? <EmptyState onImport={app.openImport} /> : <Metrics data={data} onImport={app.openImport} />;
 }

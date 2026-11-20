@@ -8,6 +8,9 @@ import { trapFocus } from '@/lib/focus-trap';
 import logoDark from '../../icon-talentum-dark.svg';
 import { useApp } from '@/components/app-state';
 import { Overlays } from '@/components/overlays';
+import { NotificationBell } from '@/components/notifications';
+import { UpdateNotice } from '@/components/update-notice';
+import { LockNowButton } from '@/components/vault-gate';
 import { NAV, THEME_OPTIONS } from '@/lib/demo-data';
 import { activeTab as findActiveTab, isActive, pageMeta, tabsFor } from '@/lib/navigation';
 
@@ -188,14 +191,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span className="btn-label">Lançar dinheiro</span>
             </button>
 
-            <button
-              type="button"
-              className="icon-button"
-              onClick={() => app.open('notif')}
-              aria-label="Notificações"
-            >
-              <i className="bi bi-bell" style={{ fontSize: 16 }} />
-            </button>
+            <LockNowButton />
+
+            <NotificationBell onOpen={() => app.open('notif')} />
 
             <label className="theme-select" title="Tema da interface">
               <span className="sr-only">Tema da interface</span>
@@ -263,6 +261,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <Overlays />
+      <UpdateNotice />
     </div>
   );
 }

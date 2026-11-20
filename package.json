@@ -14,6 +14,7 @@
     "desktop:prepare": "node scripts/desktop-prepare.mjs",
     "desktop:build:win": "pnpm desktop:prepare && electron-builder --win nsis --x64",
     "desktop:build:linux": "pnpm desktop:prepare && electron-builder --linux AppImage --x64",
+    "desktop:build:mac": "pnpm desktop:prepare && electron-builder --mac dmg zip",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up --build",
     "docker:up:detached": "docker compose up --build --detach --wait",
@@ -30,8 +31,7 @@
     "test:manual": "node scripts/e2e-server.mjs",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
-    "prisma:preflight": "node scripts/migration-preflight.mjs",
-    "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate": "node scripts/migrate-dev.mjs",
     "lp:lut": "node scripts/gerar-lut.mjs",
     "lp:icones": "node scripts/gerar-icones-lp.mjs",
     "lp:telas": "node scripts/redimensionar-telas-lp.mjs",
@@ -53,6 +53,8 @@
   "dependencies": {
     "@fontsource/montserrat": "^5.3.0",
     "@fontsource/playfair-display": "^5.3.0",
+    "@libsql/client": "0.8.1",
+    "@prisma/adapter-libsql": "6.19.3",
     "@prisma/client": "^6.15.0",
     "@tailwindcss/postcss": "^4.1.12",
     "bootstrap-icons": "^1.13.1",
@@ -60,6 +62,7 @@
     "next": "^15.5.29",
     "pdfjs-dist": "^6.3.289",
     "prisma": "^6.15.0",
+    "qrcode": "1.5.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "zod": "^4.6.7"
@@ -69,6 +72,7 @@
     "@cloudflare/workers-types": "^5.20260904.1",
     "@playwright/test": "1.65.1",
     "@types/node": "^24.3.0",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
     "electron": "^37.3.1",
@@ -77,12 +81,18 @@
     "tailwindcss": "^4.1.12",
     "typescript": "^5.9.2",
     "wrangler": "^4.33.1"
-  }
-  ,
+  },
   "build": {
     "appId": "org.talentum.app",
     "productName": "Talentum",
     "asar": false,
+    "electronFuses": {
+      "runAsNode": true,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "grantFileProtocolExtraPrivileges": false
+    },
     "directories": { "output": "release" },
     "files": [
       "electron/**/*",
@@ -95,10 +105,23 @@
       "!**/.env*",
       "!**/.dev.vars*",
       "!**/*.db*",
-      "!**/*.key"
+      "!**/*.key",
+      "!**/*.vault"
     ],
     "win": { "target": "nsis", "icon": "icon-badge.ico", "artifactName": "Talentum-${version}-Windows-${arch}.${ext}" },
     "linux": { "target": "AppImage", "icon": "icon-badge.png", "category": "Office;Finance", "artifactName": "Talentum-${version}-Linux-${arch}.${ext}" },
+    "mac": {
+      "target": ["dmg", "zip"],
+      "icon": "icon-badge-mac.png",
+      "category": "public.app-category.finance",
+      "artifactName": "Talentum-${version}-macOS-${arch}.${ext}",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "packaging/entitlements.mac.plist",
+      "entitlementsInherit": "packaging/entitlements.mac.plist",
+      "notarize": true
+    },
+    "dmg": { "artifactName": "Talentum-${version}-macOS-${arch}.${ext}" },
     "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "deleteAppDataOnUninstall": false }
   }
 }

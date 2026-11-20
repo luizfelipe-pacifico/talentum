@@ -120,7 +120,7 @@ The local app is single-profile per database, but every local query is still sco
 
 ## Local SQLite (Prisma)
 
-Status: **Current**. Source of truth: `prisma/schema.prisma`, datasource `sqlite`, URL from the `DATABASE_URL` environment variable. Twenty-four models are implemented. All IDs are `String @id @default(uuid())`. Unless stated otherwise, every model has `createdAt` (default now) and `updatedAt` (auto-updated); append-only records (snapshots, revisions, decisions, adjustments, transfers, events, import files and issues, backups) have only `createdAt`.
+Status: **Current**. Source of truth: `prisma/schema.prisma`, datasource `sqlite`, URL from the `DATABASE_URL` environment variable. Thirty-seven models are implemented, created by 15 migrations. All IDs are `String @id @default(uuid())`. Unless stated otherwise, every model has `createdAt` (default now) and `updatedAt` (auto-updated); append-only records (snapshots, revisions, decisions, adjustments, transfers, events, import files and issues, backups) have only `createdAt`.
 
 Every model except `LocalProfile`, `BalanceSnapshot`, `ImportFile` and `ImportIssue` references `LocalProfile` through `profileId` with `onDelete: Cascade`; those three reach the profile through their account or batch, also with cascade. Deleting the profile deletes all its local data. Status and kind columns are free `String` values; the database does not restrict them with `CHECK` constraints, so the allowed values below are enforced only by application code.
 
@@ -132,12 +132,13 @@ The local identity that owns all data in the database.
 | --- | --- |
 | `id` | opaque ID |
 | `displayName` | optional |
+| `singletonKey` | default `'local'`, unique (migration `profile_singleton_manual_entries`). Two concurrent creations cannot both succeed: the second fails with `P2002` and `ensureLocalProfile` (`src/server/profile.ts`) rereads the winner. Rows created by the earlier race keep their own `id` here, so the migration deletes nothing |
 
-Relations: has many of every profile-scoped model below. The local API reads the oldest profile (`createdAt` ascending) and never creates one on a read; a profile is created only by `POST /api/profile` or by starting onboarding (`POST /api/onboarding`). Without a profile, the API reports that there is no financial base and the interface leads to onboarding.
+Relations: has many of every profile-scoped model below. The local API reads the oldest profile (`createdAt` ascending) and never creates one on a read; a profile is created only by `POST /api/profile` or by starting onboarding (`POST /api/onboarding`), both through `ensureLocalProfile`. Without a profile, the API reports that there is no financial base and the interface leads to onboarding.
 
 ### `UserPreference`
 
-Key/value preferences of a profile. Completing onboarding writes the `currency` and `timezone` keys.
+Key/value preferences of a profile. Completing onboarding writes the `currency` and `timezone` keys. Postponing the new-version notice writes `updates.postponed` with the JSON `{ "version": "x.y.z", "until": <epoch ms> }` (**Current**, `POST /api/updates/postpone`).
 
 | Field | Notes |
 | --- | --- |
@@ -190,7 +191,7 @@ Indexes: `(accountId, capturedAt)`, `(importBatchId)`. The dashboard takes the l
 | `name` | string |
 | `kind` | string (category type) |
 
-Constraints: unique `(profileId, name, kind)`; index `(profileId)`. Relations: has many `Transaction`, `ScheduledObligation`, `MerchantRule`. `kind` is `income`, `expense` or `transfer`; entries in a `transfer` category leave income and expense aggregates.
+Constraints: unique `(profileId, name, kind)`; index `(profileId)`. Relations: has many `Transaction`, `ScheduledObligation`, `MerchantRule`, `Budget`. `isEssential` (boolean, default `false`, added by `planning_networth`) marks an expense category as essential for survival mode; it is set only through `PUT /api/survival`. `kind` is `income`, `expense` or `transfer`; entries in a `transfer` category leave income and expense aggregates.
 
 ### `ImportBatch`
 
@@ -200,8 +201,9 @@ One import of a statement file.
 | --- | --- |
 | `profileId` | FK to `LocalProfile`, cascade |
 | `accountId` | optional FK to `Account`, `SetNull` on delete; target account of the batch |
-| `format` | string (`csv` or `ofx`; see [PRODUCT.md](PRODUCT.md)) |
-| `fingerprint` | SHA-256 of the decoded text with line breaks normalized, so the same statement re-exported with CRLF is still recognized |
+| `format` | string (`csv`, `ofx` or `pdf`; see [PRODUCT.md](PRODUCT.md)) |
+| `parser` | optional; PDF layout reader and version that read the batch, as `id@version` ([ADR 0006](decisions/0006-pdf-import.md)); `null` for CSV and OFX |
+| `fingerprint` | SHA-256 of the decoded text with line breaks normalized, so the same statement re-exported with CRLF is still recognized; for PDF, of the extracted text lines, so the same statement downloaded again with different PDF metadata is still recognized |
 | `status` | string; the dashboard counts batches with `completed` |
 | `fileName` | optional, sanitized |
 | `periodStart`, `periodEnd` | optional; civil interval the file covers, not the import date |
@@ -267,8 +269,9 @@ A normalized financial entry.
 | `amountCents` | `BigInt`, integer cents |
 | `status` | `pending` or `posted`; default `pending`. Imported entries are written as `posted` because they already happened |
 | `externalId` | optional; the entry's identifier at the source bank (`FITID` in OFX, an identifier column in CSV) |
+| `idempotencyKey` | optional; client-generated UUID of a manual cash entry (`POST /api/transactions`), `NULL` for imported entries (migration `profile_singleton_manual_entries`) |
 
-Constraints: unique `(accountId, externalId)`. In SQLite `NULL` is distinct from `NULL`, so entries without a source identifier remain allowed; for those, the importer compares civil day, amount and description, consuming one occurrence at a time. Indexes: `(profileId, occurredOn)`, `(accountId, occurredOn)`, `(importBatchId)`, `(categoryId)`. Relations: has many `ImportIssue`, `TransactionRevision`, `FinancialAdjustment`, `TimelineEvent`, outgoing and incoming `OwnAccountTransfer`; has at most one `ReconciliationItem`.
+Constraints: unique `(accountId, externalId)`; unique `(profileId, idempotencyKey)`, so resending the same manual entry returns the stored row instead of writing a second one. In SQLite `NULL` is distinct from `NULL`, so entries without a source identifier remain allowed; for those, the importer compares civil day, amount and description, consuming one occurrence at a time. Indexes: `(profileId, occurredOn)`, `(accountId, occurredOn)`, `(importBatchId)`, `(categoryId)`. Relations: has many `ImportIssue`, `TransactionRevision`, `FinancialAdjustment`, `TimelineEvent`, outgoing and incoming `OwnAccountTransfer`; has at most one `ReconciliationItem`.
 
 ### `ScheduledObligation`
 
@@ -287,7 +290,7 @@ A commitment with an amount and a due date. It is the subtrahend of the risk-fre
 
 Invariant: **only `status = 'open'` is subtracted**. Without this field an obligation already paid would keep being subtracted and the risk-free balance would be permanently pessimistic. The dashboard query filters `profileId`, `status = 'open'` and `dueDate` up to the period end, which is why the main index is `(profileId, status, dueDate)`. Other indexes: `(accountId)`, `(categoryId)`.
 
-In the MVP an open credit-card statement is represented as a `ScheduledObligation`; `CreditCard` and `Statement` belong to stage 8 of the roadmap (see [ROADMAP.md](ROADMAP.md)).
+Before Stage 8 an open credit-card statement was represented as a `ScheduledObligation`. Since migration `cards_statements` it has its own model, `CardStatement` (next section), which the dashboard subtracts next to the obligations. **Open:** nothing prevents the same bill from being registered both as an obligation and as a card statement, which would subtract it twice; the card screen is the documented place for card bills.
 
 ### `OnboardingSession` and `OnboardingAnswer`
 
@@ -328,7 +331,7 @@ Expected income, never treated as available balance (migration `mvp_income_merch
 
 ### `MerchantRule`
 
-Local, deterministic and reviewable categorization rule (migration `mvp_income_merchant_rules`). Fields: `profileId` (cascade), `categoryId` (cascade), `pattern`, `matchType` (default `contains`), `priority` (default 0), `isActive`. Constraints: unique `(profileId, pattern, matchType)`; indexes `(profileId, isActive, priority)`, `(categoryId)`. **Current** as data and CRUD; applying the rules during import is **Planned**.
+Local, deterministic and reviewable categorization rule (migration `mvp_income_merchant_rules`). Fields: `profileId` (cascade), `categoryId` (cascade), `pattern`, `matchType` (default `contains`), `priority` (default 0), `isActive`. Constraints: unique `(profileId, pattern, matchType)`; indexes `(profileId, isActive, priority)`, `(categoryId)`. **Current** as data, list, create, deactivate (`DELETE` sets `isActive: false`) and automatic application: the importer and manual entries apply active rules to uncategorized entries, and `POST /api/merchant-rules/apply` reapplies them to the pending queue (policy in [PRODUCT.md](PRODUCT.md), Feature 6). A rule never changes a category already set.
 
 ### `TransactionRevision`
 
@@ -345,7 +348,26 @@ Created by migration `mvp_reconciliation`.
 | `FinancialAdjustment` | `profileId`, `transactionId`, `decisionId` (all cascade), `kind` (`interest`, `fee`, `discount`, `correction`), `deltaCents` (`BigInt`), `note` | unique `decisionId`; indexes `(profileId, createdAt)`, `(transactionId)` |
 | `OwnAccountTransfer` | `profileId`, `outgoingTransactionId`, `incomingTransactionId`, `decisionId` (all cascade) | unique `decisionId`; unique `(outgoingTransactionId, incomingTransactionId)`; indexes `(profileId, createdAt)`, `(incomingTransactionId)` |
 
-Each resolution creates a `ReconciliationDecision` with JSON snapshots of the structured fields before and after. `FinancialAdjustment` records the delta in cents; `OwnAccountTransfer` links the two entries by opaque IDs. Reverting marks the decision (`revertedAt`), restores the snapshots and reopens the item without deleting the audit trail. The importer creates one item with reason `category_unknown` and confidence 0 for every uncategorized entry it writes.
+Each resolution creates a `ReconciliationDecision` with JSON snapshots of the structured fields before and after. `FinancialAdjustment` records the delta in cents; `OwnAccountTransfer` links the two entries by opaque IDs. Reverting marks the decision (`revertedAt`), restores the snapshots and reopens the item without deleting the audit trail. The importer and manual cash entries create one item for every entry written without a category. `reason` values (**Current**): `category_unknown` (confidence 0), `merchant_rule` (rule applied automatically, item created `resolved` together with a `ReconciliationDecision` of kind `rule`; confidence 100 for `exact`, 90 for `startsWith`), `merchant_rule_suggestion` (a `contains` rule matched; confidence 60, the item stays pending), `merchant_rule_conflict` (two equally ranked rules point to different categories; 0), `own_transfer_candidate` (an opposite entry in another own account within three days; 60 to 100) and `rule_reverted` (a `rule` decision was reverted; 0). Decision `kind` values: `confirm`, `category`, `obligation`, `adjustment`, `transfer` and `rule`.
+
+### Cards, statements and benefits
+
+Created by migration `cards_statements` (**Current**, Stage 8). Every table has an opaque `id`, a `profileId` (cascade) and relates by foreign-key IDs; money is `BigInt` cents.
+
+| Model | Fields | Constraints |
+| --- | --- | --- |
+| `CreditCard` | `institutionId?` (`SetNull`), `paymentAccountId?` (FK to `Account`, `SetNull`), `name`, `lastFourDigits?`, `closingDay?`, `dueDay`, `limitCents?`, `annualFeeCents?`, `feeWaiverSpendCents?`, `feeWaiverPeriod?` (`statement` or `year`), `isActive` | unique `(profileId, name)`; indexes `(profileId, isActive)`, `(institutionId)`, `(paymentAccountId)` |
+| `CardStatement` | `creditCardId` (cascade), `periodStart?`, `closingDate`, `dueDate`, `totalCents`, `isEstimated`, `status` (`open`, `paid`, `cancelled`) | unique `(creditCardId, dueDate)`; index `(profileId, status, dueDate)` |
+| `CardStatementItem` | `cardStatementId` (cascade), `occurredOn`, `description`, `amountCents` (positive is a charge, negative a credit), `installmentNumber?`, `installmentCount?`, `source` (`manual`, `import`), `externalId?` | unique `(cardStatementId, externalId)`; indexes `(profileId, occurredOn)`, `(cardStatementId, occurredOn)` |
+| `CardStatementPayment` | `cardStatementId` (cascade), `transactionId` (FK to `Transaction`, cascade), `amountCents` | unique `transactionId`; indexes `(profileId, createdAt)`, `(cardStatementId)` |
+| `CardBenefit` | `creditCardId` (cascade), `kind` (`cashback`, `points`, `miles`), `programName`, `balance` (cents for cashback, units otherwise), `expiringBalance?`, `expiresOn?` | unique `(creditCardId, kind, programName)`; index `(profileId, expiresOn)` |
+
+Invariants:
+
+- the card never stores a full number, a security code or a password; `lastFourDigits` is optional and validated as exactly four digits;
+- each unique constraint is the idempotency of a write that can repeat: the same nickname, the same due date, the same item key (`manual:<form key>` for a typed item, `import:<hash>:<occurrence>` for an imported one), the same bank entry paying two statements, the same benefit program;
+- `CardStatement.status` is never set to `paid` by hand: it is recomputed from the sum of `CardStatementPayment` in the same transaction that adds or removes a payment, or changes the total;
+- removing a card with statements is refused (`409 CARD_HAS_STATEMENTS`); deactivating keeps everything. Removing a statement removes its items and payment links, never the bank entries.
 
 ### `TimelineEvent` and `DatabaseBackup`
 
@@ -353,14 +375,40 @@ Created by migration `mvp_timeline_backup`; both have `createdAt` only.
 
 | Model | Fields | Constraints |
 | --- | --- | --- |
-| `TimelineEvent` | `profileId` (cascade), `kind` (`import`, `transaction_edit`, `reconciliation`), `title`, `description`, optional `importBatchId`, `transactionId`, `transactionRevisionId`, `reconciliationDecisionId` (all `SetNull`), `reversible`, `revertedAt` | indexes `(profileId, createdAt)`, `(importBatchId)`, `(transactionId)` |
-| `DatabaseBackup` | `profileId` (cascade), `schemaVersion`, `checksum`, `byteSize`, `status`, `verifiedAt` | indexes `(profileId, createdAt)`, `(profileId, status, verifiedAt)` |
+| `TimelineEvent` | `profileId` (cascade), `kind` (`import`, `transaction_edit`, `reconciliation`, `planning`, `manual_entry`, `categorization`), `title`, `description`, optional `importBatchId`, `transactionId`, `transactionRevisionId`, `reconciliationDecisionId` (all `SetNull`), `reversible`, `revertedAt` | indexes `(profileId, createdAt)`, `(importBatchId)`, `(transactionId)` |
+| `DatabaseBackup` | `profileId` (cascade), `schemaVersion`, `checksum`, `byteSize`, `status`, `verifiedAt`, `kind` (`manual`, `pre_migration`, `pre_restore`, `pre_deletion`; added by `notifications_gamification`) | indexes `(profileId, createdAt)`, `(profileId, status, verifiedAt)` |
 
-A timeline event stores only redacted, structured metadata and opaque IDs: never amounts, entry descriptions, keys, hashes, file content or action codes. `DatabaseBackup` stores only metadata of a local backup; the path, key and content never enter it. `scripts/migration-preflight.mjs` reads it to unlock a destructive migration (see [Local migrations](#local-migrations)). **Open:** no code creates `DatabaseBackup` rows yet.
+A timeline event stores only redacted, structured metadata and opaque IDs: never amounts, entry descriptions, keys, hashes, file content or action codes. Timeline kinds: `import`, `transaction_edit`, `reconciliation` (reversible), and `restore_point`, `restore_scheduled`, `restore_cancelled`, `encrypted_backup`, `month_review` (not reversible). `DatabaseBackup` stores only metadata of a local restore point; the path, key and content never enter it. **Current:** the app writes a row for every restore point it creates while a profile exists, and the open path (`src/server/backup/startup.ts`) writes one for the automatic `pre_migration` point. The manifest files in `talentum-backups/` are the source of truth for the list of restore points; the rows are the in-database index ([ADR 0007](decisions/0007-local-encrypted-backup.md)).
+
+### `NotificationState` and `MonthlyReview`
+
+Created by migration `notifications_gamification`.
+
+| Model | Fields | Constraints |
+| --- | --- | --- |
+| `NotificationState` | `profileId` (cascade), `key` (`kind:subject:period`), `kind`, `readAt`, `dismissedAt`, `createdAt`, `updatedAt` | unique `(profileId, key)`; index `(profileId, updatedAt)` |
+| `MonthlyReview` | `profileId` (cascade), `month` (`AAAA-MM`), `createdAt` | unique `(profileId, month)` |
+
+Notifications are **derived** from local data on each read and are not stored; `NotificationState` keeps only what the person did with one (read, dismissed), keyed by the stable dedupe key. Rows not updated for 180 days are deleted on the next state change. Notification preferences are `UserPreference` rows: `notifications.quiet` (`on`/`off`) and `notifications.kind.<kind>` (`on`/`off`). `MonthlyReview` is the only gamification fact that has no other trace; XP, levels, missions and badges are derived from imports, reconciliation decisions, month reviews and manual restore points, and never from amounts.
+
+### Planning and net worth models
+
+Created by migration `planning_networth` (**Current**, Stages 9, 12, 13 and 14). Every table has an opaque `id`, a `profileId` foreign key with cascade, and money as `BigInt` cents.
+
+| Model | Fields | Constraints |
+| --- | --- | --- |
+| `Budget` | `categoryId` (cascade), `month` (`AAAA-MM`), `limitCents`, `createdAt`, `updatedAt` | unique `(profileId, categoryId, month)`; indexes `(profileId, month)`, `(categoryId)` |
+| `Goal` | `name`, `targetCents`, optional `deadline`, `status` (`active` or `archived`), `createdAt`, `updatedAt` | index `(profileId, status)` |
+| `GoalContribution` | `goalId` (cascade), `kind` (`deposit` or `withdrawal`), `amountCents` (always positive), `contributedOn`, `idempotencyKey`, `createdAt` | unique `(profileId, idempotencyKey)`; indexes `(goalId, contributedOn)`, `(profileId)` |
+| `Debt` | `name`, `principalCents`, `monthlyRateBps` (integer basis points, 0 to 5,000), `minimumPaymentCents`, `overdueCents` (default 0), optional `dueDay`, `status` (`open` or `paid`), `createdAt`, `updatedAt` | index `(profileId, status)` |
+| `Asset` | `name`, `pillar` (`stocks`, `real_estate`, `cash`, `international` or `outside`), `isActive`, `createdAt`, `updatedAt` | index `(profileId, isActive)` |
+| `AssetSnapshot` | `assetId` (cascade), `valueCents`, `capturedAt`, `idempotencyKey`, `createdAt` | unique `(profileId, idempotencyKey)`; indexes `(assetId, capturedAt)`, `(profileId)` |
+
+A goal's saved amount is derived from its contributions and never stored. A budget's spending is derived from confirmed transactions and never stored. An asset value is a dated fact: a new value appends a row and the net worth uses the latest per asset. The debt and asset fields hold only what the person knows; no contract, document or credential is stored.
 
 ### Local data access
 
-Status: **Current**. The local API (`src/app/api`) reads and writes the database through a single `PrismaClient` (`src/server/db.ts`). Write flows exist for onboarding, profile, institutions, accounts, balances, Pix identifiers, categories, income, obligations, merchant rules, import, transaction edits, reconciliation and timeline reversal. Multi-row changes (writing or undoing a batch, a transaction edit with its revision, a reconciliation decision or its reversal, completing onboarding) run in one SQLite transaction. Every query is scoped by `profileId`.
+Status: **Current**. The local API (`src/app/api`) reads and writes the database through a single `PrismaClient` (`src/server/db.ts`). Write flows exist for onboarding, profile, institutions, accounts, balances, Pix identifiers, categories, income, obligations, merchant rules (create, deactivate, reapply), import, manual cash entries, transaction edits, reconciliation, timeline reversal and the update-notice postponement. Multi-row changes (writing or undoing a batch, a transaction edit with its revision, a reconciliation decision or its reversal, completing onboarding) run in one SQLite transaction. Every query is scoped by `profileId`.
 
 ### Implemented invariants
 
@@ -382,12 +430,12 @@ Status: **Planned** for the entities not in bold. The conceptual model groups lo
 | Accounts | Institutions, accounts, informed balances and own Pix keys | **`Institution`**, **`Account`**, **`BalanceSnapshot`**, **`PixIdentifier`** |
 | Import | File, batch, parser, mapping and diagnostics | **`ImportBatch`**, **`ImportFile`**, **`ImportIssue`**, **`CsvMappingProfile`** |
 | Transactions | Normalized entries, categories, rules and edit history | **`Transaction`**, **`Category`**, **`MerchantRule`**, **`TransactionRevision`** |
-| Cards | Cards, statements, benefits and recurring charges | `CreditCard`, `Statement`, `CardBenefit`, `RecurringCharge` |
+| Cards | Cards, statements, items, payments, benefits and recurring charges | **`CreditCard`**, **`CardStatement`**, **`CardStatementItem`**, **`CardStatementPayment`**, **`CardBenefit`**, `RecurringCharge` |
 | Reconciliation | Pending items, decisions, adjustments and own transfers | **`ReconciliationItem`**, **`ReconciliationDecision`**, **`FinancialAdjustment`**, **`OwnAccountTransfer`** |
-| Planning | Income, budget, goals and obligations | **`IncomeSource`**, `Budget`, `Goal`, **`ScheduledObligation`** |
-| Net worth | Assets, positions, pillars and contributions | `Asset`, `PositionSnapshot`, `Contribution` |
-| Product | Alerts, missions and history | `Notification`, `Mission`, `Achievement`, **`TimelineEvent`** |
-| Backup | Runs, versions and integrity | **`DatabaseBackup`** (metadata only) |
+| Planning | Income, budget, goals, debts and obligations | **`IncomeSource`**, **`Budget`**, **`Goal`**, **`GoalContribution`**, **`Debt`**, **`ScheduledObligation`** |
+| Net worth | Assets, dated values and pillars | **`Asset`**, **`AssetSnapshot`** (the earlier `PositionSnapshot` name); a persisted asset `Contribution` is not needed: a contribution is recorded as a new asset value |
+| Product | Alerts, missions and history | **`NotificationState`** (notifications themselves are derived), **`MonthlyReview`** (missions and badges are derived), **`TimelineEvent`** |
+| Backup | Runs, versions and integrity | **`DatabaseBackup`** (metadata only; files and manifests in `talentum-backups/`) |
 
 Essential relations of the full conceptual model (planned entities included):
 
@@ -397,8 +445,11 @@ erDiagram
     IMPORT_BATCH ||--o{ TRANSACTION : originates
     IMPORT_BATCH ||--o{ IMPORT_ISSUE : records
     CATEGORY ||--o{ TRANSACTION : classifies
-    CREDIT_CARD ||--o{ STATEMENT : generates
-    STATEMENT ||--o{ TRANSACTION : aggregates
+    CREDIT_CARD ||--o{ CARD_STATEMENT : generates
+    CARD_STATEMENT ||--o{ CARD_STATEMENT_ITEM : lists
+    CARD_STATEMENT ||--o{ CARD_STATEMENT_PAYMENT : "is paid by"
+    TRANSACTION ||--o| CARD_STATEMENT_PAYMENT : pays
+    CREDIT_CARD ||--o{ CARD_BENEFIT : earns
     TRANSACTION ||--o| RECONCILIATION_ITEM : requires
     GOAL ||--o{ CONTRIBUTION : receives
     ASSET ||--o{ POSITION_SNAPSHOT : has
@@ -406,13 +457,24 @@ erDiagram
     IMPORT_BATCH ||--o{ TIMELINE_EVENT : records
 ```
 
+### Encryption at rest and the local vault
+
+Status: **Current** ([ADR 0009](decisions/0009-local-vault-and-encrypted-database.md)).
+
+- The whole local database file is encrypted by libSQL (`@libsql/client` with `encryptionKey`) and opened by Prisma through `@prisma/adapter-libsql` (`src/server/vault/database.ts`). The key is the HKDF subkey `database` of a random 256-bit data-encryption key (DEK). The file has no SQLite header and no readable text; `tests/vault-database.test.mjs` asserts both, and that opening it without the key fails with `SQLITE_NOTADB`.
+- The DEK is wrapped (AES-256-GCM) under the password and under the recovery code, each through scrypt (`N = 2^17, r = 8, p = 1`), in `talentum-local.vault` next to the database (`TALENTUM_VAULT_FILE` overrides the path). The vault file is written atomically with mode `0600`, is git-ignored (`*.vault`) and excluded from installers. It holds no secret in clear: wrapped keys, the TOTP secret encrypted under the DEK, HMACs of the TOTP backup codes, the auto-lock minutes and the failed-attempt counter.
+- The database opens only after unlock; while locked `db` (`src/server/db.ts`) throws `VaultLockedError` and no connection exists.
+- Dates are stored as Unix milliseconds (`timestampFormat: 'unixepoch-ms'`), the format the native Prisma engine wrote, so databases created before the vault keep their values. `BigInt` values must stay within ±2^53 through the adapter; the importer ceiling guarantees it.
+- **Plaintext databases from earlier versions** are migrated at vault setup: copied table by table into `<db>.encrypting`, verified (row count of every table and `PRAGMA integrity_check`), the original renamed to `<db>.plaintext-pending-removal`, the encrypted copy moved into place, the vault written, and only then the plaintext file and its `-wal`/`-shm`/`-journal` overwritten with random bytes and deleted. An interrupted setup restarts from the plaintext copy. Overwriting is best effort on SSDs, copy-on-write file systems and synced folders.
+- `prisma migrate deploy`, `prisma studio` and plaintext SQLite tools cannot open the database. There is no supported way to read it outside the app; losing both the password and the recovery code loses the data.
+
 ### Local SQLite operation
 
-- Apply pending migrations when a new version of the local backend starts. **Current** for `pnpm dev`, the local Docker image and, in code, the packaged Electron app, which runs `prisma migrate deploy` against the database in its `userData` directory before starting the server ([ADR 0004](decisions/0004-electron-packaging.md)).
+- Apply pending migrations when a new version of the local backend starts. **Current**: the backend applies them through the encrypted connection at every unlock and at setup (`src/server/vault/migrations.ts`), the same way in `pnpm dev`, the Docker development image and the packaged Electron app.
 - Enable and validate foreign keys. **Current**: Prisma's SQLite connector enforces the declared foreign keys.
 - Import a complete batch inside one transaction. **Current** (`src/server/import/persist.ts`); a failure halfway leaves no partial batch. Saving a reusable column mapping runs outside that transaction on purpose: it is a convenience and must not undo a correct import.
 - Keep one writer per database and limit write concurrency. **Planned** as an explicit rule for write flows.
-- Use WAL only after compatibility testing with packaging, backup and recovery. **Planned**; WAL is not enabled explicitly today.
+- Use WAL only after compatibility testing with packaging, backup and recovery. **Current** in code: the runner sets `PRAGMA journal_mode = WAL` on the encrypted file; backup and recovery with WAL are still **Planned**.
 - SQLite database files and their `-wal`, `-shm` and `-journal` companions are git-ignored. **Current**.
 
 ## Local migrations
@@ -432,37 +494,42 @@ Status: **Current**. The local schema evolves only through versioned Prisma migr
 | `20260912220000_mvp_pix_identifiers` | `PixIdentifier`, with unique `(profileId, valueIndex)` |
 | `20260912230000_mvp_reconciliation` | `ReconciliationItem`, `ReconciliationDecision`, `FinancialAdjustment`, `OwnAccountTransfer` |
 | `20260912240000_mvp_timeline_backup` | `TimelineEvent`, `DatabaseBackup` |
+| `20261120120000_profile_singleton_manual_entries` | adds `singletonKey` (unique) to `LocalProfile` and `idempotencyKey` (unique per profile) to `Transaction`; an `UPDATE` gives any extra profile created by the earlier race its own `id` as key before the unique index is built |
+| `20261120210000_planning_networth` | `Budget`, `Goal`, `GoalContribution`, `Debt`, `Asset`, `AssetSnapshot`; adds `isEssential` to `Category` |
+| `20261120200000_cards_statements` | `CreditCard`, `CardStatement`, `CardStatementItem`, `CardStatementPayment`, `CardBenefit`; adds `parser` to `ImportBatch` |
+| `20261120220000_notifications_gamification` | `NotificationState`, `MonthlyReview`; adds `kind` to `DatabaseBackup` |
 
 The migrations after `mvp_scheduled_obligations` are **additive**: new columns enter through `ALTER TABLE ... ADD COLUMN` and no already applied table is rebuilt.
 
-How migrations are applied:
+How migrations are applied (**Current**, [ADR 0009](decisions/0009-local-vault-and-encrypted-database.md)):
 
-- `pnpm prisma:migrate` runs `prisma migrate dev` to create a new migration during development.
-- `pnpm dev` (`scripts/dev.mjs`, also used by `pnpm dev:all`) first runs `scripts/migration-preflight.mjs` (`pnpm prisma:preflight`) and then `prisma migrate deploy` before starting the local app, using `DATABASE_URL` or, when it is unset, a default git-ignored local database file. The preflight inspects pending migrations; destructive SQL (`DROP TABLE`, `DROP COLUMN`, `TRUNCATE TABLE`, `DELETE FROM`) requires `TALENTUM_VERIFIED_BACKUP_ID` pointing to `DatabaseBackup` metadata with status `verified`, a checksum, a size and the current schema version; otherwise the process stops before changing the database.
-- The packaged Electron app runs `prisma migrate deploy` on start, without the preflight (**Open**).
-- The local Docker image runs `prisma migrate deploy` before starting the server.
+- `pnpm prisma:migrate` (`scripts/migrate-dev.mjs`) runs `prisma migrate dev` against a disposable plaintext scratch database (`temp/migrate-scratch.db`, no data) to generate a new migration folder; extra arguments go to Prisma (`pnpm prisma:migrate --name new_table`). The encrypted database cannot be opened by the Prisma CLI.
+- **Opening the database (Current).** Every vault setup and every unlock runs `src/server/backup/startup.ts` before Prisma connects, while the database key is in memory and no connection is open. In order: (1) a scheduled restore (`talentum-backups/pending-restore.*`) is verified — SHA-256 of the copy and of the device key, integrity and schema version checked by opening the copy with the database key, every migration in it known to this app version — the current database is saved as a `pre_restore` restore point, and the files are swapped with an atomic `rename`; a copy that fails any check is discarded and the current database stays in use; (2) when migrations are pending on a database that already has schema, a verified, encrypted `pre_migration` restore point is created and its `DatabaseBackup` row written; (3) the pending migrations are applied. Restore points and the scheduled-restore copy are encrypted with the database key like the database itself; libSQL's `VACUUM INTO` writes a **plaintext** copy of an encrypted database, so copies are made through an encrypted connection instead (`src/server/backup/libsql-file.ts`; `tests/restore-points.test.mjs` pins that behavior). See [ADR 0007](decisions/0007-local-encrypted-backup.md) and [ADR 0009](decisions/0009-local-vault-and-encrypted-database.md).
+- The migration runner (`src/server/vault/migrations.ts`) reads every `prisma/migrations/<name>/migration.sql` in name order (`TALENTUM_MIGRATIONS_DIR` overrides the folder; the packaged app sets it), so any future folder is picked up without a list. Each is recorded in `_prisma_migrations` in Prisma's format (SHA-256 checksum of the file, `started_at`, `finished_at`, `applied_steps_count`). An applied migration never runs again (tested twice in a row); a migration that failed halfway is recorded without its error text and blocks later ones (`FAILED_MIGRATION_PENDING`), as `migrate deploy` does with P3009. The SQL runs as written, without a surrounding transaction, because SQLite table redefinitions use `PRAGMA foreign_keys`.
+- **Destructive-migration gate**, the same in development, Docker and the packaged app: with schema already applied, pending SQL containing `DROP TABLE`, `DROP COLUMN`, `TRUNCATE TABLE` or `DELETE FROM` requires a verified backup of the current schema version — the `pre_migration` restore point created just before, or, when that point could not be created, `TALENTUM_VERIFIED_BACKUP_ID` pointing to `DatabaseBackup` metadata with status `verified`, a SHA-256 checksum, a size and the current schema version; otherwise unlock fails with `VAULT_DATABASE_UNAVAILABLE` before changing anything. A brand-new database has nothing to lose and is not gated.
+- `pnpm dev`, `pnpm test:manual`, the Docker image and the packaged app run neither `prisma migrate deploy` nor a startup script: the CLI would create a plaintext database beside the vault. `scripts/migration-preflight.mjs` and `pnpm prisma:preflight` were removed; their three responsibilities moved to the open path above.
 - `pnpm prisma:generate` regenerates the client and `pnpm prisma:validate` validates the schema; `pnpm typecheck` regenerates the client when it is stale.
 
-`prisma migrate deploy` is Prisma-only; D1 uses Wrangler (next sections).
+D1 uses Wrangler (next sections).
 
 ## Cloud D1
 
-Status: **Current** for every table listed here: all of them are created by the D1 migrations in `cloudflare/migrations`. Whether a Worker route uses a table is stated separately. The Worker (`cloudflare/src/index.ts`) accesses D1 inline through the `DB` binding with prepared statements; there is no adapter layer. All IDs are `TEXT` primary keys filled with `crypto.randomUUID()`, all timestamps are ISO 8601 UTC `TEXT`, and both migrations enable `PRAGMA foreign_keys = ON`. Column names are snake_case.
+Status: **Current** for every table listed here: all of them are created by the D1 migrations in `cloudflare/migrations`. Whether a Worker route uses a table is stated separately. The Worker (`cloudflare/src/`) accesses D1 through the `DB` binding with bound prepared statements; there is no adapter layer. All IDs are `TEXT` primary keys filled with `crypto.randomUUID()`, all timestamps are ISO 8601 UTC `TEXT`, and both migrations enable `PRAGMA foreign_keys = ON`. Column names are snake_case.
 
 ### Identity and consent (`0001_cloud_core`)
 
 | Table | Keys and relations | Purpose and constraints | Worker use |
 | --- | --- | --- | --- |
-| `users` | `id` | internal account; `email_normalized` unique; `status` in `ACTIVE`, `BLOCKED`, `DELETED` (default `ACTIVE`); `email_verified_at`, `deleted_at` | **Current** (upserted on OAuth callback) |
-| `user_profiles` | `id`, `user_id` unique, FK cascade | approved public name (`public_name`) and avatar (`avatar_url`) | **Current** (created on first login, read by `/api/me`) |
+| `users` | `id` | internal account; `email_normalized` unique; `status` in `ACTIVE`, `BLOCKED`, `DELETED` (default `ACTIVE`); `email_verified_at`, `deleted_at` | **Current** (upserted on OAuth callback; account deletion keeps the row as a tombstone with `status = DELETED` and `email_normalized = 'deleted:' || id`, because community rows reference it with `RESTRICT`) |
+| `user_profiles` | `id`, `user_id` unique, FK cascade | public name (`public_name`, first name from Google, editable 2–40 chars) and avatar URL (`avatar_url`, stored but never displayed) | **Current** (created on first login; `profileId` is the only identifier shown in the community) |
 | `oauth_identities` | `id`, `user_id` FK cascade | link to issuer and subject; unique `(provider, provider_subject)`; index on `user_id` | **Current** (provider `GOOGLE`) |
-| `consents` | `id`, `user_id` FK cascade | accepted version of terms/privacy (`document_type`, `document_version`, `accepted_at`, `revoked_at`); unique `(user_id, document_type, document_version)`; index on `user_id` | **Planned** (no route writes it) |
+| `consents` | `id`, `user_id` FK cascade | accepted version of terms/privacy (`document_type`, `document_version`, `accepted_at`, `revoked_at`); unique `(user_id, document_type, document_version)`; index on `user_id` | **Current**: one row per document (`TERMS`, `PRIVACY`) and version on each login whose start carried the current versions (`ON CONFLICT DO NOTHING`); deleted with the account |
 
 ### Sessions (`0001_cloud_core`)
 
 | Table | Keys and relations | Purpose and constraints | Worker use |
 | --- | --- | --- | --- |
-| `auth_sessions` | `id`, `user_id` FK cascade | session with `token_hash` (unique), `expires_at`, `last_seen_at`, `revoked_at`; index `(user_id, expires_at)` | **Current** |
+| `auth_sessions` | `id`, `user_id` FK cascade | session with `token_hash` (unique), `expires_at`, `last_seen_at`, `revoked_at`, `client_kind` in `WEB`/`DESKTOP` (`0003`); index `(user_id, expires_at)` | **Current** (listed and revoked in `/conta`) |
 | `refresh_token_families` | `id`, `session_id` FK cascade | rotation and revocation; `revoked_at`, `compromise_detected_at`; index on `session_id` | **Current** (reuse sets `compromise_detected_at` and revokes the family and session) |
 | `refresh_tokens` | `id`, `family_id` FK cascade, `successor_token_id` self-FK set null | `token_hash` (unique), `expires_at`, `consumed_at`, `revoked_at`, successor link; index `(family_id, expires_at)` | **Current** |
 
@@ -471,12 +538,12 @@ Status: **Current** for every table listed here: all of them are created by the 
 | Table | Keys and relations | Purpose and constraints | Worker use |
 | --- | --- | --- | --- |
 | `releases` | `id` | `version`, `channel` in `STABLE`/`BETA`, `status` in `DRAFT`/`PUBLISHED`/`REVOKED`, `published_at`; unique `(version, channel)` | **Current** (read by `/api/releases`; no route creates releases) |
-| `release_artifacts` | `id`, `release_id` FK cascade | `platform` in `WINDOWS`/`LINUX`, `architecture`, `download_url`, `sha256`, optional `signature`; unique `(release_id, platform, architecture)`; index on `release_id` | **Current** (read) |
-| `download_grants` | `id`, `user_id` FK cascade, `artifact_id` FK cascade | short-lived grant: `grant_hash` (unique), `expires_at`, `consumed_at`; index `(user_id, expires_at)` | **Current** (inserted with a 5-minute expiry; see Open items on consumption) |
+| `release_artifacts` | `id`, `release_id` FK cascade | `platform` in `WINDOWS`/`LINUX`/`MACOS` (`MACOS` added by `0004`, which rebuilds the table), `architecture`, `download_url`, `sha256`, optional `signature`; unique `(release_id, platform, architecture)`; index on `release_id` | **Current** (read) |
+| `download_grants` | `id`, `user_id` FK cascade, `artifact_id` FK cascade | short-lived grant: `grant_hash` (unique), `expires_at`, `consumed_at`; index `(user_id, expires_at)` | **Current** (2-minute expiry; `consumed_at` set atomically by the redeem route) |
 
 ### Community (`0001_cloud_core`)
 
-All community tables exist, but **no Worker route reads or writes them**. Feedback and community routes are **Planned**.
+**Current**: the Worker community routes read and write these tables ([ARCHITECTURE.md §2.4](ARCHITECTURE.md#24-feedback-community)). Migration `0003` adds unique partial indexes so a person reports a post or comment once, and indexes for author lookups and comment votes.
 
 | Table | Keys and relations | Purpose and constraints |
 | --- | --- | --- |
@@ -508,8 +575,8 @@ erDiagram
 
 | Table | Keys and relations | Purpose and constraints | Worker use |
 | --- | --- | --- | --- |
-| `security_events` | `id`, `user_id` and `session_id` FK set null | authentication and abuse events without secrets: `event_type`, `outcome`, `risk_level` in `LOW`/`MEDIUM`/`HIGH`/`CRITICAL`, `metadata_json`; index `(user_id, created_at)` | **Planned** (nothing writes it; refresh-token reuse is not recorded here) |
-| `audit_events` | `id`, `actor_user_id` FK set null | administrative trail: `action`, `resource_type`, `resource_id`, `outcome`, `metadata_json`; index `(resource_type, resource_id, created_at)` | **Planned** (nothing writes it) |
+| `security_events` | `id`, `user_id` and `session_id` FK set null | authentication and abuse events without secrets: `event_type`, `outcome`, `risk_level` in `LOW`/`MEDIUM`/`HIGH`/`CRITICAL`, `metadata_json`; index `(user_id, created_at)` | **Current**: login, session creation and revocation, logout, refresh reuse, two-step verification, account deletion and desktop token failures; `metadata_json` limited to an allowlist of keys, never token, e-mail or IP |
+| `audit_events` | `id`, `actor_user_id` FK set null | administrative trail: `action`, `resource_type`, `resource_id`, `outcome`, `metadata_json`; index `(resource_type, resource_id, created_at)` | **Current**: download grants created and redeemed, moderation decisions, deletions by authors, account deletion |
 
 Audit events record the outcome of an action by their own `id`, never the action code.
 
@@ -519,9 +586,29 @@ Audit events record the outcome of an action by their own `id`, never the action
 | --- | --- | --- | --- |
 | `action_codes` | `id` | backend-issued single-use action codes: `code_hash` (unique), bound `method` and `path`, `context_hash`, `expires_at` (60 seconds after issue), `consumed_at`; index on `expires_at` | **Current** |
 | `auth_transactions` | `id` | temporary OAuth state: `state_hash` (unique), `nonce_hash`, `code_verifier_ciphertext` (encrypted PKCE verifier and nonce), `redirect_uri`, `return_to`, `expires_at` (10 minutes), `consumed_at`; index on `expires_at` | **Current** |
-| `rate_limit_windows` | `id` | fixed one-minute rate-limit windows: `bucket_hash` (unique), `window_started_at`, `request_count`, `updated_at`; index on `window_started_at` | **Current** (buckets `codes` and `login`) |
+| `rate_limit_windows` | `id` | fixed one-minute rate-limit windows: `bucket_hash` (unique), `window_started_at`, `request_count`, `updated_at`; index on `window_started_at` | **Current** (every bucket in `cloudflare/src/lib/limits.ts`) |
 
-Action codes are stored only as hashes with a short TTL and are consumed by setting `consumed_at`; consumed and expired rows are **not deleted** today. They are operational state: they do not belong to history, audit or analytics, and they carry no user data. The `context_hash` column currently holds a hash of the BFF shared secret, so it is the same for every caller and does not bind a code to a session or origin. See [SECURITY.md](SECURITY.md) for the action-code contract and its open issues.
+Action codes are stored only as hashes with a short TTL and are consumed by setting `consumed_at`; the cron deletes them one day after expiry. Since `0003`, `auth_transactions` also keeps the accepted document versions, the client kind and the desktop request ID. They are operational state: they do not belong to history, audit or analytics, and they carry no user data. The `context_hash` column holds a hash of the BFF shared secret for BFF codes and a fixed public value for public codes, so the two kinds never open each other's routes; it does not bind a code to a session. See [SECURITY.md](SECURITY.md) for the action-code contract and its open issues.
+
+### Completion tables (`0003_cloud_mvp_completion`)
+
+| Table | Keys and relations | Purpose and constraints | Worker use |
+| --- | --- | --- | --- |
+| `user_roles` | `id`, `user_id` FK cascade | `role` in `MODERATOR`; unique `(user_id, role)`; granted only by the operator | **Current** |
+| `idempotency_keys` | `id`, `user_id` FK cascade | peppered `key_hash`, `route`, `request_hash`, stored `status_code` and `response_json`; unique `(user_id, key_hash)` | **Current** (post and comment creation) |
+| `news_items` | `id` | public news: `source_key`, `guid_hash` (unique per source), `title`, `url`, `excerpt` (≤ 300 chars), `published_at`, `fetched_at`; index on `published_at` | **Current** |
+| `news_summaries` | `id`, `news_item_id` unique FK cascade | `summary` (≤ 700 chars), `method` in `AI`/`EXTRACT`, `model` | **Current** |
+| `mfa_totp` | `id`, `user_id` unique FK cascade | `secret_ciphertext` (AES-GCM, never plain), `status` in `PENDING`/`ACTIVE`, `last_used_step`, `failed_attempts`, `locked_until` | **Current** |
+| `mfa_recovery_codes` | `id`, `user_id` FK cascade | peppered `code_hash` (unique), `consumed_at` | **Current** |
+| `mfa_recovery_reveals` | `id`, `user_id` unique FK cascade | encrypted copy of new recovery codes for one reveal, `expires_at` (10 min) | **Current** |
+| `mfa_challenges` | `id`, `user_id` FK cascade | pending login between callback and code: `challenge_hash`, `client_kind`, `desktop_request_id`, `attempts`, `expires_at` (5 min), `consumed_at` | **Current** |
+| `desktop_auth_requests` | `id`, `user_id` FK cascade (set after login) | RFC 8252 request: `redirect_uri` (loopback), `code_challenge` (S256), `desktop_state`, single-use `handoff_hash`, single-use `code_hash` with `code_expires_at` (60 s), `expires_at` (10 min), `consumed_at` | **Current** |
+
+`0003` also adds `consent_terms_version`, `consent_privacy_version`, `client_kind` and `desktop_request_id` to `auth_transactions`, `client_kind` to `auth_sessions`, and expiry/creation indexes used by the retention cron. `0004_release_macos` rebuilds `release_artifacts` with `MACOS` in the platform check (with `PRAGMA defer_foreign_keys`); pending download grants are removed by the rebuild.
+
+### D1 retention (`cloudflare/src/maintenance.ts`)
+
+**Current.** The cron (`*/30 * * * *`) deletes, and `/privacidade` publishes, these periods: action codes, auth transactions, rate-limit windows, idempotency keys, MFA challenges and desktop requests 1 day after expiry or creation; recovery reveals at expiry; sessions 30 days after expiry or revocation (families and refresh tokens cascade); download grants 30 days after expiry; news 30 days after publication (summaries cascade); security events 180 days; audit events 365 days. Accounts stay until the person deletes them; deletion is immediate (`DELETE /api/me`). Changing a period requires changing the code, `/privacidade` and this table together.
 
 ## D1 migrations
 
@@ -531,6 +618,8 @@ Status: **Current**. D1 DDL lives in sequential, versioned SQL files in `cloudfl
 | --- | --- |
 | `0001_cloud_core.sql` | identity, consent, session, distribution, community, security-event and audit-event tables and their indexes |
 | `0002_cloud_auth_runtime.sql` | `action_codes`, `auth_transactions`, `rate_limit_windows` and their indexes |
+| `0003_cloud_mvp_completion.sql` | consent and client-kind columns, `user_roles`, `idempotency_keys`, report uniqueness, `news_items`, `news_summaries`, the five MFA and desktop tables, retention indexes |
+| `0004_release_macos.sql` | `release_artifacts` rebuilt to accept `MACOS` |
 
 They are applied with `wrangler d1 migrations apply` through the package scripts, all using `cloudflare/wrangler.jsonc`:
 
@@ -550,7 +639,7 @@ Status: **Rule**.
 - Every schema change includes a reviewable migration with a unique name and scope.
 - Fixtures and tests use only synthetic data.
 - Migration and restore are tested on copies, never on the user's only database.
-- Destructive migrations require a local backup and a recovery path. **Current** as a gate in `pnpm dev` (the preflight above); **Open** for Docker and the packaged app, and no code creates the required `DatabaseBackup` rows yet.
+- Destructive migrations require a local backup and a recovery path. **Current** as a gate in the migration runner for every environment; **Open**: no code creates the required `DatabaseBackup` rows yet.
 - The application records the schema version. **Current** through each tool's migration table (Prisma's and Wrangler's).
 
 Apply this order:
@@ -562,7 +651,7 @@ Apply this order:
 5. run integrity tests and critical queries;
 6. record duration, rows touched and additional space;
 7. back up before a destructive migration;
-8. apply with the store's deploy command (`prisma migrate deploy` locally, `wrangler d1 migrations apply` on D1);
+8. apply with the store's deploy path (locally, the migration runner at the next unlock; `wrangler d1 migrations apply` on D1);
 9. verify application health and compatibility;
 10. keep an operational rollback or restore procedure.
 
@@ -623,7 +712,8 @@ Status: **Rule**.
 - retries only for transient errors, with backoff and jitter;
 - never keep a transaction open while calling the network, AI, e-mail or external storage.
 
-Idempotency keys for imports, download grants, post creation and other commands that a network failure can repeat: **Planned**. No current endpoint or table implements an idempotency key. Related controls that exist (**Current**): the batch fingerprint and `(accountId, externalId)` make a repeated import safe, onboarding answers are upserted by `(onboardingSessionId, questionKey)` and onboarding updates use `version` for optimistic concurrency.
+Idempotency keys: **Current** for goal contributions (`GoalContribution`) and asset values (`AssetSnapshot`), each unique by `(profileId, idempotencyKey)`; budget limits are an upsert on `(profileId, categoryId, month)`. **Planned** for imports, download grants, post creation and other commands that a network failure can repeat. Related controls that exist (**Current**): the batch fingerprint and `(accountId, externalId)` make a repeated import safe, onboarding answers are upserted by `(onboardingSessionId, questionKey)` and onboarding updates use `version` for optimistic concurrency.
+Idempotency keys for imports, download grants, post creation and other commands that a network failure can repeat: **Planned** as a general mechanism. **Current:** `POST /api/restore-points` requires an `idempotencyKey` (UUID) stored in the restore-point manifest, so a repeated request returns the same point; notification state, notification preferences (PUT), month reviews (unique per month) and data deletion are idempotent by construction. Related controls that exist (**Current**): the batch fingerprint and `(accountId, externalId)` make a repeated import safe, onboarding answers are upserted by `(onboardingSessionId, questionKey)` and onboarding updates use `version` for optimistic concurrency.
 
 ## Caching, retention, backup and observability
 
@@ -637,15 +727,47 @@ Status: **Rule**; per-table records are **Open** (not yet written for existing t
 
 ### Backup and restore
 
-Status: **Planned**. Only the `DatabaseBackup` metadata table and the migration preflight that reads it exist (**Current**). Define RPO and RTO per data class. A backup without a restore test does not count as a control. Execute:
+Status: **Current** locally ([ADR 0007](decisions/0007-local-encrypted-backup.md), [ARCHITECTURE.md §2.9](ARCHITECTURE.md#29-backup-and-restore)); cloud storage is **Open**.
 
-1. automatic backup before a destructive migration;
-2. checksum and schema version;
-3. encryption with the key kept outside the file;
-4. automated restore in an isolated environment;
-5. verification of foreign keys and counts;
-6. periodic disaster test;
-7. recording duration against RTO.
+1. Automatic backup before a pending migration, a restore and a full deletion. **Current.**
+2. Checksum (SHA-256 of copy and key) and schema version in a manifest; integrity (`PRAGMA quick_check`) checked when created and before every restore. **Current.**
+3. Encryption with a passphrase-derived key kept outside the file (encrypted backup). **Current**; restore points next to the database are not encrypted and protect against mistakes, not theft.
+4. Automated restore in an isolated environment: `tests/restore-points.test.mjs` creates, stages and applies restores on temporary SQLite files. **Current** as a test; periodic drills on real data are **Open**.
+5. Verification of foreign keys and counts after restore. **Open** (integrity check only).
+6. Periodic disaster test and 7. RTO recording. **Open.** RPO is the age of the newest restore point; no RPO/RTO target is defined.
+
+Retention: at most 20 restore points; the oldest automatic ones are removed first, manual ones only by the person.
+
+### Export format
+
+Status: **Current**. `GET /api/exports/json` returns one UTF-8 JSON document (`talentum-dados-AAAA-MM-DD.json`):
+
+```json
+{
+  "format": "talentum-export",
+  "schemaVersion": 1,
+  "databaseMigration": "20261120220000_notifications_gamification",
+  "exportedAt": "2026-11-20T12:00:00.000Z",
+  "profile": { "id": "…", "displayName": "…", "createdAt": "…", "updatedAt": "…" },
+  "tables": {
+    "userPreferences": [], "onboardingSessions": [], "onboardingAnswers": [],
+    "institutions": [], "accounts": [], "balanceSnapshots": [], "pixIdentifiers": [],
+    "categories": [], "incomeSources": [], "scheduledObligations": [], "merchantRules": [],
+    "csvMappingProfiles": [], "importBatches": [], "importFiles": [], "importIssues": [],
+    "transactions": [], "transactionRevisions": [], "reconciliationItems": [],
+    "reconciliationDecisions": [], "financialAdjustments": [], "ownAccountTransfers": [],
+    "timelineEvents": [], "databaseBackups": [], "notificationStates": [], "monthlyReviews": []
+  }
+}
+```
+
+Each table holds every row of the profile with the model's column names as in the schema above. Money columns (`*Cents`) are integer strings, instants are ISO 8601, IDs are the opaque UUIDs, so relations survive. `pixIdentifiers` carries `maskedValue`, `type`, `label`, validity and status only: `valueIndex` and `valueCiphertext` are omitted because they are useless without the device key. To move everything, Pix keys included, use the encrypted backup. `schemaVersion` changes only when this structure changes incompatibly; `databaseMigration` names the database version that produced it. A table added by another feature must be added to `src/server/export/service.ts` and to this list.
+
+`GET /api/exports/transactions-csv` returns `talentum-lancamentos-AAAA-MM-DD.csv`: UTF-8 with BOM, `;` separator, CRLF, every cell quoted, columns `id`, `data` (`AAAA-MM-DD`), `descricao`, `valor` (decimal comma, sign for outflows), `moeda`, `conta`, `categoria`, `situacao` (`confirmado`/`pendente`), `importacao` (batch ID). Text cells starting with `=`, `+`, `-`, `@` (also full-width), tab or carriage return get a leading apostrophe (`src/server/export/csv.ts`).
+
+### Local data deletion
+
+Status: **Current**. `POST /api/local-data/deletion` requires the typed phrase `APAGAR MEUS DADOS`, creates a `pre_deletion` restore point (unless the person also deletes restore points), deletes the `LocalProfile` row (every local table cascades from it) and runs `VACUUM` so deleted content does not linger in free pages. With `includeRestorePoints: true` it also deletes every restore point and any scheduled restore, and cannot be undone. The device key file is kept.
 
 ### Operation and cost metrics
 
@@ -754,16 +876,16 @@ Status: **Planned**. Never declare readiness just because the schema accepts a m
 1. **Imported transaction to batch link.** The API removes a batch's entries when it undoes the batch, but the database does not enforce the invariant: `Transaction.importBatchId` is optional with `onDelete: SetNull`. Decide whether to require it for imported rows (for example with a source/kind column) or to forbid batch deletion while transactions reference it.
 2. **ID format.** Policy prefers UUIDv7 or ULID; Prisma (`uuid()`) and the Worker (`crypto.randomUUID()`) generate random UUIDv4. They satisfy opacity but not time ordering. Decide whether to migrate generators.
 3. **Unconstrained local states.** Local `status`, `kind`, `type`, `format`, `recurrence`, `severity`, `source`, `matchType` and `frequency` columns are free strings without `CHECK` constraints, contrary to the rule of restricting finite states in the database when safe.
-4. **Action-code rows are never purged.** Consumed and expired `action_codes`, `auth_transactions` and stale `rate_limit_windows` rows remain in D1; no cleanup job exists. Define retention and a purge mechanism.
-5. **Download grant consumption.** Nothing marks `download_grants.consumed_at`; the security gap is owned by [SECURITY.md](SECURITY.md#open-items) (item 8).
-6. **Unused security and audit tables.** `security_events` and `audit_events` exist but nothing writes them; the missing recording is owned by [SECURITY.md](SECURITY.md#open-items) (item 13).
-7. **Unused consents table.** `consents` exists but no flow records acceptance of terms or privacy.
-8. **Community routes.** Feedback and community tables exist without any Worker route; their API contract is Planned.
+4. **Closed** — operational rows are purged by the cron (see D1 retention).
+5. **Closed** — download grants are consumed by the redeem route.
+6. **Closed** — security and audit events are written.
+7. **Closed** — consents are recorded at login.
+8. **Closed** — community routes exist; a published community policy and appeal channel are Open ([SECURITY.md](SECURITY.md#open-items), item 26).
 9. **Remote backup metadata and communication preference.** Not allowed in D1 until a feature requiring them is approved and documented.
-10. **Remote XP synchronization.** Whether gamification XP needs remote storage is undecided.
+10. **Remote XP synchronization.** Whether gamification XP needs remote storage is undecided. Locally, XP is derived and never leaves the device (**Current**).
 11. **Capacity documents.** The dated capacity-profile process has no directory or template yet, and existing schemas were approved without one. Decide whether to keep the requirement and create the location, or relax it for small changes.
-12. **Per-table retention records.** Purpose, retention, deletion event and export procedure are not yet documented per table for either store.
-13. **Migration gate outside development.** The packaged app now applies migrations on start (closing the former "no migration mechanism" item), but neither it nor the Docker image runs the destructive-migration preflight, and no code creates `DatabaseBackup` rows.
+12. **Per-table retention records.** D1 retention periods are documented (D1 retention); purpose, legal basis and export procedure per table are still missing for both stores, and the local store has no retention record.
+13. **Migration gate outside development.** Closed in code: setup and every unlock, in development, Docker and the packaged app, create a verified, encrypted `pre_migration` restore point and its `DatabaseBackup` row before pending migrations (`src/server/backup/startup.ts`). Remaining: a packaged build has not exercised it end to end.
 14. **Balance origin and confidence.** `BalanceSnapshot.importBatchId` distinguishes a statement balance from a hand-entered one, but there is no `source`/confidence column (`BANK_REPORTED`/`USER_DECLARED`); see L-3 in [PRODUCT.md](PRODUCT.md).
 
 ## References

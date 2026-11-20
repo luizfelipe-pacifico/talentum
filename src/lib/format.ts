@@ -32,6 +32,22 @@ export function formatPeriod(startIso: string, endIso: string): string {
   return `${start.getDate()} a ${end.getDate()} de ${month}`;
 }
 
+/**
+ * Valor digitado em reais para centavos inteiros, como string.
+ *
+ * Aceita `12`, `12,5`, `12,50`, `1.234,56` e o símbolo `R$`. Devolve `null`
+ * para texto que não é um valor, para zero e para mais de duas casas decimais:
+ * arredondar o que a pessoa digitou seria decidir por ela.
+ */
+export function parseBrlToCents(input: string): string | null {
+  const text = input.replace(/R\$/i, '').replace(/\s/g, '');
+  if (!/^\d{1,3}(\.\d{3})+(,\d{1,2})?$|^\d{1,13}(,\d{1,2})?$/.test(text)) return null;
+  const [units, fraction = ''] = text.replace(/\./g, '').split(',');
+  if (units.length > 13) return null;
+  const cents = BigInt(units) * 100n + BigInt(fraction.padEnd(2, '0'));
+  return cents === 0n ? null : cents.toString();
+}
+
 /** Data curta por extenso: "1 de setembro". Usada na data-base de saldos (R-26). */
 export function formatDay(iso: string): string {
   return new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'long' }).format(new Date(iso));

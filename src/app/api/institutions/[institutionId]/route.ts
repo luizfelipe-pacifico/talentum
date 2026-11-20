@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { db } from '@/server/db';
-import { fail, guardWithProfile, isDenied, ok, readJson } from '@/server/http';
+import { fail, guardWithProfile, isDenied, ok, prismaFailure, readJson } from '@/server/http';
 
 /* Uma instituição.
 
@@ -51,13 +51,16 @@ export async function PATCH(request: Request, context: Context) {
   });
   if (clash) return fail('INSTITUTION_NAME_TAKEN', 'Já existe uma instituição com esse nome.', 409);
 
-  const institution = await db.institution.update({
-    where: { id: existing.id, profileId: guarded.profileId },
-    data: { name: parsed.data.name },
-    select: { id: true, name: true },
-  });
-
-  return ok({ institution });
+  try {
+    const institution = await db.institution.update({
+      where: { id: existing.id, profileId: guarded.profileId },
+      data: { name: parsed.data.name },
+      select: { id: true, name: true },
+    });
+    return ok({ institution });
+  } catch (error) {
+    return prismaFailure(error, { notFound: { code: 'INSTITUTION_NOT_FOUND', message: 'A instituição informada não existe.' } });
+  }
 }
 
 export async function DELETE(request: Request, context: Context) {
@@ -82,6 +85,10 @@ export async function DELETE(request: Request, context: Context) {
     );
   }
 
-  await db.institution.delete({ where: { id: institution.id, profileId: guarded.profileId } });
+  try {
+    await db.institution.delete({ where: { id: institution.id, profileId: guarded.profileId } });
+  } catch (error) {
+    return prismaFailure(error, { notFound: { code: 'INSTITUTION_NOT_FOUND', message: 'A instituição informada não existe.' } });
+  }
   return ok({ removed: true });
 }

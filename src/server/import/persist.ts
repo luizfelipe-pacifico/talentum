@@ -8,7 +8,9 @@
 
    Toda consulta é escopada por `profileId` (docs/DATABASE.md, §4). */
 
+import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
+import { loadActiveRules, loadOwnPixIndexes, mentionsOwnPix, planNewEntries, writeReconciliation } from '@/server/auto-reconciliation';
 import { db } from '@/server/db';
 import type { RawEntry } from './csv.ts';
 import type { StatementInspection } from './inspect.ts';
@@ -42,6 +44,8 @@ export type ImportResult = {
   periodStart: Date | null;
   periodEnd: Date | null;
   balanceRecorded: boolean;
+  autoCategorizedCount: number;
+  transferSuggestionCount: number;
 };
 
 /**
@@ -69,6 +73,12 @@ export function sanitizeFileName(name: string): string {
  * 1. o mesmo arquivo reenviado — barrado pela impressão digital do lote;
  * 2. dois extratos com período sobreposto — barrado lançamento a lançamento,
  *    pelo identificador de origem ou, na falta dele, pela chave de comparação.
+ *
+ * A comparação acontece **dentro** da transação e **depois** da primeira
+ * escrita (o próprio lote). No SQLite, essa escrita reserva o banco: uma segunda
+ * importação simultânea espera a primeira terminar e já enxerga o que ela
+ * gravou, em vez de comparar com o mesmo banco antigo e duplicar linhas sem
+ * identificador (docs/SECURITY.md, item 19).
  */
 export async function persistImport(
   profileId: string,
@@ -82,6 +92,7 @@ export async function persistImport(
   });
   if (!account) throw new ImportPersistError('ACCOUNT_NOT_FOUND');
 
+  // Resposta amigável para o caso comum; a garantia é a restrição única do lote.
   const existingBatch = await db.importBatch.findFirst({
     where: { profileId, fingerprint: inspection.fingerprint },
     select: { id: true },
@@ -92,57 +103,12 @@ export async function persistImport(
 
   const periodStart = inspection.periodStart;
   const periodEnd = inspection.periodEnd;
-
-  // Só os lançamentos do intervalo do arquivo precisam ser comparados: buscar a
-  // conta inteira leria o histórico completo a cada importação.
-  const existing = await db.transaction.findMany({
-    where: {
-      profileId,
-      accountId,
-      ...(periodStart && periodEnd ? { occurredOn: { gte: periodStart, lte: periodEnd } } : {}),
-    },
-    select: { externalId: true, occurredOn: true, amountCents: true, description: true },
-  });
-
-  const existingExternalIds = new Set(
-    existing.map((row) => row.externalId).filter((value): value is string => value !== null),
-  );
-  const fallbackCounts = new Map<string, number>();
-  for (const row of existing) {
-    if (row.externalId) continue;
-    const key = fallbackKey(row);
-    fallbackCounts.set(key, (fallbackCounts.get(key) ?? 0) + 1);
-  }
-
-  const fresh: RawEntry[] = [];
-  const seenExternalIds = new Set<string>();
-  let duplicateCount = 0;
-
-  for (const entry of inspection.entries) {
-    if (entry.externalId) {
-      // Repetido no banco ou repetido dentro do próprio arquivo.
-      if (existingExternalIds.has(entry.externalId) || seenExternalIds.has(entry.externalId)) {
-        duplicateCount += 1;
-        continue;
-      }
-      seenExternalIds.add(entry.externalId);
-      fresh.push(entry);
-      continue;
-    }
-
-    const key = fallbackKey(entry);
-    const remaining = fallbackCounts.get(key) ?? 0;
-    if (remaining > 0) {
-      // Consome uma ocorrência: dois lançamentos idênticos legítimos no mesmo
-      // dia continuam sendo dois, desde que já não existam os dois no banco.
-      fallbackCounts.set(key, remaining - 1);
-      duplicateCount += 1;
-      continue;
-    }
-    fresh.push(entry);
-  }
-
   const now = new Date();
+
+  // Regras e chaves PIX próprias são lidas antes: não fazem parte da corrida, e
+  // o índice HMAC de cada descrição custa mais do que vale segurar o banco.
+  const [rules, indexes] = await Promise.all([loadActiveRules(profileId), loadOwnPixIndexes(profileId)]);
+  const pixMentions = await Promise.all(inspection.entries.map((entry) => mentionsOwnPix(entry.description, indexes)));
 
   return db.$transaction(async (tx) => {
     const batch = await tx.importBatch.create({
@@ -150,17 +116,67 @@ export async function persistImport(
         profileId,
         accountId,
         format: inspection.format,
+        // Leitor de PDF e versão que leram o lote (ADR 0006); nulo em CSV e OFX.
+        parser: inspection.pdf ? `${inspection.pdf.parserId}@${inspection.pdf.parserVersion}` : null,
         fingerprint: inspection.fingerprint,
         status: 'completed',
         fileName: sanitizeFileName(file.originalName),
         periodStart,
         periodEnd,
         rowCount: inspection.entries.length,
-        importedCount: fresh.length,
-        duplicateCount,
         importedAt: now,
       },
       select: { id: true },
+    });
+
+    // Só os lançamentos do intervalo do arquivo precisam ser comparados: buscar a
+    // conta inteira leria o histórico completo a cada importação.
+    const existing = await tx.transaction.findMany({
+      where: {
+        profileId,
+        accountId,
+        ...(periodStart && periodEnd ? { occurredOn: { gte: periodStart, lte: periodEnd } } : {}),
+      },
+      select: { externalId: true, occurredOn: true, amountCents: true, description: true },
+    });
+
+    const existingExternalIds = new Set(
+      existing.map((row) => row.externalId).filter((value): value is string => value !== null),
+    );
+    const fallbackCounts = new Map<string, number>();
+    for (const row of existing) {
+      if (row.externalId) continue;
+      const key = fallbackKey(row);
+      fallbackCounts.set(key, (fallbackCounts.get(key) ?? 0) + 1);
+    }
+
+    const fresh: (RawEntry & { id: string; mentionsOwnPix: boolean })[] = [];
+    const seenExternalIds = new Set<string>();
+    let duplicateCount = 0;
+
+    inspection.entries.forEach((entry, index) => {
+      const row = { ...entry, id: randomUUID(), mentionsOwnPix: pixMentions[index] ?? false };
+      if (entry.externalId) {
+        // Repetido no banco ou repetido dentro do próprio arquivo.
+        if (existingExternalIds.has(entry.externalId) || seenExternalIds.has(entry.externalId)) {
+          duplicateCount += 1;
+          return;
+        }
+        seenExternalIds.add(entry.externalId);
+        fresh.push(row);
+        return;
+      }
+
+      const key = fallbackKey(entry);
+      const remaining = fallbackCounts.get(key) ?? 0;
+      if (remaining > 0) {
+        // Consome uma ocorrência: dois lançamentos idênticos legítimos no mesmo
+        // dia continuam sendo dois, desde que já não existam os dois no banco.
+        fallbackCounts.set(key, remaining - 1);
+        duplicateCount += 1;
+        return;
+      }
+      fresh.push(row);
     });
 
     await tx.importFile.create({
@@ -174,35 +190,41 @@ export async function persistImport(
       },
     });
 
+    let automation = { autoCategorized: 0, transferSuggestions: 0 };
     if (fresh.length > 0) {
+      /* Plano de conciliação antes de gravar: transferência própria provável
+         primeiro, regra de estabelecimento depois (src/server/reconciliation-plan.ts).
+         A categoria de uma regra aplicada já nasce no lançamento. */
+      const plan = await planNewEntries(
+        tx,
+        profileId,
+        fresh.map((entry) => ({ ...entry, accountId })),
+        { rules, indexes },
+      );
+      const categoryOf = new Map(plan.entries.map((entry) => [entry.id, entry.categoryId]));
+
       await tx.transaction.createMany({
         data: fresh.map((entry) => ({
+          id: entry.id,
           profileId,
           accountId,
           importBatchId: batch.id,
-          categoryId: null,
+          categoryId: categoryOf.get(entry.id) ?? null,
           occurredOn: entry.occurredOn,
           description: entry.description,
           amountCents: entry.amountCents,
           // Um lançamento de extrato já aconteceu: ele entra como liquidado.
-          // `pending` é a fila de conciliação, que nasce na migration 6.
           status: 'posted',
           externalId: entry.externalId,
         })),
       });
 
-      const imported = await tx.transaction.findMany({
-        where: { profileId, importBatchId: batch.id, categoryId: null },
-        select: { id: true },
-      });
-      await tx.reconciliationItem.createMany({
-        data: imported.map(({ id }) => ({
-          profileId,
-          transactionId: id,
-          reason: 'category_unknown',
-          confidence: 0,
-        })),
-      });
+      automation = await writeReconciliation(
+        tx,
+        profileId,
+        plan,
+        new Map(fresh.map((entry) => [entry.id, { amountCents: entry.amountCents, status: 'posted' }])),
+      );
     }
 
     if (inspection.issues.length > 0) {
@@ -232,11 +254,22 @@ export async function persistImport(
       balanceRecorded = true;
     }
 
+    await tx.importBatch.update({
+      where: { id: batch.id },
+      data: { importedCount: fresh.length, duplicateCount },
+    });
+
+    const details = [
+      `${fresh.length} lançamento(s) adicionado(s).`,
+      automation.autoCategorized > 0 ? `${automation.autoCategorized} categorizado(s) por regra.` : '',
+      automation.transferSuggestions > 0 ? `${automation.transferSuggestions} possível(is) transferência(s) entre contas próprias na conciliação.` : '',
+    ].filter(Boolean);
+
     await tx.timelineEvent.create({ data: {
       profileId,
       kind: 'import',
       title: 'Extrato importado',
-      description: `${fresh.length} lançamento(s) adicionado(s).`,
+      description: details.join(' '),
       importBatchId: batch.id,
       reversible: true,
     } });
@@ -250,8 +283,10 @@ export async function persistImport(
       periodStart,
       periodEnd,
       balanceRecorded,
+      autoCategorizedCount: automation.autoCategorized,
+      transferSuggestionCount: automation.transferSuggestions,
     };
-  });
+  }, { timeout: 30_000 });
 }
 
 /**

@@ -52,6 +52,24 @@ export function divideRoundHalfUp(value: bigint, divisor: bigint): bigint {
   return negative ? -quotient : quotient;
 }
 
+/**
+ * Moeda de referência do saldo consolidado (L-4 de docs/PRODUCT.md).
+ *
+ * Somar centavos de moedas diferentes sem cotação produz um número falso. Até a
+ * decisão sobre várias moedas (decisão 8 do primeiro acesso), o veredito, a
+ * projeção e o detalhe somam só contas nesta moeda e contam as demais à parte.
+ */
+export const REFERENCE_CURRENCY = 'BRL';
+
+/** Separa as contas que entram no saldo consolidado das que ficam de fora pela moeda. */
+export function splitByReferenceCurrency<T extends { currency: string }>(
+  accounts: readonly T[],
+  reference: string = REFERENCE_CURRENCY,
+): { included: T[]; excludedCount: number } {
+  const included = accounts.filter((account) => account.currency === reference);
+  return { included, excludedCount: accounts.length - included.length };
+}
+
 export type ConsolidatedBalance = {
   cents: bigint;
   /** Contas cujo saldo é conhecido e entrou na soma. */
@@ -158,6 +176,41 @@ export function committedCents(obligations: ObligationInput[], periodEnd: Date):
     total += obligation.amountCents;
   }
   return total;
+}
+
+export type CardStatementInput = {
+  dueDate: Date;
+  totalCents: bigint;
+  /** Soma dos pagamentos já conciliados com lançamentos da conta. */
+  paidCents: bigint;
+  /** open | paid | cancelled */
+  status: string;
+  isEstimated: boolean;
+};
+
+/**
+ * Faturas de cartão como obrigações do período (Stage 8).
+ *
+ * O segundo termo do Saldo Livre de Risco previsto em docs/PRODUCT.md, V: cada
+ * fatura em aberto pesa pelo que **ainda falta pagar** (total menos pagamentos
+ * conciliados), no vencimento dela. Fatura paga, cancelada ou quitada por
+ * pagamentos parciais não pesa: descontá-la de novo contaria duas vezes o
+ * dinheiro que já saiu da conta.
+ */
+export function cardStatementObligations(statements: CardStatementInput[]): ObligationInput[] {
+  const obligations: ObligationInput[] = [];
+  for (const statement of statements) {
+    if (statement.status !== 'open') continue;
+    const outstanding = statement.totalCents - statement.paidCents;
+    if (outstanding <= 0n) continue;
+    obligations.push({
+      amountCents: outstanding,
+      dueDate: statement.dueDate,
+      status: 'open',
+      isEstimated: statement.isEstimated,
+    });
+  }
+  return obligations;
 }
 
 export type CommittedSummary = { cents: bigint; count: number; estimatedCount: number };

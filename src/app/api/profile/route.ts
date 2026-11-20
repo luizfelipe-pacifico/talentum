@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { db } from '@/server/db';
 import { fail, ok, readJson, requireActionCode } from '@/server/http';
-import { getLocalProfileId } from '@/server/profile';
+import { ensureLocalProfile, getLocalProfileId } from '@/server/profile';
 
 /* Perfil local.
 
@@ -51,14 +51,7 @@ export async function POST(request: Request) {
   const parsed = createSchema.safeParse(await readJson(request));
   if (!parsed.success) return fail('INVALID_PROFILE', 'Os dados do perfil são inválidos.', 400);
 
-  // Idempotente: chamar duas vezes não cria dois perfis.
-  const existing = await getLocalProfileId();
-  if (existing) return ok({ hasProfile: true, profileId: existing, created: false });
-
-  const profile = await db.localProfile.create({
-    data: { displayName: parsed.data.displayName ?? null },
-    select: { id: true },
-  });
-
-  return ok({ hasProfile: true, profileId: profile.id, created: true }, 201);
+  // Idempotente, inclusive com dois cliques simultâneos: o banco garante um perfil só.
+  const { profileId, created } = await ensureLocalProfile(parsed.data.displayName ?? null);
+  return ok({ hasProfile: true, profileId, created }, created ? 201 : 200);
 }

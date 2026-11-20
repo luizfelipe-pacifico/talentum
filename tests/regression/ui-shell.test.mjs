@@ -73,8 +73,9 @@ test('a interface não cita documentação interna', async () => {
 test('o guia de layout interno só existe em desenvolvimento', async () => {
   const page = await read('src/app/layout-guide/page.tsx');
   assert.match(page, /process\.env\.NODE_ENV !== 'development'[\s\S]{0,40}notFound\(\)/);
-  const settings = await read('src/components/demo-pages.tsx');
-  assert.match(settings, /process\.env\.NODE_ENV === 'development' && <Link className="btn-link" href="\/layout-guide">/);
+  // A tela de configurações saiu de demo-pages.tsx para settings.tsx.
+  const settings = await read('src/components/settings.tsx');
+  assert.match(settings, /process\.env\.NODE_ENV === 'development' && \(?\s*<Link className="btn-link" href="\/layout-guide">/);
 });
 
 test('div ou span com aria-label tem papel ARIA, senão o leitor de tela ignora o nome', async () => {

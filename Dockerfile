@@ -36,4 +36,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 USER nextjs
 EXPOSE 3000
-CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && exec node server.js"]
+# Sem `prisma migrate deploy` nem script de preparação: o banco no volume é
+# cifrado e só abre com a senha. No desbloqueio, o backend aplica a restauração
+# agendada, cria o ponto de restauração pre_migration e aplica as migrations pela
+# conexão cifrada (src/server/backup/startup.ts). O cofre (talentum-local.vault),
+# a chave do dispositivo e talentum-backups/ ficam no mesmo volume.
+CMD ["node", "server.js"]

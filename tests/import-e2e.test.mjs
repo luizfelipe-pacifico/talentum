@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { attachSession, liveSession } from './live-backend.mjs';
 
 /* Teste ponta a ponta da importação, contra o backend local em execução.
 
@@ -16,17 +17,10 @@ import assert from 'node:assert/strict';
 const BASE = process.env.TALENTUM_E2E_URL ?? 'http://127.0.0.1:3000';
 const ACCOUNT_NAME = 'Conta sintética de teste automatizado';
 
-async function serverIsUp() {
-  try {
-    const response = await fetch(`${BASE}/api/health/live`, { signal: AbortSignal.timeout(2000) });
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
-
-const up = await serverIsUp();
-const options = up ? {} : { skip: `Backend local indisponível em ${BASE}` };
+// O banco é cifrado: sem sessão desbloqueada a suíte é pulada (tests/live-backend.mjs).
+const session = await liveSession(BASE);
+if (session.cookie) attachSession(BASE, session.cookie);
+const options = session.cookie ? {} : { skip: session.reason };
 
 /**
  * Emite um código de ação para o par método/rota pretendido.
