@@ -10,7 +10,7 @@ This directory holds the project's sources of truth. Documentation is kept in a 
 | [`SECURITY.md`](./SECURITY.md) | Threat model, authentication (OAuth/OIDC, sessions, refresh tokens), CSRF, rate limiting, headers, Electron hardening, secrets management and the verified controls |
 | [`DATABASE.md`](./DATABASE.md) | Data placement policy, modeling rules, the local Prisma/SQLite schema, the cloud D1 schema, migrations and capacity |
 | [`PRODUCT.md`](./PRODUCT.md) | Product vision and scope, MVP features and routes, onboarding, dashboard specification and the update notice |
-| [`DESIGN-SYSTEM.md`](./DESIGN-SYSTEM.md) | Brand, tokens for both themes, typography, iconography, motion, state illustrations and the visual QA log |
+| [`DESIGN-SYSTEM.md`](./DESIGN-SYSTEM.md) | Design principles (validated on every change), brand, tokens for both themes, typography, iconography and the Lucide exception, motion, the twelve viewport classes and responsive pattern catalog, UX writing and copy rules, state illustrations and how to source new ones, and the visual QA log |
 | [`ROADMAP.md`](./ROADMAP.md) | MVP, macro-feature order, dependencies and completion criteria |
 | [`BEST_PRACTICES.md`](./BEST_PRACTICES.md) | Repository organization, engineering practices and the full development guide (setup, commands, Docker, tests, hooks, contribution) |
 | [`MEMORY-AI.md`](./MEMORY-AI.md) | How the maintainer thinks and works, for AI agents: communication, quality bar, design and copy philosophy, decision patterns and a lessons-learned log. Read at the start of every session and update in the same turn when a new preference appears |

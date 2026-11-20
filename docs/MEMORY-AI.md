@@ -16,6 +16,8 @@ It contains working style and preferences only. Never add personal data, credent
 - [Engineering and security posture](#engineering-and-security-posture)
 - [Tools and environment](#tools-and-environment)
 - [Decision patterns](#decision-patterns)
+- [Security mindset](#security-mindset)
+- [Current work](#current-work)
 - [Lessons learned log](#lessons-learned-log)
 
 ## How to use this file
@@ -89,9 +91,30 @@ It contains working style and preferences only. Never add personal data, credent
 - Ambiguous but low-risk choices: pick the conventional option and say so. Destructive, remote or security-relevant choices: ask first.
 - Unrelated files changed by the maintainer during a task are theirs: keep them as they are and mention them only if they conflict.
 
+## Security mindset
+
+- The maintainer treats security as non-negotiable and wants it tested, not assumed: never trust the frontend or the user, validate everything in the backend before executing, keep access and refresh tokens, encrypt, make writes idempotent.
+- Before every commit and push, switch roles and act as an ethical hacker hunting for attack surfaces in what is about to ship. A clean scan is not enough; think like an attacker.
+- Free protections must be on: Cloudflare Turnstile and free WAF/firewall rules wherever they apply.
+- Any credential exposed even for a minute (log, terminal, chat, screenshot) is rotated immediately. No "it was only briefly visible" exceptions.
+
+## Current work
+
+Keep this section short and current so a session started after `/clear` can resume. Remove items when they are done.
+
+- **2026-11-20: integrating branch `feat/conclusao-mvp` into `main`.** The branch (13 commits: CSV/OFX import, onboarding, accounts, reconciliation, timeline and backup, Electron packaging, CI gate) diverged from `main` before the documentation consolidation. The merge is being prepared in a separate worktree on branch `integrate/conclusao-mvp`. Decisions taken: the Worker refresh-token claim keeps `main`'s version (inserts the successor before referencing it); `electron/main.cjs` combines `main`'s external-link allowlist and trusted-sender checks with the branch's packaged backend (random loopback port, bootstrap secret, `migrate deploy`); the branch's duplicate `setWindowOpenHandler` was dropped; `PAGE_META` lives in `src/lib/navigation.ts`; the landing-page grain stays removed; `electron-winstaller` build scripts are disabled (NSIS does not need them). Known bug to fix test-first after the merge: the `.chart` class is defined twice in `globals.css`, so the new dashboard charts inherit the old 8-column bar grid. The branch's Portuguese doc changes and ADRs 0002–0004 are being ported into the English docs.
+- **Next: Cloudflare Turnstile and free WAF rules**, then the offensive security review of the merged code before pushing.
+- **Open from the doc audit:** domain conflict (`talentum-tech.vercel.app` vs `talentum.vercel.app` in `wrangler.jsonc`), Worker logout with an expired access token leaves the refresh family valid, download grants are never validated or consumed, `GET /api/auth/refresh` has no origin check, no CORS, rate limits only on `codes` and `login`.
+
 ## Lessons learned log
 
 Add newest entries at the top. Format: date, what happened, the lesson.
+
+- **2026-11-20** The maintainer said "faça commit e push de tudo para a main" twice during long tasks. Lesson: commit and push to `main` directly when asked, in coherent commits, always through the hooks and the security gate; leave out only work that is clearly someone else's unfinished change and say so.
+- **2026-11-20** The maintainer gave an exclusive Chrome browser for Claude to use freely (Claude in Chrome). Lesson: use it for research, dashboards (Cloudflare, GitHub, Vercel) and image generation (Gemini), following the safety rules in `CLAUDE.md`.
+- **2026-11-20** Security instructions arrived: test security and idempotency, never trust the client, act as an ethical hacker before every commit and push, enable Turnstile and free firewall rules, rotate any exposed credential immediately, research security practice. Lesson: security review is part of every delivery, not a separate project.
+- **2026-11-20** The maintainer asked to document everything said, "even if it looks silly", so a session after `/clear` understands all context. Lesson: write instructions and context to this file as they arrive, and keep [Current work](#current-work) updated during long tasks.
+- **2026-11-20** Merging the unmerged branch revealed that the versioned hooks were stored without the execute bit, so previous commits skipped typecheck and tests. Lesson: verify that safety nets actually run, not only that they exist.
 
 - **2026-11-20** Docs consolidation: 27 Markdown files were merged into 8 English documents. Code comments and one regression test referenced the old file names, and a first search missed them because `grep --include='*.{a,b}'` does not expand braces. Lesson: after renaming documents, search the whole repository without include filters, and run the full test suite.
 - **2026-11-20** The maintainer asked "what is obsolete?" and then, in the next message, asked to merge, translate and rename everything. Lesson: an audit is usually the first step of a rewrite; collect findings in a form that writers can reuse directly.

@@ -35,6 +35,21 @@ Whenever the user says to always do something ("sempre execute isso", "sempre fa
 - Always convert the downloaded image to SVG with a transparent background before using it, then generate the light and dark theme variants and validate both.
 - Never send personal, financial or user data to Gemini; prompts describe only the generic scene.
 
+## Security is tested before every commit and push
+
+- Never trust the frontend or the user. Every action is requested from the backend, which authenticates, authorizes and validates the input before executing anything; the client only displays results.
+- Keep authentication on short-lived access tokens with rotating refresh tokens, encrypt sensitive data in transit and at rest, and make every write idempotent.
+- Test security and idempotency for every change: authentication, authorization, input validation, CSRF, replay, rate limiting and repeated or concurrent requests.
+- Before every commit and every push, act as an ethical hacker: run the offensive security review in `docs/SECURITY.md` against the change and the surfaces it touches, look for attack surfaces and vulnerabilities, and fix them before sending. Report what you checked and what you found.
+- Use every free protection the platforms offer. If the Cloudflare Turnstile challenge or a free firewall/WAF rule is not active where it applies, add it.
+- Keep the security checklist in `docs/SECURITY.md` up to date with current, researched practice (OWASP ASVS, OWASP Top 10, OWASP API Security Top 10, Electron security checklist, CWE Top 25).
+- A credential that is exposed, even for a minute and even only in a log, terminal or chat, must be revoked and replaced immediately, following the incident steps below.
+
+## Document everything the user says
+
+- Record every instruction, preference and piece of context the user gives, even if it seems minor, in `docs/MEMORY-AI.md` (and as a rule here when it is a standing instruction). After a `/clear`, a new session must be able to understand the whole context and how to act from the documentation alone.
+- Keep the "Current work" section of `docs/MEMORY-AI.md` updated while a multi-step task is in progress.
+
 ## Project context
 
 Talentum is an early-stage, open-source, local-first financial application planned around TypeScript, pnpm, Next.js, Electron, Prisma/SQLite and a Cloudflare backend. Do not invent undocumented requirements, commands, dependencies, APIs, credentials or infrastructure.

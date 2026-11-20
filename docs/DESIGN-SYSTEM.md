@@ -1,25 +1,29 @@
 # Talentum Design System
 
-This document is the source of truth for Talentum's visual identity and interface design: brand principles and voice, marks and assets, color, typography, layout, geometry, iconography, motion, components, state illustrations, accessibility, and the visual QA process with its dated log. It covers the local application in `src/` (Next.js UI rendered in the browser and in Electron) and the public landing page in `apps/web/`. Every statement of state is marked **Current**, **Planned**, or **Open**; values marked Current were verified against the stylesheets and scripts in the repository.
+This document is the source of truth for Talentum's visual identity and interface design: brand principles and voice, the design principles every change is validated against, marks and assets, color, typography, layout, responsiveness and the twelve viewport classes, geometry, iconography, motion, components, state illustrations, accessibility, UX writing, and the visual QA process with its dated log. It covers the local application in `src/` (Next.js UI rendered in the browser and in Electron) and the public landing page in `apps/web/`. Every statement of state is marked **Current**, **Planned**, or **Open**; values marked Current were verified against the stylesheets and scripts in the repository.
 
 ## Table of contents
 
 - [Brand principles and voice](#brand-principles-and-voice)
+- [Design principles](#design-principles)
 - [Logo, marks and generated assets](#logo-marks-and-generated-assets)
 - [Color system](#color-system)
 - [Typography](#typography)
 - [Layout, grid and spacing](#layout-grid-and-spacing)
+- [Responsiveness and viewport validation](#responsiveness-and-viewport-validation)
 - [Geometry and surfaces](#geometry-and-surfaces)
 - [Iconography and imagery](#iconography-and-imagery)
 - [Motion](#motion)
 - [Components and layout patterns](#components-and-layout-patterns)
 - [State illustrations](#state-illustrations)
 - [Accessibility](#accessibility)
+- [UX writing and copy](#ux-writing-and-copy)
 - [Visual QA process](#visual-qa-process)
 - [Visual QA log](#visual-qa-log)
 - [Design review checklist](#design-review-checklist)
 - [Governance](#governance)
 - [Open items](#open-items)
+- [References](#references)
 
 ## Brand principles and voice
 
@@ -67,7 +71,7 @@ Each principle has an ID, a one-line rule, how it applies to Talentum, and a che
 **P1. Follow the conventions people already know (Jakob's law).**
 
 - **Rule.** People spend most of their time in other products and expect yours to work the same way. Base interaction, navigation and layout on patterns from large, widely used products and from the platform guidelines (Apple HIG, Material Design), not on invention.
-- **In Talentum.** A bank-statement list behaves like the transaction list of a mainstream banking app; a sheet closes with Esc, the scrim, a visible close button and (on touch) a downward swipe; swipe gestures do what they do in mainstream mobile apps and are never the only way to act (HIG, Gestures). The pattern catalog under [Responsiveness and viewport validation](#responsiveness-and-viewport-validation) names the reference for each pattern.
+- **In Talentum.** A statement list must read like the transaction list of a mainstream banking app; a sheet must close with Esc, the scrim and a visible close button; any swipe gesture must do what it does in mainstream mobile apps and never be the only way to act (HIG, Gestures). The pattern catalog under [Responsiveness and viewport validation](#responsiveness-and-viewport-validation) names the reference for each pattern.
 - **Check.** For every new or changed pattern, name the reference product or guideline it follows. Justify any deviation in the change description; an unjustified deviation fails review.
 
 ### Usability heuristics (NN/g)
@@ -503,7 +507,7 @@ Status: **Current**. The Electron window opens at 1024 px or wider, but the layo
 | 600 px and below | 16 px side gutters, the header title truncates, the theme selector moves to Settings only, tabs scroll horizontally, dialogs take the full width |
 | touch pointers (`pointer: coarse`) | Interactive targets are at least 44 px |
 
-Rules live in `src/app/globals.css` (the responsive section) and their regression tests in `tests/regression/responsive.test.mjs`.
+Rules live in `src/app/globals.css` (the responsive section) and their regression tests in `tests/regression/responsive.test.mjs`. How these ranges map to the twelve viewport classes, and where no rule exists yet, is under [Responsiveness and viewport validation](#responsiveness-and-viewport-validation).
 
 ### Landing page breakpoints
 
@@ -546,7 +550,7 @@ Every interface change is validated at the twelve classes below, in the light th
 | Class | Test size | Representative devices | Why this size | Local app CSS that applies | Landing page CSS that applies |
 | --- | --- | --- | --- | --- | --- |
 | Mobile S | 320 × 568 | iPhone SE (1st generation); any 1280 px desktop window at 400% zoom | WCAG 1.4.10 reflow width | ≤ 600 phone rules, ≤ 720 category bars, ≤ 900 drawer | below 560: one column, repository link as icon |
-| Mobile M | 390 × 844 | iPhone 12 to 15 class; spot-check 360 × 800 for common Android phones | Among the most used mobile resolutions on StatCounter (August 2026); already the project's phone QA width | Same as Mobile S | below 560 |
+| Mobile M | 390 × 844 | iPhone 12 to 14 class; spot-check 360 × 800 for common Android phones | Among the most used mobile resolutions on StatCounter (August 2026); already the project's phone QA width | Same as Mobile S | below 560 |
 | Mobile L | 414 × 896 | iPhone 11 and XR class, large Android phones | Most used mobile resolution on StatCounter (August 2026) | Same as Mobile S | below 560 |
 | Tablet S | 600 × 960 | 7 to 8 inch Android tablets in portrait | Lower bound of Material's medium class | Exactly 600 still takes the ≤ 600 phone rules; drawer | 560 to 719: two-column pillar grid |
 | Tablet M | 768 × 1024 | iPad in portrait | Material medium; already the project's tablet QA width | 601 to 900: drawer, one-row header | 720 to 999: two-column grids, `Seções` menu |
@@ -554,11 +558,11 @@ Every interface change is validated at the twelve classes below, in the light th
 | Desktop S | 1024 × 700 | Electron minimum window; small laptops | Documented Electron minimum | ≤ 1040 single-column grids, ≤ 1180 tightened header, fixed sidebar | 1000 to 1099: three-column grids, header navigation |
 | Desktop M | 1536 × 864 | 1920 × 1080 laptops at 125% scaling | Second most used desktop resolution on StatCounter (August 2026); spot-check 1366 × 768 for short laptop screens | No rule above 1280; content capped at 1440 | 1100 to 1599 |
 | Desktop L | 1920 × 1080 | Full HD monitors | Most used desktop resolution on StatCounter (August 2026) | No rule above 1280; content capped at 1440 | 1600 and above: page width 1440 |
-| TV S | 960 × 540 | 1080p TV browser at a device pixel ratio of 2 | Android TV design canvas (960 × 540 dp) | 901 to 1040: fixed sidebar, single-column grids | below 1000: `Seções` menu, parallax off |
-| TV M | 1280 × 720 | 720p TV, or 1080p TV at a device pixel ratio of 1.5 | HD canvas between the Android TV and tvOS references | ≤ 1280: two-column settings grid | 1100 to 1599 |
+| TV S | 960 × 540 | 1080p TV browser at a device pixel ratio of 2 | Android TV design canvas (960 × 540 dp) | ≤ 1040 single-column grids, ≤ 1180 tightened header, fixed sidebar | below 1000: `Seções` menu, parallax off |
+| TV M | 1280 × 720 | 720p TV, or 1080p TV at a device pixel ratio of 1.5 | 720p panel resolution; between the Android TV (960 × 540) and tvOS (1920 × 1080) canvases | ≤ 1280: two-column settings grid | 1100 to 1599 |
 | TV L | 1920 × 1080 | 1080p TV at a device pixel ratio of 1; 4K TV at 2 | tvOS layout canvas (1920 × 1080 pt) | Same as Desktop L | 1600 and above |
 
-The StatCounter figures are monthly snapshots read from search results in November 2026 and change every month; review the classes when the leading resolutions change. TV widths coincide with desktop widths on purpose: what makes a TV different is distance and input, not width, so the TV classes are tested with the TV checks below, not only with a resized window.
+The StatCounter figures are monthly snapshots read from search results in November 2026 and change every month; review the classes when the leading resolutions change. TV M and TV L share their sizes with desktop sizes on purpose: what makes a TV different is distance and input, not width, so the TV classes are tested with the TV checks below, not only with a resized window.
 
 ### Gaps in the current CSS
 
@@ -578,7 +582,7 @@ Status: **Current** as validation rules; **Open** as implementation (see the gap
 - **Distance.** Android TV assumes about 3 m (10 ft) between viewer and screen; Apple says people sit "often 8 feet or more" away. Text, targets and focus must read from there.
 - **Minimum type size.** Apple's tvOS minimum is 23 pt and default 29 pt on a 1920 × 1080 pt canvas. Express it as a share of the viewport height so it holds at any density: body text at least about 2.7% of the viewport height and no text below about 2.1% (29 px and 23 px at TV L; 15 px and 12 px at TV S).
 - **Safe area.** Keep primary content inside a 5% inset: Android TV uses 48 dp left and right and 27 dp top and bottom on 960 × 540; tvOS uses 80 pt left and right and 60 pt top and bottom on 1920 × 1080. Backgrounds may bleed to the edges.
-- **Focus navigation.** People move with the D-pad (up, down, left, right, select). Every interactive element is reachable that way, focus moves predictably along rows and columns, the focused item is unmistakable from across the room, and focus never moves on its own. Leave space around focusable items so a focused item that grows does not cover its neighbours (HIG, Layout).
+- **Focus navigation.** People move with the D-pad (up, down, left, right, select). Every interactive element is reachable that way, focus moves predictably along rows and columns, the focused item is unmistakable from across the room, and focus never moves on its own. Leave space around focusable items so a focused item that grows does not cover its neighbors (HIG, Layout).
 - **No hover, no pointer.** tvOS advises against showing a pointer; anything revealed by hover needs a focus or select equivalent.
 - **Shared screen.** Android TV notes that the TV is a communal device. Financial values on a living-room screen are visible to everyone in the room; a TV layout must offer a way to hide amounts (**Open**).
 
@@ -590,7 +594,7 @@ For each pattern: the form per context, what Talentum does today, and the refere
 
 - Desktop and Tablet L: persistent sidebar (Gmail and YouTube on the web; Apple HIG sidebars). **Current:** fixed sidebar above 900 px, collapsible to 76 px.
 - Tablet S and M: the sidebar becomes an off-canvas drawer opened by a menu button (Luke Wroblewski's off-canvas pattern). **Current:** drawer at 900 px and below, `inert` when closed, closes with Esc, scrim and navigation.
-- Mobile: Apple HIG and Material both recommend a bottom tab bar for three to five top-level destinations, visible on every section and with a text label on every tab (Instagram and YouTube use one). Talentum has seven destinations (`Início` plus six areas), more than a tab bar holds without an overflow tab, which the HIG advises against. **Current:** the drawer is kept on mobile. **Open:** decide whether a bottom bar with the four most used areas plus the drawer would serve better.
+- Mobile: a bottom tab bar for a small number of top-level destinations, visible in every section and with a text label on every tab. Material's navigation bar holds up to five destinations; the HIG says fewer tabs are easier to navigate and advises against overflow tabs. Instagram and YouTube use one. Talentum has seven destinations (`Início` plus six areas), more than a tab bar holds without an overflow tab. **Current:** the drawer is kept on mobile. **Open:** decide whether a bottom bar with the four most used areas plus the drawer would serve better.
 - TV: a top or left menu reached with the D-pad, with content in rows below (tvOS tab bar; Android TV browse and left-overlay templates; Netflix and YouTube TV apps). **Open:** not implemented.
 
 **Filters and period selectors.**
@@ -655,7 +659,7 @@ For each pattern: the form per context, what Talentum does today, and the refere
 
 | Pattern | Reference products or guidelines | Basis |
 | --- | --- | --- |
-| Bottom tab bar on phones, three to five labeled destinations | Apple HIG tab bars; Material navigation bar; Instagram, YouTube | Guideline; observed product |
+| Bottom tab bar on phones, up to five labeled destinations | Apple HIG tab bars; Material navigation bar; Instagram, YouTube | Guideline; observed product |
 | Sidebar on wide screens that collapses or becomes a drawer | Apple HIG (tab bar adapts to sidebar); Material navigation rail; Gmail and YouTube on the web | Guideline; observed product |
 | Off-canvas drawer for secondary navigation | Luke Wroblewski, multi-device layout patterns | Pattern literature |
 | Filters in an overlay on the results screen | NN/g mobile faceted search (Amazon, eBay) | Research |
@@ -741,13 +745,27 @@ The landing page separates sections and surfaces by a step in tone, not by 1 px 
 
 ### Icon family
 
-Status: **Current**. Interface icons use **Bootstrap Icons** (`bootstrap-icons` package) everywhere (CLAUDE.md rule); any exception must be documented here.
+Status: **Current**. Interface icons use **Bootstrap Icons** (`bootstrap-icons` package) by default (CLAUDE.md rule); any exception must be documented under [Icon exceptions: Lucide](#icon-exceptions-lucide).
 
 - Use the single icon family with consistent stroke weight and optical size.
 - Prefer simple line icons that reinforce actions or categories.
 - Do not use icons as the only label for unfamiliar actions.
 
 The local app and the Electron renderer load the Bootstrap Icons font stylesheet (`bootstrap-icons/font/bootstrap-icons.css`, imported in `src/app/layout.tsx`).
+
+### Icon exceptions: Lucide
+
+Status: Lucide is **not installed** today (**Current**); its use is **Planned** on need.
+
+When Bootstrap Icons has no suitable symbol for a meaning, Lucide (`lucide-react`) may be installed and used for that icon only (CLAUDE.md rule). Before reaching for it, search the Bootstrap Icons set by meaning and by synonyms; a near-miss that a reader would misinterpret counts as "no suitable symbol", a stylistic preference does not. Match the Lucide icon's stroke and optical size to the surrounding Bootstrap Icons, give it the same size and color rules, and keep `aria-hidden="true"` when a text label is present.
+
+Each use is recorded here in the same change set:
+
+| Icon | Where used | Why Bootstrap Icons had no fit |
+| --- | --- | --- |
+| None yet | None | No exception has been needed |
+
+The landing page keeps its stricter rule: `tests/web-seo.test.mjs` requires every LP icon to be a Bootstrap Icon delivered as inline SVG through `pnpm lp:icones`. A Lucide icon on the LP therefore needs that test and the icon script updated deliberately, with the reason recorded in the table above.
 
 ### Icon delivery on the landing page
 
@@ -879,6 +897,7 @@ Status: **Current**. This is the map of every place in the local app and the lan
 - **Behavior:** `StateArt` (`src/components/state-art.tsx`) renders both variants and CSS shows only the one for the active theme (`.state-art-escuro` hidden by default, `.state-art-claro` hidden under `html.dark`), with no JavaScript needed and no visible swap on load. Sizes: `sm` 112 px, `lg` 200 px, and 128 px for default and `lg` at 600 px and below. The image is decorative (`alt=""`), cannot be dragged (`draggable={false}`, `dragstart` cancelled, `-webkit-user-drag: none`) or selected (`user-select: none`), and lets clicks pass through (`pointer-events: none`). The landing page uses its own light-only component, `apps/web/src/components/lp/state-art.tsx`, reading `/estados/<key>.svg`.
 - **Validation:** always in both themes (CLAUDE.md rule). Tests in `tests/regression/state-art.test.mjs`.
 - **Integrity (27 October 2026):** all illustrations were reviewed in both themes against the originals. The background is removed only where the color is practically that of the paper, so light objects without an outline are not swallowed (the card in `sem-cartoes` and the sheet in `importar-extrato` used to come out clipped). The sheet in `importar-extrato` was redrawn in the master, because its cream was indistinguishable from the original's paper. The ground in `nao-encontrada`, cut straight by the edge of the generated image, closes as a half-moon: elliptical clip, sand fill and outline. Tests in `tests/regression/state-art-integrity.test.mjs`.
+- **Sourcing:** see [Illustration sourcing](#illustration-sourcing) for how new illustrations are made.
 - `nova-versao` was drawn directly as a vector for the planned update notice (see [PRODUCT.md](PRODUCT.md)). It is generated in both themes but not yet used by any component and is not in the `StateArtName` union (**Planned**).
 
 ### Map
@@ -910,6 +929,24 @@ Status: **Current**. This is the map of every place in the local app and the lan
 
 Flat, with no gradient, shadow or texture; a warm palette consistent with the brand; geometric strokes; no text, financial data, real person or third-party logo.
 
+### Illustration sourcing
+
+Status: **Current** process (CLAUDE.md rule "Illustrations humanize the interface").
+
+Illustrations humanize the system. Use one wherever it helps a person understand a state or a step: an empty area, a failure, a first-run step, a completed import. Do not add one where it only fills space (AI-slop checklist); the text must stand on its own (Rules, item 4).
+
+To make a new flat illustration:
+
+1. **Generate.** Use Gemini through the Claude in Chrome browser extension. The prompt describes only a generic scene and follows the existing style: flat, no gradient, shadow or texture, the warm brand palette, geometric strokes, plain paper background in `#F4F1EA`, no text. Compare against the masters in `design/estados-vetor/` before accepting. Never put personal, financial or user data in the prompt, and never upload a screenshot of the app.
+2. **Download and move.** Download the image and move it from the Downloads folder into the project: the raster original goes to `design/estados-fonte/` (ignored by Git, see Pipeline), never to `public/`.
+3. **Vectorize.** Convert it to SVG by real tracing into flat color layers, for example `vtracer` in color mode for multicolor flat art (install it the first time it is needed; it is not a project dependency today). ImageMagick alone does not vectorize: it only wraps the raster in an SVG. The existing masters were traced with potrace after a median filter and color separation; either method is acceptable if the result passes the checks below.
+4. **Clean the master.** Save it as `design/estados-vetor/<key>.svg`. Delete the traced background shape, or replace it with a single leading `<rect>` plate in `#F4F1EA`, which `scripts/gerar-estados.mjs` removes, so every generated variant has a transparent background. Keep paper areas in `#F4F1EA` so the script can recolor them per surface. Add `aria-hidden="true"` on the root `<svg>`; no `<image>` element and no base64 data.
+5. **Generate the variants.** Run `pnpm estados:gerar` to write `public/estados/claro/`, `public/estados/escuro/` and, for landing page keys, `apps/web/public/estados/`. Each output must stay under 200 KB.
+6. **Register.** If it is a state illustration, add its key to the `StateArtName` union and a row to the [Map](#map) table, and update the expected count in `tests/regression/state-art.test.mjs`.
+7. **Validate both themes.** Render it in the light theme and in the dark theme on its real surface and check that no shape disappears into the background (Integrity, 27 October 2026). Run `node --test tests/regression/state-art.test.mjs tests/regression/state-art-integrity.test.mjs`; the first test enforces `aria-hidden="true"`, the absence of `<image>` and base64, and the 200 KB limit.
+
+The licensing and terms of use of images generated with Gemini must be confirmed before a generated illustration ships (see Open items).
+
 ## Accessibility
 
 Status: **Current** (requirements).
@@ -924,6 +961,105 @@ Status: **Current** (requirements).
 - Respect `prefers-reduced-motion` and `prefers-contrast: more`.
 - Touch targets are at least 44 px on coarse pointers.
 
+## UX writing and copy
+
+Status: **Current** (normative). Interface copy is Brazilian Portuguese; this section is in English and its examples in pt-BR. It extends [Voice and terminology](#voice-and-terminology).
+
+The test for every word on screen: the reader has no doubt about what it means or what will happen next. When specific and short conflict, choose specific.
+
+Plain language is also Brazilian law for public administration: Lei 15.263/2025 defines linguagem simples as techniques for transmitting information clearly and objectively. Talentum is not bound by that law, but adopts the same standard.
+
+### Rules
+
+1. **Lead with what matters.** People scan; NN/g found that 79% of users scanned new pages and only 16% read word by word. Put the key word first in titles, labels and messages, and keep one idea per sentence.
+2. **Buttons name the action and the object.** Use the infinitive verb plus the object, the pattern the app already uses: `Importar extrato`, `Configurar perfil`, `Cadastrar posição atual`. A verb alone is acceptable only when the object is unambiguous in context (`Fechar` on a dialog). Never `OK`, `Sim`, `Continuar`, `Enviar` or `Confirmar` when a specific verb exists (NN/g, UI copy).
+3. **Links say where they go.** `Ver gastos por categoria`, not `Clique aqui` or `Saiba mais` (Mailchimp).
+4. **Instructions use the imperative and address the person as você.** `Importe um extrato em CSV ou OFX.` Sentence case everywhere: capitalize only the first word and proper names (Microsoft, Material).
+5. **Money is always explicit.** Symbol, thousands separator and two decimals: `R$ 1.234,56`. Say what the amount is (`Saldo em conta`, `Gastos do mês`) and the period or date it refers to. A negative sign or a word (`saída`) shows direction; color is never the only cue.
+6. **Dates are explicit.** Write the month out: `1 de setembro`, `1 a 30 de setembro` (`formatPeriod`, `formatDay`). Add the year when it is not the current year or when a period crosses years. Never use relative dates (`ontem`, `há 3 dias`) for financial records without the absolute date beside them.
+7. **Percentages say compared with what.** `+12,5% em relação a agosto`, never a bare `+12,5%`.
+8. **Numbers are numerals, with units.** `3 lançamentos`, `2 contas`; pluralize correctly (`plural()` in the code).
+9. **No jargon.** No engineering or database words in the interface: not `backend`, `ID`, `SQLite`, `persistir`, `payload`, `onboarding`. Use the person's words: `dados salvos neste computador`, `primeiro acesso`. Write `banco` only for a financial institution: `banco local` reads as a local bank, not a local database.
+10. **Errors say what happened, why, and what to do.** Specific, at the place of the error, without blame or humor, keeping the person's input (NN/g, error messages). Never show an error code unless the person needs it to get support.
+11. **Empty states say what is missing, why, and the next action.** One sentence of explanation and, when one exists, one button that starts the task (NN/g, empty states; State illustrations rule 2). "None" only after the backend confirms zero (rule 1).
+12. **Confirmations name the action and its consequence.** The title is the question with the object; the body says what changes and whether it can be undone; the buttons repeat the verbs (`Desfazer importação` / `Manter lançamentos`), never `Sim` / `Não`. Use confirmations only for serious or irreversible actions; prefer undo (NN/g, confirmation dialogs).
+13. **Loading says what is loading, and how far along when known.** `Importando 2 de 5 arquivos`, not just `Carregando`.
+14. **Same thing, same word.** Use the glossary below. Do not alternate synonyms for variety (Material: one verb per action across the interface).
+15. **No directional or device-specific language.** Not `no menu à direita`, because the layout changes per viewport (Mailchimp and Google's developer style guide both advise against directional language); not `clique`, which is wrong on touch and TV. Name the control by its label: `Selecione Importar extrato`.
+16. **No hype.** No superlatives, no promises, no exclamation marks in product copy. NN/g measured a 27% usability gain from objective language over promotional language.
+
+### Do and don't
+
+| Context | Don't | Do | Why |
+| --- | --- | --- | --- |
+| Primary button | Continuar | Importar extrato | Names the action and the object (rule 2) |
+| Confirmation title | Tem certeza? | Desfazer a importação de 12 de setembro? | Names what will happen (rule 12) |
+| Confirmation body | Esta ação é irreversível. | Os 48 lançamentos dessa importação saem do saldo e dos gastos. Para recuperá-los, importe o arquivo de novo. | Names the consequence and the way back |
+| Confirmation buttons | Sim / Não | Desfazer importação / Manter lançamentos | Each button names its outcome |
+| Import error | Erro ao processar arquivo. | Não foi possível ler extrato-setembro.ofx. O arquivo não está no formato OFX. Exporte o extrato de novo no site do banco e tente outra vez. | What happened, why, what to do (rule 10) |
+| Query error | Falha no backend. | Não foi possível consultar seus dados. Nada foi alterado. Tente novamente. | No jargon; reassures about data (rules 9, 10) |
+| Empty list | Nenhum dado. | Nenhum lançamento ainda. Importe um extrato em CSV ou OFX para ver seus lançamentos aqui. | What is missing and the next action (rule 11) |
+| Empty state, current copy | As transações aparecerão somente depois de persistidas pelo backend local. | Seus lançamentos aparecem aqui depois que você importar um extrato. | Glossary term, no jargon |
+| Amount | Saldo: 1.234 | Saldo em conta em 1 de setembro: R$ 1.234,56 | Unit, decimals and reference date (rules 5, 6) |
+| Change | +12,5% | +12,5% em relação a agosto | Says compared with what (rule 7) |
+| Link | Saiba mais | Entender o cálculo | Says what opens (rule 3) |
+| Loading | Carregando... | Importando 2 de 5 arquivos | Says what and how far (rule 13) |
+
+All names, dates and amounts in these examples are synthetic.
+
+### Glossary of core terms
+
+Derived from the copy in `src/` (navigation in `src/lib/demo-data.ts`, screens in `src/components/`). Use these terms and no synonyms.
+
+| Term (pt-BR) | Meaning | Do not use |
+| --- | --- | --- |
+| Lançamento | One movement of money in or out of an account or card | transação, movimentação, registro |
+| Extrato | The file exported by the bank (CSV or OFX) that the person imports; also the area that lists lançamentos | arquivo bancário, statement |
+| Importação | Bringing one extrato into Talentum; the set of lançamentos it created | upload, carga; lote only where the screen already shows it (see Open items) |
+| Conta | A bank account | conta bancária when context is clear; never for a bill |
+| Cartão | A credit card | cartão de crédito when context is clear |
+| Fatura | A credit card bill | conta (ambiguous with bank account) |
+| Obrigação | A recurring commitment with a due date (rent, bills, installments) | conta a pagar, despesa fixa |
+| Conciliação | Confirming or correcting lançamentos that were in doubt | matching, reconciliação |
+| Patrimônio | Assets and positions the person owns | carteira (reserved for investments in `Invest`) |
+| Aporte | Money put into an asset or goal | investimento (as a verb-like noun), depósito |
+| Meta | A savings goal | objetivo |
+| Gastos | Money spent in the period | despesas, saídas (except to show direction) |
+| Saldo Livre de Risco | The product's derived balance after obligations; a proper name, always capitalized this way | saldo disponível, saldo livre |
+| Início | The home screen at `/` | Home |
+| Dashboard | The indicators area | painel, visão geral |
+| Primeiro acesso | The first-run setup | onboarding |
+| Tema: Claro, Escuro, Sistema | Theme options | light, dark, automático |
+
+### Copy review checklist
+
+- [ ] Every button names an action and, when needed, its object.
+- [ ] Every amount has `R$`, two decimals, a label and a reference date or period.
+- [ ] Every date is written out; the year appears when needed.
+- [ ] Every percentage says what it compares with.
+- [ ] No term outside the glossary for a concept the glossary covers; no jargon from rule 9.
+- [ ] Every error says what happened, why and what to do, and keeps the input.
+- [ ] Every empty state says what is missing and offers the next action, and asserts absence only after confirmation.
+- [ ] Every confirmation names the consequence and labels its buttons with verbs.
+- [ ] No directional language, no `clique aqui`, no `Saiba mais`.
+- [ ] Sentence case; no exclamation marks; no superlatives.
+- [ ] Read aloud: each sentence carries one idea and could not be misread.
+
+### AI-slop checklist (copy and layout)
+
+CLAUDE.md requires every piece of work to be reviewed for AI slop before it is reported. Fail the review on any of these:
+
+- **Filler.** Words that carry nothing: `simplesmente`, `de forma fácil e rápida`, `tudo em um só lugar`, `potencialize`, `descubra`, `jornada`, `experiência completa`.
+- **Vague superlatives.** `o melhor`, `revolucionário`, `poderoso`, `incrível`, `inteligente`, without a verifiable fact behind them.
+- **Generic hero and marketing phrasing.** A headline that could describe any product (`Sua vida financeira, transformada`). The test: replace the product name with a competitor's; if the sentence still works, rewrite it.
+- **Invented numbers and claims.** Percentages, user counts, savings or testimonials that no source supports; example figures not marked as synthetic.
+- **Inconsistent terms.** Two words for one glossary concept on the same screen or across a flow.
+- **Emoji and decorative symbols** in interface copy or as icons (icons come from Bootstrap Icons, see Iconography).
+- **Templated card grids.** Three or four identical cards with an icon, a two-word title and a generic sentence, used because it fills space rather than because the content has that shape.
+- **Decorative noise.** Gradients, glows, labels above every heading, numbered steps that are not a sequence, badges on everything (Landing page surfaces; Brand principles).
+- **Uniform emphasis.** Everything bold, everything Amber, every section the same weight (P23, P29).
+- **Placeholder copy left in.** `Lorem ipsum`, `Título`, `Descrição`, `Texto de exemplo` in a product screen.
+
 ## Visual QA process
 
 Status: **Current**.
@@ -936,7 +1072,7 @@ Every layout change is validated in the light theme **and** in the dark theme, n
 
 ### Method
 
-- **Widths:** check at least 390 px (phone), 768 px (tablet), 1024 px (Electron minimum), 1280 px, 1440 px and 1920 px. Measure elements outside the visible area, header height, content width and text below 12 px. Do not rely on `overflow-x: hidden` on containers: it hides leaks.
+- **Viewports:** check the twelve viewport classes and follow the test procedure in [Responsiveness and viewport validation](#responsiveness-and-viewport-validation); 1280 px and 1440 px remain useful extra widths because the app has rules at 1280 px and caps content at 1440 px. Measure elements outside the visible area, header height, content width and text below 12 px. Do not rely on `overflow-x: hidden` on containers: it hides leaks.
 - **Overlays:** open dialogs and drawers and measure them after their entry animation finishes.
 - **Console:** no errors or warnings during the reviewed flows.
 - **Inspector:** the taste-skill inspector at `.claude/skills/taste-skill/scripts/inspect.mjs` opens a production build in real Chrome via CDP at 390, 768, 1280, 1440 and 1920 px. Its screenshots go to `.taste-skill/`, which is ignored by Git. Design skills (Impeccable, taste-skill, `emil-design-eng`) are described in [BEST_PRACTICES.md](BEST_PRACTICES.md); this document prevails over the skills on palette and typography.
@@ -1053,6 +1189,10 @@ Verified in Chrome on `/patrimonio/metas`, a nonexistent route and the notificat
 - [ ] Keyboard, contrast, zoom and reduced-motion behavior were verified.
 - [ ] The change was rendered and checked in the light theme and in the dark theme.
 - [ ] The interface prioritizes financial information over decoration.
+- [ ] The [principles validation checklist](#principles-validation-checklist) passes, with failures reported.
+- [ ] All twelve viewport classes were checked in both themes and the results table is in the report.
+- [ ] Each pattern is the one the pattern catalog assigns to its context, or the deviation is justified.
+- [ ] The [copy review checklist](#copy-review-checklist) and the [AI-slop checklist](#ai-slop-checklist-copy-and-layout) pass.
 
 ## Governance
 
@@ -1074,3 +1214,83 @@ Status: **Current**.
 - **Open — orphan stylesheet.** `src/app/styles.css` is tracked but not imported anywhere; it defines unrelated tokens (`--background`, `--foreground`, `--accent`, `--muted`) and styles (system-ui font, 1.25rem radius, uppercase eyebrow) that contradict this system. Confirm it is dead and remove it, or document its purpose.
 - **Open — LP `Início` screenshot caption.** The LP screenshot and caption still describe indicators showing zero, which no longer matches the dashboard's empty state; replacement awaits a maintainer decision.
 - **Planned — `nova-versao` illustration.** Generated in both themes for the planned update notice but not used by any component yet.
+- **Open — TV adaptation.** No CSS responds to TV viewing distance or remote input: no type scaling relative to viewport height, no 5% safe-area inset, no directional focus model, no way to hide amounts on a shared screen. See Responsiveness and viewport validation.
+- **Open — hover capability.** Only `pointer: coarse` is handled; add a `hover: none` rule (or equivalent) so no affordance depends on hover on touch and TV.
+- **Open — short viewports.** No height-based rule exists for 700 px desktops, 1366 × 768 laptops, TV S (540 px) or phones in landscape.
+- **Open — safe-area insets.** Neither stylesheet uses `env(safe-area-inset-*)`.
+- **Open — 600 px boundary.** A 600 px tablet takes the phone rules because `max-width: 600px` includes 600; confirm or change.
+- **Open — Mobile S measurement.** No QA record exists at 320 px; measure it.
+- **Open — mobile navigation pattern.** Seven destinations exceed a bottom tab bar; decide whether a bar with the most used areas plus the drawer would serve phones better than the drawer alone.
+- **Open — mobile filter and transaction-list patterns.** No sheet-based filter and no transaction list exist yet; build them with the catalog patterns.
+- **Open — copy audit.** Visible strings in `src/components/demo-pages.tsx` and `src/components/overlays.tsx` use jargon forbidden by the UX writing rules (`backend`, `ID`, `SQLite`, `persistidas`, `onboarding`) and `banco local`, which reads as a local bank; one empty state says `transações` instead of `lançamentos`; `Lote` and `Desfazer lote` may be clearer as `importação`. Rewrite them in a dedicated change with tests updated.
+- **Open — calculation explanation.** The layout guide defines `Entender o cálculo` for derived figures, but the dashboard does not render it next to `Saldo Livre de Risco`.
+- **Open — Dashboard and Invest labels.** Both navigation labels are English or truncated words in a pt-BR interface; decide whether to keep them as product names or translate them.
+- **Open — licensing of generated illustrations.** Confirm the terms of use and licensing of images generated with Gemini for an open-source project before shipping any generated illustration, and record the result here.
+
+## References
+
+Pages read or found while writing the Design principles, Responsiveness and viewport validation, and UX writing and copy sections (November 2026). Each link is cited for the claims attributed to it above.
+
+Usability and perception:
+
+- Nielsen Norman Group — 10 usability heuristics for user interface design: https://www.nngroup.com/articles/ten-usability-heuristics/
+- Nielsen Norman Group — Proximity principle in visual design: https://www.nngroup.com/articles/gestalt-proximity/
+- Nielsen Norman Group — Progressive disclosure: https://www.nngroup.com/articles/progressive-disclosure/
+- Laws of UX (Fitts, Hick, Jakob, Miller, chunking, Doherty, Tesler, aesthetic-usability, von Restorff, serial position, proximity, similarity, common region, uniform connectedness, Prägnanz): https://lawsofux.com/
+- Vitsœ — Dieter Rams, ten principles for good design: https://www.vitsoe.com/us/about/good-design
+
+Accessibility (W3C, WCAG 2.2):
+
+- What's new in WCAG 2.2: https://www.w3.org/WAI/standards-guidelines/wcag/new-in-22/
+- Understanding 1.4.3 Contrast (Minimum): https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html
+- Understanding 1.4.11 Non-text Contrast: https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast
+- Understanding 1.4.10 Reflow: https://www.w3.org/WAI/WCAG22/Understanding/reflow
+- Understanding 1.4.12 Text Spacing: https://www.w3.org/WAI/WCAG22/Understanding/text-spacing
+- Understanding 2.4.11 Focus Not Obscured (Minimum): https://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum.html
+- Understanding 2.5.8 Target Size (Minimum): https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum
+
+Viewports, platforms and TV:
+
+- StatCounter — mobile screen resolution stats: https://gs.statcounter.com/screen-resolution-stats/mobile/worldwide
+- StatCounter — desktop screen resolution stats: https://gs.statcounter.com/screen-resolution-stats/desktop/worldwide/
+- Android Developers — Use window size classes: https://developer.android.com/develop/adaptive-apps/guides/use-window-size-classes
+- Android Developers — Build adaptive navigation: https://developer.android.com/develop/ui/compose/layouts/adaptive/build-adaptive-navigation
+- SAP Fiori for Android — Navigation bar usage (restates Material 3: two to five destinations): https://www.sap.com/design-system/fiori-design-android/v26-4/components/m3-standard-components/navigation-bar/usage
+- Android Developers — Design for TV: https://developer.android.com/design/ui/tv/guides/foundations/design-for-tv
+- Android Developers — TV layouts: https://developer.android.com/design/ui/tv/guides/styles/layouts
+- Android Developers — TV typography: https://developer.android.com/design/ui/tv/guides/styles/typography
+- Apple Human Interface Guidelines — Layout: https://developer.apple.com/design/human-interface-guidelines/layout
+- Apple Human Interface Guidelines — Typography: https://developer.apple.com/design/human-interface-guidelines/typography
+- Apple Human Interface Guidelines — Designing for tvOS: https://developer.apple.com/design/human-interface-guidelines/designing-for-tvos
+- Apple Human Interface Guidelines — Focus and selection: https://developer.apple.com/design/human-interface-guidelines/focus-and-selection
+- Apple Human Interface Guidelines — Tab bars: https://developer.apple.com/design/human-interface-guidelines/tab-bars
+- Apple Human Interface Guidelines — Sheets: https://developer.apple.com/design/human-interface-guidelines/sheets
+- Apple Human Interface Guidelines — Gestures: https://developer.apple.com/design/human-interface-guidelines/gestures
+
+Responsive patterns:
+
+- Nielsen Norman Group — Mobile faceted search: https://www.nngroup.com/articles/mobile-faceted-search/
+- Nielsen Norman Group — Bottom sheets: https://www.nngroup.com/articles/bottom-sheet/
+- Nielsen Norman Group — Mobile tables: https://www.nngroup.com/articles/mobile-tables/
+- Brad Frost — Responsive navigation patterns: https://bradfrost.com/blog/post/responsive-nav-patterns/
+- Brad Frost — This is responsive: https://bradfrost.com/blog/post/this-is-responsive/
+- Luke Wroblewski — Off-canvas multi-device layouts (summary): https://stuffandnonsense.co.uk/blog/luke_wroblewski_off_canvas_multi_device_layouts
+
+UX writing:
+
+- Nielsen Norman Group — How users read on the web: https://www.nngroup.com/articles/how-users-read-on-the-web/
+- Nielsen Norman Group — UI copy (command labels): https://www.nngroup.com/articles/ui-copy/
+- Nielsen Norman Group — Error-message guidelines: https://www.nngroup.com/articles/error-message-guidelines/
+- Nielsen Norman Group — Empty states in complex applications: https://www.nngroup.com/articles/empty-state-interface-design/
+- Nielsen Norman Group — Confirmation dialogs: https://www.nngroup.com/articles/confirmation-dialog/
+- GOV.UK — Writing guidelines: https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/
+- GOV.UK — Clear language: https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/clear-language/
+- Microsoft Writing Style Guide — Top 10 tips for style and voice: https://learn.microsoft.com/en-us/style-guide/top-10-tips-style-voice
+- Google developer documentation style guide — UI elements and interaction: https://developers.google.com/style/ui-elements
+- Material Design (legacy) — Writing: https://m1.material.io/style/writing.html
+- Mailchimp Content Style Guide — Voice and tone: https://styleguide.mailchimp.com/voice-and-tone/
+- Mailchimp Content Style Guide — Writing for accessibility: https://styleguide.mailchimp.com/writing-for-accessibility/
+- gov.br — Guia de edição de serviços, escrevendo para o seu usuário: https://www.gov.br/pt-br/guia-de-edicao-de-servicos-do-gov.br/escrevendo-para-o-seu-usuario
+- Lei 15.263/2025 (Política Nacional de Linguagem Simples), copy hosted by Previc: https://www.gov.br/previc/pt-br/acesso-a-informacao-1/acoes-e-programas/simplifica-previc-1/Lei%20n%2015.263%2C%20de%2014%20de%20novembro%202025
+
+The StatCounter, W3C and GOV.UK clear-language pages could not be fetched directly in this session (network policy or redirects); their figures and thresholds were taken from search results that quote them and should be rechecked on the pages before they are changed.
