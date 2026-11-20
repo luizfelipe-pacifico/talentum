@@ -1,7 +1,9 @@
 import { db } from '@/server/db';
 import { fail, guardWithProfile, isDenied, ok } from '@/server/http';
 import { inspectStatement, previewOf } from '@/server/import/inspect';
+import { inspectStatementFile } from '@/server/import/inspect-file';
 import { findSavedMapping } from '@/server/import/mapping-profiles';
+import { PARSE_TIMEOUT_MS } from '@/server/import/limits';
 import {
   CLIENT_ERROR_STATUS,
   IMPORT_ERROR_MESSAGES,
@@ -27,9 +29,12 @@ export async function POST(request: Request) {
     return fail(code, IMPORT_ERROR_MESSAGES[code] ?? 'O arquivo não pôde ser lido.', CLIENT_ERROR_STATUS[code] ?? 400);
   }
 
+  // Um prazo só para a requisição inteira, inclusive a releitura com o mapeamento salvo.
+  const deadline = Date.now() + PARSE_TIMEOUT_MS;
   let inspection;
   try {
-    inspection = inspectStatement(upload.bytes, { mapping: upload.mapping, dialect: upload.dialect });
+    // CSV, OFX ou PDF, decidido pelo conteúdo (ADR 0006 para o PDF).
+    inspection = await inspectStatementFile(upload.bytes, { mapping: upload.mapping, dialect: upload.dialect, deadline });
   } catch (error) {
     const code = (error as { code?: string }).code ?? 'UNSUPPORTED_FORMAT';
     return fail(code, IMPORT_ERROR_MESSAGES[code] ?? 'O arquivo não pôde ser lido.', CLIENT_ERROR_STATUS[code] ?? 400);
@@ -49,12 +54,12 @@ export async function POST(request: Request) {
         inspection = inspectStatement(upload.bytes, {
           mapping: appliedMapping.mapping,
           dialect: { ...appliedMapping.dialect, ...upload.dialect },
+          deadline,
         });
       } catch {
-        // Layout mudou desde que o mapeamento foi salvo: volta para a
-        // inferência em vez de recusar o arquivo.
+        // Layout mudou desde que o mapeamento foi salvo (ou o prazo acabou na
+        // releitura): fica a inferência já calculada, em vez de recusar o arquivo.
         appliedMapping = null;
-        inspection = inspectStatement(upload.bytes, { dialect: upload.dialect });
       }
     }
   }
@@ -97,7 +102,26 @@ export async function POST(request: Request) {
     closingBalanceAt: inspection.closingBalance ? inspection.closingBalance.capturedAt.toISOString() : null,
     declaredAccount: inspection.declaredAccount,
     currency: inspection.currency,
-    preview: previewOf(inspection),
+    // Em PDF, cada linha da prévia traz a confiança de data, valor e descrição.
+    preview: previewOf(inspection).map((row) => ({
+      ...row,
+      confidence: inspection.pdf?.confidence[row.lineNumber] ?? null,
+    })),
+    pdf: inspection.pdf
+      ? {
+          parserId: inspection.pdf.parserId,
+          parserVersion: inspection.pdf.parserVersion,
+          parserName: inspection.pdf.parserName,
+          kind: inspection.pdf.kind,
+          pageCount: inspection.pdf.pageCount,
+          lowConfidenceCount: inspection.pdf.lowConfidenceCount,
+          threshold: inspection.pdf.threshold,
+          activeContent: inspection.pdf.activeContent,
+          declaredDueDate: inspection.pdf.declared.dueDate?.toISOString() ?? null,
+          declaredClosingDate: inspection.pdf.declared.closingDate?.toISOString() ?? null,
+          declaredTotalCents: inspection.pdf.declared.totalCents?.toString() ?? null,
+        }
+      : null,
     // Os problemas vão resumidos por código: a lista completa pertence ao lote
     // gravado, não à prévia.
     issues: inspection.issues.slice(0, 20),

@@ -1,4 +1,5 @@
 import { db } from '@/server/db';
+import { prismaErrorKind } from '@/server/prisma-errors';
 
 /* Resolução do perfil local.
 
@@ -19,4 +20,26 @@ export async function getLocalProfileId(): Promise<string | null> {
     select: { id: true },
   });
   return profile?.id ?? null;
+}
+
+/**
+ * Garante o perfil local e devolve o seu identificador.
+ *
+ * Idempotente mesmo sob concorrência: o índice único de `singletonKey` faz a
+ * segunda criação simultânea falhar com P2002, e quem perdeu a corrida relê o
+ * perfil que a outra requisição criou (docs/SECURITY.md, item 19).
+ */
+export async function ensureLocalProfile(displayName: string | null): Promise<{ profileId: string; created: boolean }> {
+  const existing = await getLocalProfileId();
+  if (existing) return { profileId: existing, created: false };
+  try {
+    const profile = await db.localProfile.create({ data: { displayName }, select: { id: true } });
+    return { profileId: profile.id, created: true };
+  } catch (error) {
+    if (prismaErrorKind(error) === 'conflict') {
+      const winner = await getLocalProfileId();
+      if (winner) return { profileId: winner, created: false };
+    }
+    throw error;
+  }
 }

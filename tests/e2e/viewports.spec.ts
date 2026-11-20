@@ -4,21 +4,32 @@ import { expect, test } from '@playwright/test';
    (docs/DESIGN-SYSTEM.md, "Test procedure"): sem rolagem horizontal e sem
    texto abaixo de 12 px. Não substituem a revisão visual, só pegam regressões. */
 
-const ROUTES = ['/', '/dashboard', '/extratos', '/configuracoes'];
+const ROUTES = [
+  '/', '/dashboard', '/extratos', '/extratos/importar', '/extratos/recorrencias', '/extratos/cartoes',
+  '/conciliacao', '/conciliacao/faturas', '/contas', '/contas/nova', '/configuracoes', '/configuracoes/categorias', '/configuracoes/seguranca',
+  '/planejamento/orcamento', '/planejamento/dividas', '/planejamento/sobrevivencia', '/planejamento/rendas',
+  '/patrimonio', '/patrimonio/aportes', '/patrimonio/metas', '/invest', '/historico', '/notificacoes',
+  '/perfil', '/perfil/privacidade', '/onboarding/perfil',
+];
 const THEMES = [
   { name: 'claro', stored: 'Claro', dark: false },
   { name: 'escuro', stored: 'Escuro', dark: true },
 ] as const;
 
 for (const theme of THEMES) {
-  for (const route of ROUTES) {
-    test(`${route} no tema ${theme.name}`, async ({ page }) => {
+  for (const route of [...ROUTES, 'bloqueio']) {
+    test(`${route} no tema ${theme.name}`, async ({ page, browser }) => {
+      // "bloqueio": a tela de desbloqueio, numa janela sem sessão.
+      if (route === 'bloqueio') {
+        const context = await browser.newContext({ baseURL: test.info().project.use.baseURL, storageState: { cookies: [], origins: [] }, viewport: page.viewportSize() });
+        page = await context.newPage();
+      }
       await page.addInitScript((stored) => {
         try {
           localStorage.setItem('talentum:tema', stored);
         } catch {}
       }, theme.stored);
-      await page.goto(route);
+      await page.goto(route === 'bloqueio' ? '/' : route);
       await page.waitForLoadState('networkidle');
 
       await expect(page.locator('html')).toHaveClass(theme.dark ? /\bdark\b/ : /^(?!.*\bdark\b)/);

@@ -1,2 +1,6 @@
-import { DetailPage } from '@/components/demo-pages';
-export default function Page() { return <DetailPage kind="goal" />; }
+import { GoalDetailPage } from '@/components/goals';
+
+export default async function Page({ params }: { params: Promise<{ metaId: string }> }) {
+  const { metaId } = await params;
+  return <GoalDetailPage goalId={metaId} />;
+}

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getJson, postJson } from '@/lib/api-client';
 import { formatCents } from '@/lib/format';
+import { ConfidenceChip } from '@/components/pdf-confidence';
 import { StateArt } from '@/components/state-art';
 import { useImport, type ColumnRole, type InspectionPayload } from '@/hooks/use-import';
 
@@ -73,8 +74,8 @@ function FilePicker({ onPick, busy }: { onPick: (file: File) => void; busy: bool
       <p className="eyebrow">Importar extrato</p>
       <h2 className="h-display-lg">Escolha o arquivo do seu banco</h2>
       <p className="muted">
-        Aceita CSV e OFX. O arquivo é lido no seu dispositivo pelo backend local e não é enviado à
-        nuvem. Nada é gravado antes de você conferir a leitura.
+        Aceita CSV, OFX e PDF. O arquivo é lido no seu dispositivo pelo backend local e não é
+        enviado à nuvem. Nada é gravado antes de você conferir a leitura.
       </p>
 
       <div
@@ -97,7 +98,7 @@ function FilePicker({ onPick, busy }: { onPick: (file: File) => void; busy: bool
           ref={inputRef}
           className="sr-only"
           type="file"
-          accept=".csv,.ofx,.txt,text/csv,text/plain,application/x-ofx"
+          accept=".csv,.ofx,.pdf,.txt,text/csv,text/plain,application/x-ofx,application/pdf"
           onChange={(event) => {
             const chosen = event.target.files?.[0];
             if (chosen) onPick(chosen);
@@ -345,6 +346,50 @@ function Review({
           </p>
         )}
 
+        {inspection.pdf && (
+          <p className="callout callout-info">
+            <i className="bi bi-file-earmark-pdf" aria-hidden="true" />
+            <span className="small">
+              PDF de {inspection.pdf.pageCount} {inspection.pdf.pageCount === 1 ? 'página' : 'páginas'}, lido
+              pelo leitor “{inspection.pdf.parserName}”, versão {inspection.pdf.parserVersion}. Cada linha da prévia
+              diz se foi lida com certeza ou o que conferir.
+            </span>
+          </p>
+        )}
+
+        {inspection.pdf && inspection.pdf.lowConfidenceCount > 0 && (
+          <p className="callout callout-warn">
+            <i className="bi bi-exclamation-triangle" aria-hidden="true" />
+            <span className="small">
+              {inspection.pdf.lowConfidenceCount}{' '}
+              {inspection.pdf.lowConfidenceCount === 1
+                ? 'linha foi lida com incerteza e não será importada'
+                : 'linhas foram lidas com incerteza e não serão importadas'}
+              . Elas aparecem na lista de problemas abaixo; lance à mão, conferindo o PDF.
+            </span>
+          </p>
+        )}
+
+        {inspection.pdf?.kind === 'card' && (
+          <p className="callout callout-warn">
+            <i className="bi bi-credit-card" aria-hidden="true" />
+            <span className="small">
+              O arquivo parece uma fatura de cartão. Para registrar compras e parcelas na fatura, importe pela
+              página do cartão, em <Link className="btn-link" href="/extratos/cartoes">Cartões e benefícios</Link>.
+              Importado aqui, cada compra entra como saída da conta escolhida.
+            </span>
+          </p>
+        )}
+
+        {inspection.pdf?.activeContent && (
+          <p className="callout callout-info">
+            <i className="bi bi-shield-check" aria-hidden="true" />
+            <span className="small">
+              O PDF declara scripts, anexos ou ações automáticas. Nada disso foi executado: só o texto foi lido.
+            </span>
+          </p>
+        )}
+
         {blocked && (
           <p className="callout callout-warn">
             <i className="bi bi-exclamation-triangle" aria-hidden="true" />
@@ -418,6 +463,7 @@ function Review({
             <tr>
               <th scope="col">Data</th>
               <th scope="col">Descrição</th>
+              {inspection.pdf && <th scope="col">Leitura</th>}
               <th scope="col" className="right">
                 Valor
               </th>
@@ -428,6 +474,7 @@ function Review({
               <tr key={row.lineNumber}>
                 <td className="num">{shortDate(row.occurredOn)}</td>
                 <td>{row.description}</td>
+                {inspection.pdf && <td>{row.confidence ? <ConfidenceChip confidence={row.confidence} /> : null}</td>}
                 <td className="right">
                   <Amount cents={row.amountCents} />
                 </td>

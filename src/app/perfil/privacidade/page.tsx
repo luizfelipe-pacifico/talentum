@@ -1,2 +1,2 @@
-import { PrivacyPage } from '@/components/demo-pages';
-export default function Page() { return <PrivacyPage />; }
+import { DataBackupScreen } from '@/components/data-backup';
+export default function Page() { return <DataBackupScreen />; }

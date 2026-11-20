@@ -11,14 +11,16 @@ test('o domínio canônico é o da LP publicada',async()=>{
 
 test('robots bloqueia downloads e BFF e aponta o sitemap',async()=>{
   const robots=await read('apps/web/src/app/robots.ts');
-  assert.match(robots,/disallow: \['\/api\/', '\/downloads'\]/);
+  const disallow=robots.match(/disallow: \[([^\]]*)\]/)?.[1]??'';
+  for(const path of ['/api/','/downloads','/conta','/entrar','/comunidade/nova','/comunidade/moderacao'])assert.ok(disallow.includes(`'${path}'`),path);
   assert.match(robots,/sitemap: `\$\{SITE_URL\}\/sitemap\.xml`/);
 });
 
 test('sitemap lista só páginas públicas',async()=>{
   const sitemap=await read('apps/web/src/app/sitemap.ts');
   assert.match(sitemap,/url: `\$\{SITE_URL\}\/`/);
-  for(const leak of ["/downloads'","`${SITE_URL}/downloads","`${SITE_URL}/api"])assert.ok(!sitemap.includes(leak),leak);
+  for(const leak of ["/downloads'","`${SITE_URL}/downloads","`${SITE_URL}/api","`${SITE_URL}/conta","`${SITE_URL}/entrar","`${SITE_URL}/comunidade/nova","`${SITE_URL}/comunidade/moderacao"])assert.ok(!sitemap.includes(leak),leak);
+  for(const page of ['/comunidade','/termos','/privacidade'])assert.ok(sitemap.includes(`\`\${SITE_URL}${page}\``),page);
 });
 
 test('a LP é indexável e entrega os metadados no <head> para qualquer robô',async()=>{
@@ -34,7 +36,7 @@ test('os ícones da LP são SVG do Bootstrap Icons, sem a fonte de ícones',asyn
   assert.doesNotMatch(await read('apps/web/src/app/layout.tsx'),/bootstrap-icons\.css/);
   const mapa=await read('apps/web/src/components/lp/icons.tsx');
   const usados=new Set();
-  for(const arquivo of ['landing-page.tsx','carousel.tsx','motion.tsx','legal.tsx']){
+  for(const arquivo of ['landing-page.tsx','carousel.tsx','motion.tsx','legal.tsx','site-shell.tsx','community.tsx','legal-page.tsx']){
     const fonte=await read(`apps/web/src/components/lp/${arquivo}`);
     assert.doesNotMatch(fonte,/<i className=/,`${arquivo} ainda usa a fonte de ícones`);
     for(const [,nome] of fonte.matchAll(/['"`\s](bi-[a-z0-9-]+)/g))usados.add(nome);

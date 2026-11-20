@@ -96,7 +96,7 @@ test('toda rota da API local exige código de ação e escopa por perfil', async
 
 test('o guard da API local consome o código de ação e exige perfil', async () => {
   const http = await read('src/server/http.ts');
-  assert.match(http, /function requireActionCode\(request: Request\)[\s\S]{0,200}consumeActionCode\(request\.headers\.get\('X-Action-Code'\), request\.method, path\)/);
+  assert.match(http, /function requireActionCode\(request: Request\)[\s\S]{0,200}consumeActionCode\(request\.headers\.get\('X-Action-Code'\), request\.method, path, readSessionToken\(request\)\)/);
   assert.match(http, /function guardWithProfile\(request: Request\)[\s\S]{0,120}requireActionCode\(request\)[\s\S]{0,200}getLocalProfileId\(\)/);
 });
 

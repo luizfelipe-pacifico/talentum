@@ -1,2 +1,5 @@
-import { InvestPage } from '@/components/demo-pages';
-export default function Page() { return <InvestPage />; }
+import { NewsPage } from '@/components/invest/news-page';
+
+export default function Page() {
+  return <NewsPage />;
+}

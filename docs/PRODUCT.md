@@ -11,6 +11,7 @@ This document is the product specification of Talentum: what the product is for,
 - [Route map](#route-map)
 - [Cloud track: sign-up, session and downloads](#cloud-track-sign-up-session-and-downloads)
 - [MVP features](#mvp-features)
+- [Planning and net worth features](#planning-and-net-worth-features)
 - [Onboarding and initial financial snapshot](#onboarding-and-initial-financial-snapshot)
 - [Dashboard specification](#dashboard-specification)
 - [New-version notice and application update](#new-version-notice-and-application-update)
@@ -72,7 +73,7 @@ Global actions: import a file (**Current**, leads to the CSV/OFX import at `/ext
 
 The MVP is complete when a person can sign up on the landing page, securely obtain the correct installer, create their local financial base, import CSV or OFX, review the entries and consult a reliable Dashboard, with all financial data kept in the local SQLite database.
 
-The MVP **does not include** PDF import, AI, the ARCA allocation methodology, cloud backup, gamification, community features, card ROI, budgets or the notification center. These belong to later roadmap stages (see [ROADMAP.md](ROADMAP.md)); the original vision for them is preserved only as the [historical appendix](#appendix-original-vision-historical-non-normative).
+The MVP **does not include** AI, the ARCA allocation methodology, cloud backup, gamification, community features, card ROI, budgets or the notification center. These belong to later roadmap stages (see [ROADMAP.md](ROADMAP.md)); PDF import (Stage 7) and cards, statements and benefits (Stage 8) were delivered after the MVP and are documented in Feature 4 and in [Cards, statements and benefits](#cards-statements-and-benefits-stage-8); the original vision for them is preserved only as the [historical appendix](#appendix-original-vision-historical-non-normative).
 
 | Outside the MVP Dashboard | Roadmap stage that enables it |
 | --- | --- |
@@ -140,6 +141,8 @@ This is the single authoritative list of product routes. Paths and Portuguese ro
 
 "Placeholder" means the screen exists but renders only an empty state or a backend-confirmed count; the functional feature behind it is still Planned. Every functional screen has the four states (loading, empty, error, data) and talks only to the local API.
 
+**Lock and first-run screens (Current, [ADR 0009](decisions/0009-local-vault-and-encrypted-database.md)).** They have no route of their own: `VaultGate` (`src/components/vault-gate.tsx`) wraps every route except `/lp` and, until the local vault is unlocked, renders only these screens, with no sidebar, header or data request, so no financial value can flash before unlock. "Proteja seus dados" (create the password, then "Guarde o código de recuperação" with a required confirmation) appears when no vault exists; "Desbloquear o Talentum" (password, plus the authenticator code when enabled, and "Esqueci a senha") otherwise; "Recuperar acesso" takes the recovery code and a new password and then shows a new recovery code. Unlocking with a recovery code that was never confirmed shows a fresh one before entering. The header has "Bloquear agora"; the app also locks after the idle time set in Security, and in the desktop app when the system sleeps or the screen locks. The local app is reachable only on loopback; there is no mobile app, and the screens work on phone widths only so a browser window of any size stays usable.
+
 | Route | Status | Feature | Notes |
 | --- | --- | --- | --- |
 | `/` | **Current** | Início | Product presentation, local privacy notice, import/register action and shortcuts. Shows no financial value. No sidebar item of its own; reached through the brand at the top of the sidebar. |
@@ -152,28 +155,37 @@ This is the single authoritative list of product routes. Paths and Portuguese ro
 | `/contas` | **Current** | 2 | Accounts with their known balance; the sidebar account selector lists active accounts. |
 | `/contas/nova` | **Current** | 2 | Register institution and account with an optional informed balance. |
 | `/contas/[accountId]` | **Current** | 2 | Edit, deactivate, balance history and own Pix keys (masked). |
-| `/configuracoes` | **Current** | — | Theme selector (`Claro`, `Escuro`, `Sistema`) and "About". |
-| `/configuracoes/categorias` | **Current** | 3 | Category CRUD through the backend. |
-| `/planejamento/rendas` | **Current** | 3 | Expected income sources; never added to the balance. |
+| `/configuracoes` | **Current** | — / Stage 10 | Theme selector (`Claro`, `Escuro`, `Sistema`), notification preferences (quiet mode and each kind on/off, `#notificacoes`) and "About". |
+| `/notificacoes` | **Current** | Stage 10 | Full notification center: all/unread filter, follow, mark read/unread, dismiss with undo, mark all read. The header bell opens the same list in a side panel (first 20) with the unread count. |
+| `/configuracoes/categorias` | **Current** | 3, 6 | Category CRUD and the merchant-rule list: create, deactivate and apply to pending entries. |
+| `/configuracoes/seguranca` | **Current** | Local vault | Change password, generate a new recovery code, enable or disable the authenticator app (QR drawn locally, 10 backup codes), auto-lock time (1 to 60 minutes) and the Talentum account status with "Entrar com Google" (desktop app only). The three settings pages share the tabs Preferências, Categorias and Segurança. |
+| `/planejamento` | **Current** | Stages 9, 13 | Redirects to `/planejamento/orcamento`; sidebar item `Planejamento` with the tabs Orçamento, Dívidas, Modo sobrevivência and Rendas previstas. |
+| `/planejamento/orcamento` | **Current** | Stage 9 | Monthly budget: limit per expense category, confirmed spending, projection, 3-month average, surplus and the review of a closed month. See [Budget and monthly planning](#budget-and-monthly-planning-stage-9). |
+| `/planejamento/dividas` | **Current** | Stage 13 | Debts, payment order (highest rate first or smallest balance first) and payoff simulation. See [Survival mode and debts](#survival-mode-and-debts-stage-13). |
+| `/planejamento/sobrevivencia` | **Current** | Stage 13 | Survival mode: Saldo Livre de Risco, overdue debts and spending split into essential and non-essential categories. |
+| `/planejamento/rendas` | **Current** | 3 | Expected income sources; never added to the balance. Before Stage 9 this route had no header entry and showed "Página não encontrada" as its title. |
 | `/extratos` | **Current** | 5 | Transaction listing with validated filters and cursor pagination; each row links to its `Transaction.id`. |
 | `/extratos/[transactionId]` | **Current** | 5 | Detail, edit (description, category, status) and read-only revision history. |
 | `/extratos/recorrencias` | **Current** | 3 | Scheduled obligation CRUD. |
-| `/extratos/importar` | **Current** | 4 | Import wizard: select, inspect and preview, adjust the CSV mapping, confirm; lists previous imports. |
+| `/extratos/importar` | **Current** | 4 | Import wizard for CSV, OFX and PDF: select, inspect and preview (with per-row reading confidence for PDF), adjust the CSV mapping, confirm; lists previous imports. |
 | `/extratos/importar/[loteId]` | **Current** | 4 | Batch detail with counts, issues and undo. |
-| `/extratos/cartoes` | **Current** (placeholder) | Stage 8 | Empty state; cards are outside the MVP. |
-| `/extratos/cartoes/[cartaoId]` | **Current** (placeholder) | Stage 8 | Renders "card not found". |
+| `/extratos/cartoes` | **Current** | Stage 8 | Cards with the outstanding amount and due date of the nearest open statement; register a card. Empty state with `sem-cartoes`. |
+| `/extratos/cartoes/[cartaoId]` | **Current** | Stage 8 | Card detail: edit, deactivate, fee-waiver thermometer, statements, items (typed or imported from CSV, OFX or PDF), payment link and benefits. Renders "Cartão não encontrado" for an unknown ID. |
 | `/conciliacao` | **Current** | 6 | Persistent pending queue (`ReconciliationItem`). |
-| `/conciliacao/[reconciliationItemId]` | **Current** | 6 | Confirm, categorize, link an obligation, adjust or pair a transfer; revert a decision. |
-| `/conciliacao/faturas` | **Current** (placeholder) | Stage 8 | Bill check; enabled when bills exist. |
-| `/patrimonio` | **Current** (placeholder) | Stage 14 | Empty state linking to `/onboarding`. |
-| `/patrimonio/aportes` | **Current** (placeholder) | Stage 14 | |
-| `/patrimonio/metas` | **Current** (placeholder) | Stage 9+ | |
-| `/patrimonio/metas/[metaId]` | **Current** (placeholder) | Stage 9+ | Renders "goal not found". |
+| `/conciliacao/[reconciliationItemId]` | **Current** | 6 | Confirm, categorize (optionally creating a rule for similar entries), link an obligation, adjust or pair a transfer; shows the rule suggestion and the probable own-transfer pair; revert a decision. |
+| `/patrimonio` | **Current** | Stage 14 | Net worth, the four pillars against the 22.5%–27.5% band, assets with dated values. See [Net worth and the ARCA methodology](#net-worth-and-the-arca-methodology-stage-14). |
+| `/patrimonio/aportes` | **Current** | Stage 14 | Next-contribution simulation: new money only, never a sale; paused while survival mode is active. |
+| `/patrimonio/metas` | **Current** | Stage 12 | Goals with progress, required monthly deposit and feasibility; arithmetic split of a surplus (`?sobra=<cents>` pre-fills it from the budget review). See [Goals and savings pots](#goals-and-savings-pots-stage-12). |
+| `/patrimonio/metas/[metaId]` | **Current** | Stage 12 | Goal detail, dated contributions (deposit or withdrawal), edit, archive and delete; "goal not found" only on a 404. |
+| `/conciliacao/faturas` | **Current** | Stage 8 | Statement check: each open statement against the bank entries that can be its payment; confirm or undo the link. Empty state with `sem-faturas`. |
 | `/invest` | **Current** (placeholder) | Stages 15–16 | No fictitious news. |
-| `/invest/[noticiaId]` | **Current** (placeholder) | Stages 15–16 | Renders "content not found". |
-| `/historico` | **Current** | 8 | Redacted timeline with `kind` filter, cursor and revert. |
-| `/perfil` | **Current** (placeholder) | 1 | Empty state linking to `/onboarding`. |
-| `/perfil/privacidade` | **Current** (placeholder) | 8 | States that data stays in local SQLite; encrypted backup shown as Planned. |
+| `/invest` | **Current** | Stages 15–16 | Public economic news read through the local backend from the Worker, with source credit, date and excerpt; local-only source filter; states for not configured (`TALENTUM_CLOUD_API_URL` unset), offline, confirmed empty and loading. No portfolio data leaves the device. |
+| `/invest/[noticiaId]` | **Current** | Stages 15–16 | Title, source, date, excerpt, `Resumir notícia` (AI summary or the article's first sentences, labelled), `Ler na fonte` (external) and credit; not-found state. |
+| `/historico` | **Current** | 8, Stage 11 | Redacted timeline filtered by subject (domain) and period, "Carregar mais eventos" with cursor, and revert. |
+| `/perfil` | **Current** | Stage 17 | Level, XP and progress to the next level, missions with progress and actions, badges (locked and unlocked) and the XP history. Without a profile, the `perfil-vazio` state linking to `/onboarding`. |
+| `/perfil/privacidade` | **Current** | Stages 11, 18, 19 | "Dados e backup": restore points (create, restore with confirmation, delete, scheduled-restore banner with cancel), encrypted backup (generate with passphrase, restore from file), JSON and CSV export, and "Apagar todos os dados locais" with typed confirmation. |
+| Quick cash entry (dialog, every screen) | **Current** | 5 | The `Lançar dinheiro` button in the top bar opens a sheet: expense or income, amount, description, date and optional category; it creates a `cash` account when none exists and offers `Desfazer` after saving. |
+| New-version notice (dialog in the app shell) | **Current** (installation gated) | Update notice | See [New-version notice](#new-version-notice-and-application-update). |
 | `/layout-guide` | **Current** (development only) | — | Internal design reference; returns not found outside development. |
 
 The batch route parameter is `[loteId]` in code. The earlier sub-routes `/extratos/importar/[loteId]/mapeamento` and `/extratos/importar/[loteId]/revisao` were **not created**: mapping and preview happen inside the import wizard before any batch exists (see Feature 4).
@@ -184,7 +196,9 @@ The batch route parameter is `[loteId]` in code. The earlier sub-routes `/extrat
 | --- | --- | --- | --- |
 | `POST /api/action-codes` | **Current** | all | Bootstrap; issues a 60-second single-use code bound to method and path. |
 | `GET /api/health/live` | **Current** | — | Liveness probe; a documented exception to the action-code rule (`CLAUDE.md`, Architecture rules): no application data, never called by the interface. |
-| `GET /api/system/status` | **Current** | — | Requires `X-Action-Code`. |
+| `GET /api/system/status` | **Current** | — | Requires `X-Action-Code` and a local session. |
+| `GET /api/vault/status`, `POST /api/vault/setup`, `POST /api/vault/unlock`, `POST /api/vault/recover` | **Current** | Local vault | The only routes that work without a session; contract in [ARCHITECTURE.md §4.8](ARCHITECTURE.md#48-local-api-contract). |
+| `POST /api/vault/lock`, `POST /api/vault/activity`, `GET`/`PATCH /api/vault/settings`, `POST /api/vault/password`, `POST /api/vault/recovery-code`, `POST /api/vault/recovery-code/confirm`, `POST /api/vault/totp`, `POST /api/vault/totp/confirm`, `POST /api/vault/totp/disable` | **Current** | Local vault | Require a session; factor changes also require the current password. |
 | `GET /api/local-summary` | **Current** | area screens | Counts of active accounts, transactions, pending transactions, open obligations and import batches; lets area screens decide between empty and existing state. |
 | `GET /api/dashboard` | **Current** | 7 | Includes the Saldo Livre de Risco, consolidated balance, month spending, daily average, committed total and reconciliation count. |
 | `GET /api/dashboard/categories` | **Current** | 7 | Spending by category. |
@@ -206,7 +220,9 @@ The batch route parameter is `[loteId]` in code. The earlier sub-routes `/extrat
 | `GET\|POST /api/incomes` | **Current** | 3 | |
 | `GET\|POST /api/obligations` | **Current** | 3 | |
 | `PATCH\|DELETE /api/obligations/[obligationId]` | **Current** | 3 | No item `GET`. |
-| `GET\|POST /api/merchant-rules` | **Current** | 3 | Rules are stored; the importer does not apply them yet. |
+| `GET\|POST /api/merchant-rules` | **Current** | 3, 6 | The importer and manual entries apply active rules (Feature 6). |
+| `POST /api/merchant-rules/apply` | **Current** | 6 | Reapplies active rules to pending, uncategorized items. |
+| `DELETE /api/merchant-rules/[ruleId]` | **Current** | 6 | Deactivates a rule. |
 | `POST /api/imports/inspect` | **Current** | 4 | Writes nothing. |
 | `GET\|POST /api/imports` | **Current** | 4 | |
 | `GET\|DELETE /api/imports/[importBatchId]` | **Current** | 4 | |
@@ -214,47 +230,83 @@ The batch route parameter is `[loteId]` in code. The earlier sub-routes `/extrat
 | `DELETE /api/csv-mappings/[mappingId]` | **Current** | 4 | |
 | `PATCH /api/imports/[importBatchId]/mapping`, `POST /api/imports/[importBatchId]/confirm` | Superseded | 4 | Replaced by the two-step flow (see Feature 4). |
 | `GET /api/transactions` | **Current** | 5 | Validated filters, cursor, deterministic order with `id` tie-breaker. |
+| `POST /api/transactions` | **Current** | 5 | Quick manual cash entry with idempotency key; only `cash` accounts. |
 | `GET\|PATCH /api/transactions/[transactionId]` | **Current** | 5 | |
 | `GET /api/transactions/[transactionId]/history` | **Current** | 5 | |
 | `GET /api/reconciliation-items` | **Current** | 6 | Up to 100 pending items. |
 | `GET /api/reconciliation-items/[reconciliationItemId]` | **Current** | 6 | |
 | `POST /api/reconciliation-items/[reconciliationItemId]/decisions` | **Current** | 6 | |
 | `POST /api/reconciliation-decisions/[decisionId]/revert` | **Current** | 6 | |
-| `GET /api/timeline-events` | **Current** | 8 | |
+| `GET\|PUT /api/budgets` | **Current** | Stage 9 | `GET ?month=AAAA-MM` returns the budget summary; `PUT` upserts one limit (idempotent by `(profileId, categoryId, month)`). |
+| `DELETE /api/budgets/[budgetId]` | **Current** | Stage 9 | Removes a limit. |
+| `POST /api/budgets/copy` | **Current** | Stage 9 | Copies limits between months without overwriting; repeating it copies nothing. |
+| `GET\|POST /api/goals` | **Current** | Stage 12 | List with the plan of each goal and the measured surplus; create. |
+| `GET\|PATCH\|DELETE /api/goals/[goalId]` | **Current** | Stage 12 | |
+| `POST /api/goals/[goalId]/contributions` | **Current** | Stage 12 | Requires `idempotencyKey`; a repeat answers `replayed: true`; a withdrawal above the saved amount answers `409 GOAL_OVERDRAWN`. |
+| `DELETE /api/goals/[goalId]/contributions/[contributionId]` | **Current** | Stage 12 | |
+| `POST /api/goals/surplus-allocation` | **Current** | Stage 12 | Simulation only; writes nothing. |
+| `GET\|POST /api/debts` | **Current** | Stage 13 | List, both payment orders, totals and survival status; create. |
+| `PATCH\|DELETE /api/debts/[debtId]` | **Current** | Stage 13 | |
+| `POST /api/debts/payoff-plan` | **Current** | Stage 13 | Simulation only; writes nothing. |
+| `GET\|PUT /api/survival` | **Current** | Stage 13 | Survival status and essential split; `PUT` sets the essential categories. |
+| `GET\|POST /api/assets` | **Current** | Stage 14 | `POST` creates the asset with its first dated value; requires `idempotencyKey`. |
+| `PATCH\|DELETE /api/assets/[assetId]` | **Current** | Stage 14 | Rename, change pillar, deactivate or delete. |
+| `GET\|POST /api/assets/[assetId]/snapshots` | **Current** | Stage 14 | Dated values; requires `idempotencyKey`. |
+| `GET /api/portfolio` | **Current** | Stage 14 | Net worth, pillar shares, band and survival status. |
+| `POST /api/portfolio/contribution-simulation` | **Current** | Stage 14 | Simulation only; answers `status: "survival"` while survival mode is active. |
+| `GET\|POST /api/cards` | **Current** | Stage 8 | Nickname unique per profile; never a card number. |
+| `GET\|PATCH\|DELETE /api/cards/[cardId]` | **Current** | Stage 8 | Deleting with statements is refused; deactivate instead. |
+| `POST /api/cards/[cardId]/statements` | **Current** | Stage 8 | One statement per due date. |
+| `POST /api/cards/[cardId]/benefits` | **Current** | Stage 8 | One record per program. |
+| `PATCH\|DELETE /api/card-benefits/[benefitId]` | **Current** | Stage 8 | |
+| `GET\|PATCH\|DELETE /api/card-statements/[statementId]` | **Current** | Stage 8 | Items, payments and payment candidates. |
+| `POST /api/card-statements/[statementId]/items` | **Current** | Stage 8 | Idempotent by `clientKey`. |
+| `DELETE /api/card-statements/[statementId]/items/[itemId]` | **Current** | Stage 8 | |
+| `POST /api/card-statements/[statementId]/items/import` | **Current** | Stage 8 | CSV, OFX or PDF; re-importing writes nothing new. |
+| `POST /api/card-statements/[statementId]/payments` | **Current** | Stage 8 | Links a bank outflow as payment. |
+| `DELETE /api/card-statements/[statementId]/payments/[paymentId]` | **Current** | Stage 8 | Undoes the link only. |
+| `GET /api/card-statement-checks` | **Current** | Stage 8 | Data of `/conciliacao/faturas`. |
+| `GET /api/timeline-events` | **Current** | 8, Stage 11 | Filters `domain`, `kind`, `from`, `to`, `cursor`. |
+| `GET\|PATCH /api/notifications` | **Current** | Stage 10 | Derived notifications; state by stable key. |
+| `GET\|PUT /api/notification-preferences` | **Current** | Stage 10 | Quiet mode and per-kind switches. |
+| `GET\|POST /api/restore-points` | **Current** | Stage 11 | Device-level; `idempotencyKey` on POST. |
+| `DELETE /api/restore-points/[restorePointId]` | **Current** | Stage 11 | |
+| `POST /api/restore-points/[restorePointId]/restore` | **Current** | Stage 11 | Schedules the restore for the next unlock (lock and unlock, or restart). |
+| `GET\|DELETE /api/pending-restore` | **Current** | Stage 11 | |
+| `POST /api/encrypted-backups` | **Current** | Stage 18 | Download; local only. |
+| `POST /api/encrypted-backups/restore` | **Current** | Stage 18 | Multipart; schedules the restore. |
+| `GET /api/exports/json`, `GET /api/exports/transactions-csv` | **Current** | Stage 19 | Downloads. |
+| `POST /api/local-data/deletion` | **Current** | Stage 19 | Typed confirmation. |
+| `GET /api/gamification`, `POST /api/gamification/month-reviews` | **Current** | Stage 17 | |
 | `POST /api/timeline-events/[timelineEventId]/revert` | **Current** | 8 | |
-| `GET /api/updates` | Planned | Update notice | |
+| `GET /api/updates` | **Current** | Update notice | Backend query to GitHub Releases of the official repository. |
+| `POST /api/updates/postpone` | **Current** | Update notice | 24-hour postponement per version. |
+| `GET /api/news` | **Current** | Stage 15 | Public news from the Worker; `status: ok \| unconfigured \| offline`. |
+| `GET /api/news/[newsId]` | **Current** | Stage 15 | One item; `404 NEWS_NOT_FOUND`. |
+| `POST /api/news/[newsId]/summary` | **Current** | Stage 16 | Summary of the public article; `method: AI \| EXTRACT`. |
 
-The Saldo Livre de Risco value itself is served inside `GET /api/dashboard`; `GET /api/dashboard/risk-free-balance` adds its breakdown and the daily projection, reading the consolidated balance through `src/server/dashboard-queries.ts` (see L-4 for a currency divergence between the two routes).
+The Saldo Livre de Risco value itself is served inside `GET /api/dashboard`; `GET /api/dashboard/risk-free-balance` adds its breakdown and the daily projection, reading the consolidated balance through `src/server/dashboard-queries.ts` (both read the same consolidated balance in the reference currency; see L-4).
 
 ### Cloud routes
 
-Landing page and BFF (`apps/web`, published to Vercel):
+Landing page and BFF (`apps/web`, published to Vercel). Pages:
 
 | Route | Status | Notes |
 | --- | --- | --- |
-| `/` | **Current** | Public landing page. |
-| `/downloads` | **Current** | Protected; calls the Worker `/api/me` and `/api/releases` server-side. |
-| `GET /api/auth/start` | **Current** | Starts OAuth through the Worker. |
-| `GET /api/auth/callback` | **Current** | Completes OAuth; sets `HttpOnly` cookies. |
-| `GET /api/auth/refresh` | **Current** | Rotates cookies. |
-| `/api/auth/logout` | **Current** | |
-| `POST /api/releases/[releaseId]/download-grants` | **Current** | Form post; answers with a 303 redirect. |
+| `/` | **Current** | Public landing page; platforms Windows, Linux and macOS (macOS "Em breve" until a signed, notarized build exists). |
+| `/entrar` | **Current** | Sign-in: what the account stores, Turnstile, `Continuar com Google`, clickwrap acceptance of the current Terms and Privacy; resumes a session with a refresh cookie. Not indexed. |
+| `/entrar/verificacao` | **Current** | Two-step verification code or recovery code after Google. |
+| `/downloads` | **Current** | Protected; one card per system (Windows, Linux, macOS) with version, architecture, SHA-256 and `Baixar para …`; macOS shows "Em breve" while no artifact is published. |
+| `/conta` | **Current** | Protected: public name, two-step verification, sessions, sign out, account deletion (typed `EXCLUIR`). |
+| `/conta/mfa`, `/conta/mfa/codigos` | **Current** | Authenticator enrollment (server-rendered QR) and one-time display of recovery codes. |
+| `/comunidade` | **Current** | Public list of suggestions, recent or most supported, with pagination. |
+| `/comunidade/[postId]` | **Current** | Post, comments with one reply level, support, report, author edit/delete, moderator actions. |
+| `/comunidade/nova` | **Current** | Protected form to write a suggestion (Turnstile). |
+| `/comunidade/pessoa/[profileId]` | **Current** | Minimal public profile: name, month of joining, posts. |
+| `/comunidade/moderacao` | **Current** | Moderators only: report queue. |
+| `/termos`, `/privacidade` | **Current** | Draft documents pending legal review, versioned (`LEGAL_VERSIONS`). |
 
-Worker (`cloudflare/src/index.ts`):
-
-| Route | Status |
-| --- | --- |
-| `GET /health` | **Current** |
-| `POST /api/action-codes` | **Current** |
-| `POST /api/auth/start` | **Current** |
-| `POST /api/auth/callback` | **Current** |
-| `POST /api/auth/refresh` | **Current** |
-| `POST /api/auth/logout` | **Current** |
-| `GET /api/me` | **Current** |
-| `GET /api/releases` | **Current** |
-| `POST /api/releases/:releaseId/download-grants` | **Current** |
-
-Contracts, error codes and protections of every cloud route are specified in [ARCHITECTURE.md](ARCHITECTURE.md) and [SECURITY.md](SECURITY.md).
+BFF route handlers (`/api/auth/*`, `/api/releases/*`, `/api/conta/*`, `/api/comunidade/*`) and every Worker route, with their contracts and protections, are specified in [ARCHITECTURE.md §3.5](ARCHITECTURE.md#35-cloud-api-contract-worker-and-bff) and [SECURITY.md](SECURITY.md); that is the single list.
 
 ## Cloud track: sign-up, session and downloads
 
@@ -264,41 +316,37 @@ Delivers only the cloud API, the public landing page and the authenticated downl
 
 ### Current state
 
-**Current (verified in the repository):**
+**Current (in the repository, November 2026 cloud completion):**
 
-- Worker with D1 binding `DB`; migrations `0001_cloud_core.sql` and `0002_cloud_auth_runtime.sql` (ephemeral state and rate limiting).
-- `GET /health` queries the binding and answers without exposing internal data; `workers.dev` is enabled explicitly in `wrangler.jsonc`.
-- Action codes persisted in D1, OAuth Google with Authorization Code + PKCE, cryptographic ID-token validation, short session, rotating refresh token with reuse detection and revocation, logout, profile, releases and download grants.
-- Landing page BFF with `HttpOnly` cookies, callback, refresh, protected `/downloads` and origin validation on mutations.
-- CSP, HSTS and `no-store` on the landing page; a test checks that the web package is isolated from the desktop and financial code.
+- Worker with D1 binding `DB`; migrations `0001` to `0004`; a 30-minute cron for retention and news.
+- Google OAuth with PKCE for the LP and for the desktop app (RFC 8252 loopback contract), consent recorded at sign-up, optional two-step verification with an authenticator app and recovery codes, short sessions with rotating refresh tokens, logout that also works with an expired access token, session list and revocation, account deletion with tombstones.
+- Turnstile on login and content creation, exact CORS, per-route and per-user rate limits, security and audit events without personal data, enforced single-use download grants, `no-store` on every BFF response, refresh by `POST`, origin required on every mutation.
+- Feedback community, public economic news and on-demand summaries.
+- `/termos` and `/privacidade` as drafts pending legal review.
+- CI with gitleaks, dependency review, CodeQL, Dependabot and a build check proving the LP bundle reaches no desktop code.
+- macOS as a release platform in D1 and on the pages, with no build yet.
 
-**Reported, not verifiable from the repository:** the original plan (10 September 2026) recorded the Worker as published and migration `0002` as applied to local and remote D1. Registering secrets, configuring OAuth, producing signed artifacts and running end-to-end tests in the published environment remain mandatory operational actions.
-
-The health endpoint and the schema alone never mean that feedback or community features exist; those D1 tables exist but have no routes.
+**Not verifiable from the repository / pending provider changes:** Worker secrets (`TURNSTILE_SECRET_KEY`, `MFA_ENCRYPTION_KEY`), the Turnstile widget, remote migrations `0003`/`0004`, the cron and Workers AI activation, Vercel settings, GitHub security settings (checklist in [ARCHITECTURE.md §3.8](ARCHITECTURE.md#38-cloudflare-setup-and-deployment), step 11).
 
 ### Remaining work, in mandatory order
 
-1. **Planned (operational):** set the Cloudflare Git deployment commands to `pnpm run cloudflare:build` and `pnpm run cloudflare:deploy`, keeping `main` as the production branch.
-2. **Planned (operational):** per-environment configuration with secrets registered as Worker Secrets; real values never enter `wrangler.jsonc`, `.env.example` or Git.
-3. **Planned:** exact CORS. `ALLOWED_ORIGIN` is declared but unused; the Worker sends no CORS headers.
-4. **Planned:** separate rate limits for login, callback, refresh, action code and download; adaptive Turnstile against abuse. Today only two IP-keyed buckets exist (`codes` and `login`) and there is no Turnstile.
-5. **Planned:** redacted logs and metrics, alerts and security events without tokens, public e-mails, raw IPs or financial data. Refresh-token reuse currently revokes the family but writes nothing to `security_events`.
-6. **Planned:** consent, privacy, session revocation, account deletion and minimal retention.
-7. **Planned:** signed Windows and Linux installers produced outside Vercel, with published checksum, signature and verifiable metadata.
-8. **Planned:** authentication, replay, rotation, authorization, rate-limit, deploy-leak and end-to-end download tests.
+1. **Planned (operational):** apply the provider checklist above after authorization, then validate login, two-step verification, community and downloads end to end in the published environment.
+2. **Planned:** signed Windows and Linux installers and a signed, notarized macOS build produced outside Vercel, with published checksum, signature and metadata.
+3. **Planned:** Electron side of desktop sign-in (loopback listener, system browser, keychain).
+4. **Open:** production domain (§3.4 of ARCHITECTURE), rate-limit calibration with telemetry, community policy and appeal channel, legal review of the documents.
 
 ### Done when
 
 - An unauthenticated person reaches the landing page but not the protected downloads page.
 - Sign-up/login, refresh, logout and revocation pass the security tests.
-- Windows and Linux are offered only after backend authorization.
+- Windows, Linux and macOS are offered only after backend authorization (macOS once a signed, notarized build exists).
 - The artifact deployed to Vercel contains no Electron, Prisma, SQLite, parsers or financial modules.
 - No secret appears in the bundle, repository, logs or HTTP responses.
 - The frontend never accesses D1, OAuth or GitHub Releases directly.
 
 ## MVP features
 
-Tables and fields referenced here are specified in [DATABASE.md](DATABASE.md). All twenty-four Prisma models listed below exist today (11 migrations). Features 1 to 8 have a vertical implementation (migration, API, screen, tests); each section states what remains.
+Tables and fields referenced here are specified in [DATABASE.md](DATABASE.md). All thirty-seven Prisma models exist today (15 migrations). Features 1 to 8 have a vertical implementation (migration, API, screen, tests); each section states what remains.
 
 ### Feature 1 — Financial onboarding
 
@@ -396,9 +444,9 @@ Status: **Current** (CRUD, screens and persistence); applying merchant rules aut
 
 **Met.** Categories, income sources, commitments and merchant rules have persistence and protected local APIs. The categories, income and recurrences screens consult only these contracts; future income stays out of the Saldo Livre de Risco. Contract tests: `tests/financial-planning-contracts.test.mjs`.
 
-### Feature 4 — CSV and OFX import
+### Feature 4 — CSV, OFX and PDF import
 
-Status: **Current** for CSV and OFX. PDF is Stage 7 of [ROADMAP.md](ROADMAP.md). `ofx-data-extractor` was replaced by an own bounded reader ([ADR 0002](decisions/0002-own-ofx-parser.md)); `pdfjs-dist` is installed but unused.
+Status: **Current** for CSV and OFX (MVP) and for PDF (Stage 7 of [ROADMAP.md](ROADMAP.md), [ADR 0006](decisions/0006-pdf-import.md)). `ofx-data-extractor` was replaced by an own bounded reader ([ADR 0002](decisions/0002-own-ofx-parser.md)).
 
 **What it does.** Turns a bank file into a traceable batch of local transactions. CSV requires column mapping because banks use different headers, separators, dates and signs.
 
@@ -449,7 +497,9 @@ A checked column mapping can be **saved and reused**: inspection computes a head
 
 Deleting a saved mapping does not affect an import already written; it only influences the next file reading. `/extratos/importar` lists previous imports, which is the path to the batch detail and to undo.
 
-Outside this feature: PDF (Stage 7), and automatic classification by merchant rules. Since Feature 6, every imported entry without a category opens a reconciliation item; it also appears in the dashboard's `Sem categoria` slice.
+**PDF (Stage 7, Current).** A PDF goes through the same two steps and the same routes. Text is extracted locally under limits of pages, characters and time, with nothing executed or fetched; a layout reader (generic card statement or generic tabular statement, versioned) turns lines into entries, each with the confidence of date, amount and description. The preview shows, per row, "Lida com certeza" or which field to check. A row below the confidence threshold is **not imported**: it becomes an issue that names the field and the page. A password-protected PDF is refused with instructions to export a copy without a password; a scanned PDF without a text layer is refused as having no rows. A PDF that looks like a card statement gets a warning in the account import wizard pointing to the card page, where its lines become statement items. How the readers work and how to add one: [ARCHITECTURE.md](ARCHITECTURE.md), §2.5. Done when met: synthetic and hostile PDFs (scripts, attachments, automatic actions, forged page count, more pages than the limit, encrypted, truncated, absurd amounts) are covered by `tests/import-pdf.test.mjs`.
+
+Since Feature 6, every imported entry without a category opens a reconciliation item, and active merchant rules and own-transfer detection run while the batch is written (Feature 6); an entry still without a category appears in the dashboard's `Sem categoria` slice.
 
 ### Feature 5 — Statements and transactions
 
@@ -465,7 +515,16 @@ Status: **Current**.
 
 **Done when:** without transactions the route shows an empty state; with records, each row corresponds to a `Transaction.id` returned by the backend.
 
-**Met.** `/extratos` consumes `GET /api/transactions`, has the four states and links each row to its detail by `Transaction.id`. Editing validates ownership and category in the backend and records before/after in `TransactionRevision`; the per-entry history is read-only. Invariants in `tests/transaction-detail-contracts.test.mjs`.
+**Met.** `/extratos` consumes `GET /api/transactions`, has the four states and links each row to its detail by `Transaction.id`. Editing validates ownership and category in the backend and records before/after in `TransactionRevision`; the per-entry history is read-only. Invariants in `tests/transaction-detail-contracts.test.mjs`. The detail links to the entry's reconciliation item, where a category applied by a rule can be undone.
+
+**Quick cash entry (Current, MVP 5).** Money spent or received in cash appears in no statement, so the person records it by hand from `Lançar dinheiro` in the top bar (the pattern of banking and budgeting apps: an always-visible button opening a short sheet with the amount first). Decisions the implementation fixes:
+
+1. **Only into a `cash` account.** A hand-written entry in a bank account would be duplicated when that account's statement is imported. Without a cash account, the sheet creates one (`Dinheiro`), optionally with the amount on hand today, so its balance is known.
+2. **Idempotent.** The sheet generates one UUID per form; resending returns the stored entry, and the same key with other content is refused (`409 IDEMPOTENCY_KEY_REUSED`).
+3. **Backend-validated.** Non-zero integer cents, description up to 120 characters, a civil date that is today or at most one year back; an entry dated today stores the instant it was sent, so it falls after a balance informed earlier the same day.
+4. **Reversible and reconciled like any entry.** A `manual_entry` timeline event undoes it (`Desfazer` in the sheet or `/historico`); an entry already paired as a transfer must have the pairing reverted first. Without a category it follows the same path as an imported entry: own-transfer candidate, merchant rule or the queue.
+
+Coverage: `tests/manual-entries-contracts.test.mjs`.
 
 ### Feature 6 — Reconciliation
 
@@ -497,7 +556,12 @@ Status: **Current** (completed in the local MVP).
 
 **Done when:** no correction destroys the original value and every relevant decision can be audited and reverted.
 
-**Met.** Import creates a pending item for each entry without a category. Confirming, categorizing, linking an obligation, adjusting or pairing a transfer writes an atomic decision with before/after snapshots in cents; reverting restores the snapshots and reopens the item. The person picks obligations and counterpart entries from readable lists and never types an ID (`tests/reconciliation-contracts.test.mjs`). **Planned:** automatic confidence scoring and merchant-rule classification; today every item is created with reason `category_unknown` and confidence 0, and transfer pairing is manual.
+**Met.** Import creates a pending item for each entry without a category. Confirming, categorizing, linking an obligation, adjusting or pairing a transfer writes an atomic decision with before/after snapshots in cents; reverting restores the snapshots and reopens the item. The person picks obligations and counterpart entries from readable lists and never types an ID (`tests/reconciliation-contracts.test.mjs`). **Automatic categorization and own-transfer detection (Current, MVP 3 and 5).** Feature 4 sends *uncertain* items to reconciliation, so certainty decides whether an entry skips the queue. While a batch or a manual entry is written, each new uncategorized entry goes through two deterministic checks, in this order (`src/server/reconciliation-plan.ts`):
+
+1. **Own transfer first.** An entry with the same amount and the opposite sign in another of the person's accounts, within 3 days, makes the item `own_transfer_candidate` (confidence 60, plus 20 on the same day or 10 one day apart, plus 20 when either description contains one of the person's own Pix keys, compared through the HMAC index; at most 100). Both items stay **pending**: the person confirms with one button and the existing `transfer` decision does the write. A rule is not applied to such an entry, because categorizing a transfer as spending is exactly the L-5 error.
+2. **Merchant rule next.** `exact` (confidence 100) and `startsWith` (90) rules describe the merchant without ambiguity and are **applied immediately**: the entry receives the category, its item is created `resolved` with reason `merchant_rule`, and a `rule` decision keeps before and after, so it can be undone from the item (reached from the entry's detail). `contains` (60) matches fragments other merchants may share, so it becomes a **suggestion** in the queue (`merchant_rule_suggestion`). Two equally ranked rules pointing to different categories are a conflict and apply nothing. Ranking: priority, then specificity (`exact`, `startsWith`, `contains`), then pattern length; text is compared without accents, case or repeated spaces.
+
+A rule **never overwrites a category already set**, by hand or otherwise: only uncategorized entries are planned, and reapplying writes with `categoryId: null` in the update condition. A rule the person undid on an entry does not return to it. Rules are created on `/configuracoes/categorias` or while categorizing in the queue (`Aplicar também aos lançamentos cuja descrição começa com …`, the pattern mail apps use for "filter messages like these"), and `Aplicar regras aos lançamentos pendentes` reapplies them. Coverage: `tests/categorization.test.mjs` and `tests/transfer-detection.test.mjs`.
 
 ### Feature 7 — Dashboard
 
@@ -533,7 +597,9 @@ The monthly income/outflow chart and the cash projection are **Current**. Tempor
 - the palette validation required by R-20 is no longer pending: `scripts/validate-palette.mjs` is versioned and `tests/palette.test.mjs` locks the reproduction of the recorded verdicts;
 - the gain and loss tokens were ratified with measurement in both themes, closing Dashboard decision 2.
 
-**Open:** `src/server/dashboard-queries.ts` (`loadConsolidatedBalance`) is used by the projection route but not by `GET /api/dashboard`, which computes the consolidated balance inline; the projection keeps only `BRL` accounts while the verdict sums every active account, so the two can diverge with a non-BRL account (L-4).
+**Resolved (2026-11-20):** the verdict and the projection read the same `loadConsolidatedBalance` in the reference currency, and the verdict says how many accounts in another currency were left out (L-4).
+
+**Local alerts (Current, MVP 6).** The attention band shows, above the reconciliation queue, alerts computed by the backend from stored data (`src/server/alerts.ts`): overdue obligations, obligations due today or in the next 3 days, and accounts with no new data (balance, statement or entry) for more than 30 days. Each alert names the items with amount and written-out date and offers the next step (`Abrir obrigações`, `Importar extrato`, `Informar saldo em Contas`). No alert leaves the device. Coverage: `tests/alerts.test.mjs`.
 
 Outside Feature 7: comparing the daily average against a budget depends on `Budget`, Stage 9 of [ROADMAP.md](ROADMAP.md).
 
@@ -548,13 +614,117 @@ Status: **Current** (completed in the local MVP scope; cloud E2EE backup stays o
 | Table | IDs and relations | Responsibility | Status |
 | --- | --- | --- | --- |
 | `TimelineEvent` | `id`, `profileId`, `importBatchId?`, `transactionId?`, `transactionRevisionId?`, `reconciliationDecisionId?` | redacted, reversible event | **Current** |
-| `DatabaseBackup` | `id`, `profileId` | metadata of the local backup taken before a destructive migration | **Current** as a table; nothing writes it yet |
+| `DatabaseBackup` | `id`, `profileId` | metadata of a local restore point (manual or automatic) | **Current**; written by the app and by the database open path at unlock (Stage 11) |
 
 **Migration:** `mvp_timeline_backup` (**Current**).
 
 **Done when:** events can be queried without exposing secrets, and destructive migrations require a validated local backup.
 
-**Met in the local MVP scope.** Imports, transaction edits and reconciliation decisions create redacted, reversible events; reverting goes through the original use case. The migration preflight blocks pending destructive SQL without a verified `DatabaseBackup` for the current version (`tests/timeline-contracts.test.mjs`). **Open:** the preflight runs only through `pnpm dev`/`pnpm dev:all` (not in Docker or the packaged app), and no feature creates `DatabaseBackup` rows yet, so a destructive migration could only be unlocked by a backup produced outside the application.
+**Met in the local MVP scope.** Imports, transaction edits and reconciliation decisions create redacted, reversible events; reverting goes through the original use case. The migration runner blocks pending destructive SQL without a verified backup for the current version (`tests/timeline-contracts.test.mjs`). Stage 11 extended this: at vault setup and every unlock, in `pnpm dev`, Docker and the packaged app, the open path creates a verified, encrypted `pre_migration` restore point before migrating (`tests/restore-points.test.mjs`, ADR 0007 amendment); see [Stages 10, 11, 17, 18 and 19](#stages-10-11-17-18-and-19--notifications-restoration-progress-backup-and-portability).
+
+### Stages 10, 11, 17, 18 and 19 — notifications, restoration, progress, backup and portability
+
+Status: **Current** (local). Cloud backup storage and remote push stay **Open**.
+
+**Notification center (Stage 10).** Notifications are derived from local data on each read and never sent anywhere: open obligations overdue (`obligation_overdue`, urgent) or due in the next 3 days (`obligation_due`), pending reconciliation (`reconciliation_pending`, once per ISO week), an account whose newest statement covers more than 30 days ago (`import_stale`, once per account per month), recent imports with unread lines (`import_issues`) and no restore point in 30 days while data exists (`backup_stale`). The dedupe key is `kind:subject:period`. The person can follow, mark read or unread, dismiss (with undo) and mark all read; preferences turn each kind off and enable a quiet mode that hides the bell count while keeping the list. Another feature adds a kind by implementing `NotificationSource` (`load` scoped by profile, pure `derive`) and registering it in `src/server/notifications/registry.ts`. Pattern: the header bell with a count and a side panel follows GitHub and Gmail on the web and the macOS Notification Center; dismiss with undo follows Gmail's archive; quiet mode follows macOS/iOS Focus. Remote push needs its own ADR.
+
+**History and restoration (Stage 11).** The timeline filters by subject and period with cursor pagination. Restore points are verified local copies of the database, created on demand and automatically before migrations, restores and full deletion; restoring is verified, keeps the current data as a new restore point and is applied when Talentum is opened again ([ARCHITECTURE.md §2.9](ARCHITECTURE.md#29-backup-and-restore)). Undo of individual changes stays with the timeline reversal.
+
+**Gamification (Stage 17).** XP only for habits that keep data useful: 50 XP per account per ISO week with an imported statement, 5 XP per reconciliation decision (at most 10 per day), 100 XP per month in which every active account received a statement, 100 XP per reviewed month and 30 XP per month with a restore point created by the person. Never for spending, contributing or any amount; no ranking or comparison with other people. Levels: 1 `Primeiros passos` (0), 2 `Rotina em construção` (500), 3 `Dados em dia` (1,500), 4 `Controle consistente` (3,500), 5 `Hábito consolidado` (7,000). XP is derived from facts that still exist, so undoing an import also removes its XP. Only the month review is stored (`MonthlyReview`), for the current or previous month and only when it has entries. The original level titles in [ARCA-VISION.md](ARCA-VISION.md) referred to investing and rebalancing and were replaced for that reason.
+
+**Encrypted backup (Stage 18).** Local only, passphrase-derived key, no key recovery ([ADR 0007](decisions/0007-local-encrypted-backup.md)). The screen states before generating the file that losing the passphrase loses the backup. Not presented as "zero knowledge".
+
+**Export, portability and deletion (Stage 19).** JSON export of every local table with a documented, versioned format and CSV export of entries with formula neutralization ([DATABASE.md](DATABASE.md#export-format)); "Apagar todos os dados locais" with the typed phrase `APAGAR MEUS DADOS`, preceded by a restore point unless the person also deletes the restore points. Cloud deletion and session revocation belong to the cloud track and are **Open**.
+
+**Done when** (met): each behavior above has unit tests (`tests/notifications.test.mjs`, `tests/restore-points.test.mjs`, `tests/encrypted-backup.test.mjs`, `tests/csv-export.test.mjs`, `tests/gamification.test.mjs`, `tests/timeline-filter.test.mjs`), every route uses an action code and strict validation, and the screens have loading, empty, error and data states in both themes.
+
+## Planning and net worth features
+
+These four sections describe Stages 9, 12, 13 and 14 of [ROADMAP.md](ROADMAP.md), implemented after the MVP. Formulas live in pure modules under `src/server/` with unit tests in `tests/planning-metrics.test.mjs`; route and screen contracts are locked by `tests/planning-contracts.test.mjs`. None of these screens gives a personalized financial recommendation, and each one ends with a notice that says so. Every write records a redacted `TimelineEvent` with `kind: "planning"` (no amount, no typed name, not reversible); the `/historico` filter does not list that kind yet (**Open**).
+
+### Budget and monthly planning (Stage 9)
+
+Status: **Current**.
+
+**What it does.** For each month (`AAAA-MM`) the person sets a limit per expense category (`Budget`). The screen compares the limit with confirmed spending, projects the month end, shows the 3-month average and the month's surplus, and reviews a closed month.
+
+| Number | Rule | Module |
+| --- | --- | --- |
+| Spending | Settled entries only (`status != 'pending'`), negative amounts, own transfers excluded; uncategorized spending is its own line, and spending under a non-expense category joins it, so no money disappears | `spendingByCategory` in `src/server/budget-metrics.ts` |
+| Observed days | Last day of the month covered by an imported statement, capped at today; `null` without coverage | `observedThrough` |
+| Projection | `actual × daysInMonth ÷ observedDays`, half-up in cents; only for the current month and only with observed days. The screen calls it the pace of the covered days, not a forecast | `projectToMonthEnd` |
+| 3-month average | The three previous months, **only those fully covered by statements**, divided by the number of covered months; `null` when none is covered. A month without a statement never counts as zero | `threeMonthAverage` |
+| Status | `over` (spending above limit), `at_risk` (projection above limit), `within`, `no_limit` | `budgetStatus` |
+| Surplus | Confirmed income minus confirmed spending in the month | `monthResult` |
+
+**Review.** A past month shows how many limited categories stayed within the limit, the total planned against spent in limited categories, and the surplus; a positive surplus links to the goal split simulation (`/patrimonio/metas?sobra=<cents>`). **Planned:** a prompt when the month turns ([ARCA-VISION.md](ARCA-VISION.md) 14.2) belongs to the notification center (Stage 10).
+
+### Goals and savings pots (Stage 12)
+
+Status: **Current**.
+
+**What it does.** A `Goal` has a name, a target and an optional deadline. The saved amount is always the sum of dated `GoalContribution` rows (deposits minus withdrawals), never an editable field. Recording a contribution only notes money the person set aside; Talentum moves no money.
+
+| Number | Rule | Module |
+| --- | --- | --- |
+| Months left | Calendar months until the deadline, counting the current one; 0 when the deadline passed | `monthsUntil` in `src/server/goal-metrics.ts` |
+| Required monthly deposit | Remaining ÷ months left, **rounded up** to the cent | `goalPlan` |
+| Measured surplus | Average of income minus spending over the last (up to 3) months fully covered by statements, among the last 12 | `measuredMonthlySurplus` in `src/server/budget-metrics.ts` |
+| Feasibility | `achieved`, `no_deadline`, `deadline_passed`, `no_data` (no fully covered month), `feasible` (required ≤ measured surplus) or `not_feasible` | `goalPlan` |
+| Surplus split | Arithmetic only. `deadline` mode weights by the required monthly deposit, then spreads the rest by what is missing; `proportional` weights by what is missing. No goal gets more than it needs; cents go by largest remainder, so the parts add up exactly | `allocateSurplus` |
+
+Contributions are idempotent (client-generated `idempotencyKey`, unique per profile). A withdrawal or a deletion that would leave the goal negative is refused (`409 GOAL_OVERDRAWN`); the check runs after the write inside the same SQLite transaction, so two concurrent withdrawals cannot both pass.
+
+### Survival mode and debts (Stage 13)
+
+Status: **Current**. Copy is financial education, and every screen shows a notice that it is not legal or individual financial advice; the simulation leaves out fines, IOF, late charges and agreements. **Open:** the roadmap asks for a legal review of this copy before a public release.
+
+**What it does.** A `Debt` holds what the person knows: name, outstanding balance, monthly rate in basis points (1,250 = 12.5% a month), minimum payment, overdue amount and due day. No contract, document or credential is asked for ([Block 5](#block-5--bills-commitments-and-debts)).
+
+| Number | Rule | Module |
+| --- | --- | --- |
+| Order | `avalanche`: highest rate first; `snowball`: smallest balance first; ties fall to the other criterion, then the name | `orderDebts` in `src/server/debt-metrics.ts` |
+| Monthly interest | Balance × rate ÷ 10,000, half-up in cents; annual equivalent `(1+i)^12 − 1` for display only | `monthlyInterestCents`, `annualEquivalentBps` |
+| Payoff plan | Each month: interest accrues, every minimum is paid, the rest of the fixed monthly budget goes to the first debt in order; a paid-off debt's payment rolls to the next. Refused (`insufficient`) below the sum of minimums; stops at 360 months (`too_long`) | `payoffPlan` |
+| Survival mode | Active when the known Saldo Livre de Risco until month end is negative or any open debt has an overdue amount. An unknown balance (no account with an informed balance) never activates it | `survivalStatus` |
+| Essential split | Spending split into the categories the person marked essential (`Category.isEssential`), the rest, and uncategorized (never assumed non-essential) | `essentialSplit` |
+
+While survival mode is active the next-contribution simulation is paused ([ARCHITECTURE.md](ARCHITECTURE.md#27-net-worth-and-contributions), step 1).
+
+### Net worth and the ARCA methodology (Stage 14)
+
+Status: **Current**. The four equal pillars and the 22.5%–27.5% band come from the ARCA methodology created by Thiago Nigro ([ARCA-VISION.md](ARCA-VISION.md), section 5). The screens credit the methodology and state that they recommend no product, purchase or sale.
+
+**What it does.** Each `Asset` belongs to one pillar (`stocks`, `real_estate`, `cash`, `international`) or to `outside` (counts in net worth, not in the split, for example a vehicle). Each value is a dated `AssetSnapshot`; a new value never overwrites the old one. Net worth sums the latest value of each active asset and shows the date of the oldest value used (R-26).
+
+| Number | Rule | Module |
+| --- | --- | --- |
+| Share | Pillar ÷ sum of the four pillars, in basis points, half-up | `shareBps` in `src/server/arca-metrics.ts` |
+| Status | `balanced` from 2,250 to 2,750 bps inclusive; `lagging` below; `overweight` above | `pillarStatus` |
+| Next contribution | New money only. Water-filling: the lowest pillar rises to the next one, then both together, never above 25% of the new total, so an overweight pillar receives nothing and nothing is sold; leftover cents go one by one in the fixed order A, R, C, A | `simulateContribution` |
+
+The simulation names no ticker or product (the source's ETF suggestion is superseded, see [ARCA-VISION.md](ARCA-VISION.md) 5.4). **Planned:** importing positions from onboarding Block 7 and linking assets to accounts.
+
+### Cards, statements and benefits (Stage 8)
+
+Status: **Current**. Not part of the MVP scope; delivered as Stage 8 of [ROADMAP.md](ROADMAP.md).
+
+**What it does.** Tracks credit cards without ever asking for a card number: a nickname, optional last four digits, closing and due days, limit, annual fee and an optional fee-waiver rule. Each card has statements (closing date, due date, total, estimated or not), statement items (typed, or imported from CSV, OFX or PDF), the link between a statement and the bank entry that paid it, and benefit programs (cashback, points or miles, with the next expiration).
+
+**Flow.**
+
+1. Register the card at `/extratos/cartoes`; the next closing and due dates are computed from the days (short months use their last day; without a closing day the cycle is an approximation and the screen says so).
+2. Register the current statement with its total, marked as estimated when it has not closed yet. From then on its outstanding amount is subtracted from the Saldo Livre de Risco until the due date (see V and I-4).
+3. Add items by hand or import the statement file; the preview shows each line and, for PDF, its reading confidence. Re-importing the same file adds nothing. When the items do not add up to the total, the screen says by how much.
+4. After paying, import the bank statement. `/conciliacao/faturas` lists, for each open statement, the outflows from 15 days before to 7 days after the due date, from the card's payment account when set, that equal (`Valor igual ao que falta`) or are below (`Pagamento parcial`) what is still owed. The person confirms; the statement becomes `paid` when the linked payments cover the total, and the link can be undone.
+5. The **fee-waiver thermometer** shows how much spending is still needed to waive the annual fee: per statement (the open statement closest to its due date) or per calendar year (statements due in the year). Spending is the sum of charges; refunds and payments do not count; a statement without items counts its total. Without a rule there is no thermometer.
+6. **Benefits** show the balance and, when informed, how much expires and when; a program expiring within 60 days is flagged.
+
+**UI routes:** `/extratos/cartoes`, `/extratos/cartoes/[cartaoId]`, `/conciliacao/faturas`. **Local APIs:** see the route map; contracts in [ARCHITECTURE.md](ARCHITECTURE.md), §4.8. **Tables:** `CreditCard`, `CardStatement`, `CardStatementItem`, `CardStatementPayment`, `CardBenefit` ([DATABASE.md](DATABASE.md)). **Migration:** `cards_statements`.
+
+**Done when:** a card and its statement change the committed total of the dashboard; linking the payment removes it; no write duplicates on a repeated click, a repeated file or concurrent requests; every route requires an action code and scopes by profile. **Met:** `tests/cards.test.mjs` (cycle, thermometer, candidates, item keys, dashboard term), `tests/cards-contracts.test.mjs` (migration, routes, screens) and `tests/import-pdf.test.mjs`.
+
+**Planned:** card statements in the onboarding (Block 4 still records answers only), instalment projection into future statements, available limit, statement events in the timeline, earning rules for benefits, and a warning when the same bill also exists as a `ScheduledObligation` (**Open**, it would be subtracted twice).
 
 ## Onboarding and initial financial snapshot
 
@@ -713,7 +883,7 @@ For fixed income, adapt the questions to amount invested, current value, maturit
 #### Block 8 — Available statements
 
 1. "From which accounts can you attach a statement now?"
-2. "Which format do you have?" — CSV and OFX in the MVP; PDF later (roadmap).
+2. "Which format do you have?" — CSV and OFX in the MVP; PDF since Stage 7.
 3. "Which period do you believe the file covers?" — optional, because the parser must verify it.
 4. "Do you want to attach another statement?"
 5. "May we discard the original file after confirming the import?" — explicit retention decision.
@@ -776,7 +946,7 @@ Payee name, description, amount and time proximity can help reconciliation but n
 
 **Step 4 — Investments.** First select which institution/account is used for investing, then add positions in a quick grid. Per position: asset/fund and ticker when it exists; class and currency; quantity; average price, optional when unknown; declared current value; reference date; origin and confidence. Average price never blocks onboarding: it is useful for cost/result, but current value is enough for the wealth snapshot. Do not fetch external quotes in the MVP without an approved source, license and update rule.
 
-**Step 5 — Import statement.** Explain that the file is processed locally and does not go to the cloud; accept CSV and OFX in the MVP, PDF in its own roadmap stage; allow multiple files and report which periods were detected; show progress, duplicates and lines needing review; never trust extension, MIME type or file name; never execute embedded content.
+**Step 5 — Import statement.** Explain that the file is processed locally and does not go to the cloud; accept CSV and OFX in the MVP and PDF since Stage 7; allow multiple files and report which periods were detected; show progress, duplicates and lines needing review; never trust extension, MIME type or file name; never execute embedded content.
 
 Decision under discussion (**Open**): require at least one statement to mark onboarding as `COMPLETED`, but allow `PARTIAL` when the person cannot obtain it at that moment. Blocking the whole application tends to increase abandonment without improving fidelity; a partial Dashboard can clearly display "data not yet checked".
 
@@ -1091,9 +1261,20 @@ Expected future income (`IncomeSource`) **does not enter**, deliberately: an inf
 | --- | --- | --- |
 | Consolidated balance | I-1 | **Current** |
 | Open obligations in the period | `ScheduledObligation` | **Current** (`mvp_scheduled_obligations`) |
-| Open card statements | `ScheduledObligation` | see note |
+| Open card statements | `CardStatement` minus linked `CardStatementPayment` | **Current** (Stage 8, `cards_statements`) |
 
-**Note on card statements (decision recorded).** `CreditCard` and `Statement` do not exist in any MVP migration; cards are Stage 8. In the MVP an open card statement is represented as a `ScheduledObligation` with due date and amount. In Stage 8, `Statement` takes this role and the formula gains a second term. The verdict warns when obligations enter with an estimated amount (`isEstimated`, **Current**).
+**Card statements: the second term (Current, Stage 8).** In the MVP an open card statement was represented as a `ScheduledObligation`. Stage 8 added `CardStatement`, and the formula gained the second term recorded here before it existed:
+
+```text
+SaldoLivreDeRisco = ConsolidatedBalance
+                  − Σ ScheduledObligation.amountCents   (as above)
+                  − Σ max(0, CardStatement.totalCents − Σ CardStatementPayment.amountCents)
+                      where CardStatement.status = 'open'
+                        and dueDate ≤ endOfPeriod
+                        and profileId = profile
+```
+
+A statement weighs by **what is still owed**: a partial payment already left the bank account and is in the consolidated balance, so subtracting the full total would count it twice. A paid or cancelled statement does not weigh. An overdue, unpaid statement keeps weighing (on the first day of the projection, like an overdue obligation). An estimated statement (`isEstimated`) is counted in `committedEstimatedCount`, so the verdict warns about it. Both dashboard routes use the same pure function (`cardStatementObligations` in `src/server/dashboard-metrics.ts`, unit-tested in `tests/cards.test.mjs`). **Open:** a bill registered both as an obligation and as a card statement is subtracted twice.
 
 #### I-1 — Consolidated balance
 
@@ -1147,9 +1328,11 @@ The original vision asked for comparison with "the ideal limit planned for the p
 ```text
 Committed = Σ ScheduledObligation.amountCents
             where status = 'open' and dueDate ≤ endOfPeriod
+          + Σ outstanding of CardStatement
+            where status = 'open' and dueDate ≤ endOfPeriod
 ```
 
-The subtrahend of V, exposed as its own number so the verdict is explainable without a click (R-2). Shows the count of obligations and how many are estimated.
+The subtrahend of V (the card term is defined under V), exposed as its own number so the verdict is explainable without a click (R-2). Shows the count of obligations and how many are estimated.
 
 #### A — Reconciliation queue
 
@@ -1218,8 +1401,8 @@ Form: **diverging bar anchored at zero** — income above, outflow below, neutra
 - **L-1 — Resolved (11 September 2026).** `ScheduledObligation` needed fields no document defined. Migration `mvp_scheduled_obligations` created it with `amountCents` (`BigInt`; no subtraction without a value), `dueDate` (civil date; no period or step without it), `status` (`open` / `paid` / `cancelled`; without it a paid obligation would keep being deducted and the verdict would be permanently pessimistic — the most critical field), `recurrence` (a monthly bill generates the period's occurrences) and `isEstimated` (onboarding accepts approximate values; the verdict signals estimates). See [DATABASE.md](DATABASE.md).
 - **L-2 — Resolved (12 September 2026).** Migration `mvp_import_details` added `periodStart` and `periodEnd` to `ImportBatch`, and the Feature 4 importer writes them from the interval detected in the file. Temporal coverage per account can now be queried, and G-3 shows it on the chart. Original record: the schema had only format, fingerprint, status, file name and `importedAt` — the import date, not the statement interval — so the system could not distinguish "month without movement" from "month without statement".
 - **L-3 — Partially resolved.** Migration `balance_snapshot_source` added `BalanceSnapshot.importBatchId`, so a balance from a statement is distinguishable from one entered by hand (`fromImport` in the API). **Open:** onboarding asks "Did the balance come from the bank or is it estimated?" (`BANK_REPORTED` or `USER_DECLARED`), and there is still no explicit origin/confidence field for hand-entered values. Without a `source` field the Dashboard cannot fully satisfy R-26 nor separate confirmed from declared values.
-- **L-4 — Open. Cross-currency consolidation is unresolved.** `Account.currency` exists with default `BRL`. `GET /api/dashboard` still sums cents from all active accounts without checking currency (verified in `src/app/api/dashboard/route.ts`), while `loadConsolidatedBalance` in `src/server/dashboard-queries.ts`, used by the projection route, keeps only `BRL` accounts, so verdict and projection can diverge. Onboarding offers only BRL. Until onboarding decision 8 (multiple currencies) is made, both routes should filter by the same reference currency and state on screen how many accounts were left out.
-- **L-5 — Partially resolved.** `OwnAccountTransfer` exists (`mvp_reconciliation`) and reconciliation can pair two entries as an own transfer under a `transfer`-kind category, which removes them from I-2, G-2 and G-3 (**Current**). **Open:** pairing is manual; until a pair is reconciled, moving money between own accounts still appears as expense in one account and income in the other. Automatic detection using the registered `PixIdentifier` values is Planned.
+- **L-4 — Resolved for the verdict and projection (20 November 2026); multi-currency itself stays Open.** `Account.currency` exists with default `BRL`. `GET /api/dashboard` still sums cents from all active accounts without checking currency (verified in `src/app/api/dashboard/route.ts`), while `loadConsolidatedBalance` in `src/server/dashboard-queries.ts`, used by the projection route, keeps only `BRL` accounts, so verdict and projection can diverge. Onboarding offers only BRL. Until onboarding decision 8 (multiple currencies) is made, both routes should filter by the same reference currency and state on screen how many accounts were left out. **Done:** both routes now use `loadConsolidatedBalance` with `REFERENCE_CURRENCY = 'BRL'` and return `accountsInOtherCurrency`, which the Dashboard states (`tests/regression/dashboard-currency-divergence.test.mjs`). Month spending, categories and cash flow still sum every account and are revisited with decision 8.
+- **L-5 — Partially resolved.** `OwnAccountTransfer` exists (`mvp_reconciliation`) and reconciliation can pair two entries as an own transfer under a `transfer`-kind category, which removes them from I-2, G-2 and G-3 (**Current**). **Current (20 November 2026):** probable pairs are detected automatically when entries are written (amount, sign, other account, 3-day window and own `PixIdentifier` values through the HMAC index) and offered in the queue; the person confirms. **Open:** until the person confirms, the two entries still count as expense and income.
 - **L-6 — Resolved (12 September 2026).** `ScheduledObligation` was fixed by migration `mvp_scheduled_obligations` and `PixIdentifier` by migration `mvp_pix_identifiers`; `RecurringObligation` and `PixKey` are retired names.
 
 ### Review checklist
@@ -1314,7 +1497,7 @@ The chroma floor applies only to **categorical** marks. The de-emphasis grey is 
 
 ## New-version notice and application update
 
-Status: **Planned, before the MVP** (see "Pre-MVP" in [ROADMAP.md](ROADMAP.md)). Nothing in this section is implemented. The `nova-versao` illustration already exists (**Current**) in `design/estados-vetor/` and in the theme variants under `public/estados/` (`claro` and `escuro`).
+Status: **Partial** (20 November 2026). **Current:** the backend query, the dialog with `Baixar agora` and `Adiar`, the 24-hour postponement and, in the Electron main process, the download with checksum and signature verification for Windows and macOS. **Planned:** the release signing key; until it exists the main process refuses to install (`SIGNING_KEY_MISSING`) and the dialog leads to the release page instead, so nothing unsigned is ever executed. Contracts in [ARCHITECTURE.md](ARCHITECTURE.md) (4.5 and 4.8); tests in `tests/updates.test.mjs`. The `nova-versao` illustration is rendered in both themes.
 
 The behavior can only operate once signed installers are published on GitHub Releases (MVP 1 and MVP 2). Until then the checker finds no new version and nothing appears.
 
@@ -1323,12 +1506,12 @@ The behavior can only operate once signed installers are published on GitHub Rel
 When the official GitHub repository has a stable release with a version greater than the running application, Talentum opens a dialog:
 
 - `nova-versao` illustration, title `Nova versão disponível`, current and new version, and a short summary of the release notes;
-- **Download now** (`Baixar agora`): downloads the Windows installer, checks integrity and signature, closes the application and opens the installer, which replaces the installed version;
+- **Download now** (`Baixar agora`): downloads the installer of the running platform (`.exe` on Windows, `.dmg` for the Mac's architecture on macOS), checks integrity and signature, closes the application and opens the installer (Windows) or the disk image (macOS), which replaces the installed version;
 - **Postpone** (`Adiar`): closes the dialog and does not ask again for the same version for 24 hours.
 
 The dialog never appears during an import or a write in progress; it waits for the operation to finish.
 
-### Planned technical flow
+### Technical flow
 
 ```mermaid
 sequenceDiagram
@@ -1359,7 +1542,8 @@ sequenceDiagram
 - An installer without a valid signature or with a divergent checksum is never executed.
 - Repository and asset name are fixed at build time; the renderer never chooses a URL.
 - The query respects the public GitHub API limit and fails silently: without network, nothing is shown.
-- Linux (AppImage) comes after the first Windows delivery; until then the dialog leads to the downloads page.
+- Linux (AppImage) comes after the first Windows delivery; until then the dialog leads to the release page. macOS (DMG for Apple silicon and Intel) is a target too; installing on macOS also requires the build to be signed with an Apple Developer ID and notarized (Planned).
+- **Current:** in the browser (without Electron), and whenever the main process refuses, the dialog offers `Abrir a página da versão`, a link to the release on github.com; the person downloads and checks the published SHA-256 by hand.
 
 ### Done when
 
@@ -1404,7 +1588,7 @@ The planned `mvp_financial_planning` migration was split into `mvp_income_mercha
 7. ~~Implement the real statement listing.~~ **Done.**
 8. ~~Implement reconciliation and reversal.~~ **Done**, with a persistent queue, auditable decisions and atomic reversal.
 9. ~~Finish the Dashboard and Saldo Livre de Risco.~~ **Done:** the nine elements are live, including the cash projection and monthly flow.
-10. ~~Implement history, migration backup gate and end-to-end tests.~~ **Done in the local MVP scope**, with timeline, reversal by use case, preflight and automated coverage. Cloud E2EE backup stays outside the MVP; the gate's coverage gaps are Open (Feature 8).
+10. ~~Implement history, migration backup gate and end-to-end tests.~~ **Done in the local MVP scope**, with timeline, reversal by use case, the migration gate and automated coverage. Cloud E2EE backup stays outside the MVP; the gate's coverage gaps are Open (Feature 8).
 11. Package, sign, publish and validate Windows and Linux. **Partial:** `electron-builder` packaging is configured ([ADR 0004](decisions/0004-electron-packaging.md)) and CI validates builds; signing, publication and validation of a packaged build are **Planned**.
 
 ### MVP Definition of Done
@@ -1429,11 +1613,12 @@ Product-level items that need a decision. Onboarding decisions 1–10 and Dashbo
 3. ~~**Pix entity name.**~~ **Resolved:** `PixIdentifier` (L-6).
 4. ~~**Covered period of `ImportBatch`.**~~ **Resolved:** L-2; G-3 and `GET /api/dashboard/cash-flow` are Current.
 5. **Balance origin:** L-3 (partially resolved through `importBatchId`).
-6. **Multi-currency:** L-4 and onboarding decision 8; `GET /api/dashboard` sums all currencies while the projection keeps only BRL.
+6. **Multi-currency:** onboarding decision 8. The verdict and projection now agree on the BRL reference currency and state the accounts left out (L-4); spending aggregates still sum every currency.
 7. **Default Dashboard period:** calendar month today (Dashboard decision 4).
 8. **Cloud-track operational state:** Worker publication and remote D1 migration status were reported in the original plan but cannot be verified from the repository.
 9. ~~**Import formats in onboarding copy.**~~ **Resolved:** Feature 4, the implemented onboarding step and [ROADMAP.md](ROADMAP.md) MVP 4 all use CSV and OFX.
 10. **Packaged-app smoke test:** the per-run bootstrap secret (Current in code, delivered to the window over trusted IPC) and the migration startup of the packaged app have not been exercised end to end on a packaged build; the security side is owned by [SECURITY.md — Open items](SECURITY.md#open-items).
+11. **Card bill counted twice:** a bill registered as a `ScheduledObligation` (the MVP representation) and also as a `CardStatement` is subtracted twice from the Saldo Livre de Risco. Decide between a link from the obligation to the statement, a warning on the card screen, or migrating card obligations into statements.
 
 ## References
 

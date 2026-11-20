@@ -10,6 +10,8 @@ datasource db {
 model LocalProfile {
   id          String          @id @default(uuid())
   displayName String?
+  /// Constante "local": o índice único impede dois perfis criados por cliques simultâneos.
+  singletonKey String         @unique @default("local")
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   preferences UserPreference[]
@@ -32,6 +34,19 @@ model LocalProfile {
   ownAccountTransfers OwnAccountTransfer[]
   timelineEvents TimelineEvent[]
   databaseBackups DatabaseBackup[]
+  budgets       Budget[]
+  goals         Goal[]
+  goalContributions GoalContribution[]
+  debts         Debt[]
+  assets        Asset[]
+  assetSnapshots AssetSnapshot[]
+  creditCards           CreditCard[]
+  cardStatements        CardStatement[]
+  cardStatementItems    CardStatementItem[]
+  cardStatementPayments CardStatementPayment[]
+  cardBenefits          CardBenefit[]
+  notificationStates NotificationState[]
+  monthlyReviews MonthlyReview[]
 }
 
 model OnboardingSession {
@@ -86,6 +101,7 @@ model Institution {
   profile     LocalProfile        @relation(fields: [profileId], references: [id], onDelete: Cascade)
   accounts    Account[]
   csvMappings CsvMappingProfile[]
+  creditCards CreditCard[]
 
   @@index([profileId])
 }
@@ -108,6 +124,7 @@ model Account {
   importBatches    ImportBatch[]
   incomes          IncomeSource[]
   pixIdentifiers   PixIdentifier[]
+  paidCreditCards  CreditCard[]
 
   @@index([profileId])
   @@index([institutionId])
@@ -178,6 +195,9 @@ model Category {
   transactions Transaction[]
   obligations  ScheduledObligation[]
   merchantRules MerchantRule[]
+  budgets      Budget[]
+  /// Gasto essencial no modo sobrevivência (moradia, alimentação, saúde).
+  isEssential  Boolean       @default(false)
 
   @@unique([profileId, name, kind])
   @@index([profileId])
@@ -191,6 +211,9 @@ model ImportBatch {
   profileId      String
   accountId      String?
   format         String
+  /// Leitor de PDF e versão que leram o lote, como `id@versão` (ADR 0006).
+  /// Nulo em CSV e OFX.
+  parser         String?
   fingerprint    String
   status         String
   fileName       String?
@@ -299,6 +322,8 @@ model Transaction {
   /// identificação no CSV). É a chave estável que impede que dois extratos com
   /// período sobreposto gravem o mesmo lançamento duas vezes.
   externalId    String?
+  /// Chave de idempotência do lançamento manual, gerada pelo cliente; nula em lançamentos importados.
+  idempotencyKey String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   profile       LocalProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
@@ -312,8 +337,10 @@ model Transaction {
   outgoingTransfers OwnAccountTransfer[] @relation("OutgoingTransfer")
   incomingTransfers OwnAccountTransfer[] @relation("IncomingTransfer")
   timelineEvents TimelineEvent[]
+  cardStatementPayment CardStatementPayment?
 
   @@unique([accountId, externalId])
+  @@unique([profileId, idempotencyKey])
   @@index([profileId, occurredOn])
   @@index([accountId, occurredOn])
   @@index([importBatchId])
@@ -468,11 +495,44 @@ model DatabaseBackup {
   byteSize      Int
   status        String
   verifiedAt    DateTime?
+  /// manual | pre_migration | pre_restore | pre_deletion
+  kind          String       @default("manual")
   createdAt     DateTime     @default(now())
   profile       LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@index([profileId, createdAt])
   @@index([profileId, status, verifiedAt])
+}
+
+/// Estado que a pessoa deu a uma notificação derivada: lida ou dispensada.
+/// A notificação em si não é gravada; `key` é estável por (tipo, assunto,
+/// período), então a mesma situação nunca gera duas notificações.
+model NotificationState {
+  id          String       @id @default(uuid())
+  profileId   String
+  key         String
+  kind        String
+  readAt      DateTime?
+  dismissedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  profile     LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, key])
+  @@index([profileId, updatedAt])
+}
+
+/// Mês que a pessoa declarou ter revisado. É o único hábito da gamificação que
+/// não se deriva de outro registro (docs/PRODUCT.md, Stage 17).
+model MonthlyReview {
+  id        String       @id @default(uuid())
+  profileId String
+  /// AAAA-MM
+  month     String
+  createdAt DateTime     @default(now())
+  profile   LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, month])
 }
 
 /// Entrada futura declarada. Não aumenta o Saldo Livre de Risco antes de ser
@@ -512,4 +572,251 @@ model MerchantRule {
   @@unique([profileId, pattern, matchType])
   @@index([profileId, isActive, priority])
   @@index([categoryId])
+}
+
+/// Limite de gasto de uma categoria em um mês civil (Stage 9). `month` é
+/// `AAAA-MM`; o realizado vem dos lançamentos confirmados, nunca daqui.
+model Budget {
+  id         String       @id @default(uuid())
+  profileId  String
+  categoryId String
+  month      String
+  limitCents BigInt
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  profile    LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  category   Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  /// Um limite por categoria e mês: gravar de novo atualiza, não duplica.
+  @@unique([profileId, categoryId, month])
+  @@index([profileId, month])
+  @@index([categoryId])
+}
+
+/// Meta de economia (Stage 12). O valor guardado é a soma das contribuições
+/// datadas, nunca um campo editável que poderia divergir delas.
+model Goal {
+  id            String             @id @default(uuid())
+  profileId     String
+  name          String
+  targetCents   BigInt
+  /// Último dia para atingir a meta; `null` quando a pessoa não definiu prazo.
+  deadline      DateTime?
+  /// active | archived
+  status        String             @default("active")
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  profile       LocalProfile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  contributions GoalContribution[]
+
+  @@index([profileId, status])
+}
+
+/// Contribuição datada para uma meta. `idempotencyKey` é gerada pelo cliente
+/// para que um clique repetido ou uma nova tentativa de rede não conte duas vezes.
+model GoalContribution {
+  id             String       @id @default(uuid())
+  profileId      String
+  goalId         String
+  /// deposit | withdrawal; o valor é sempre positivo.
+  kind           String       @default("deposit")
+  amountCents    BigInt
+  contributedOn  DateTime
+  idempotencyKey String
+  createdAt      DateTime     @default(now())
+  profile        LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  goal           Goal         @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, idempotencyKey])
+  @@index([goalId, contributedOn])
+  @@index([profileId])
+}
+
+/// Dívida com juros (Stage 13). Taxa mensal em pontos-base inteiros:
+/// 1.250 = 12,5% ao mês. Nenhum contrato ou documento é solicitado.
+model Debt {
+  id                  String       @id @default(uuid())
+  profileId           String
+  name                String
+  /// Saldo devedor atual informado pela pessoa.
+  principalCents      BigInt
+  monthlyRateBps      Int
+  minimumPaymentCents BigInt
+  /// Valor em atraso; zero quando está em dia.
+  overdueCents        BigInt       @default(0)
+  /// Dia do vencimento da parcela (1 a 31), quando conhecido.
+  dueDay              Int?
+  /// open | paid
+  status              String       @default("open")
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  profile             LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, status])
+}
+
+/// Bem ou investimento no patrimônio (Stage 14), classificado em um dos quatro
+/// pilares da metodologia ARCA ou fora deles (`outside`).
+model Asset {
+  id        String          @id @default(uuid())
+  profileId String
+  name      String
+  /// stocks | real_estate | cash | international | outside
+  pillar    String
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  profile   LocalProfile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  snapshots AssetSnapshot[]
+
+  @@index([profileId, isActive])
+}
+
+/// Valor de um bem em uma data: fato datado, nunca sobrescrito. O patrimônio
+/// usa o último de cada bem e mostra a data-base mais antiga (R-26).
+model AssetSnapshot {
+  id             String       @id @default(uuid())
+  profileId      String
+  assetId        String
+  valueCents     BigInt
+  capturedAt     DateTime
+  idempotencyKey String
+  createdAt      DateTime     @default(now())
+  profile        LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  asset          Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, idempotencyKey])
+  @@index([assetId, capturedAt])
+  @@index([profileId])
+}
+
+/// Cartão de crédito (Stage 8). Nunca guarda o número completo: só um apelido e,
+/// se a pessoa quiser, os quatro últimos dígitos para distinguir cartões
+/// (docs/PRODUCT.md, Bloco 4).
+model CreditCard {
+  id                  String          @id @default(uuid())
+  profileId           String
+  institutionId       String?
+  /// Conta de onde a fatura costuma ser paga. Orienta a conferência da fatura.
+  paymentAccountId    String?
+  name                String
+  lastFourDigits      String?
+  /// Dia do fechamento da fatura (1 a 31; meses curtos usam o último dia).
+  closingDay          Int?
+  /// Dia do vencimento da fatura (1 a 31; meses curtos usam o último dia).
+  dueDay              Int
+  limitCents          BigInt?
+  annualFeeCents      BigInt?
+  /// Gasto que isenta a anuidade, quando o cartão tem essa regra.
+  feeWaiverSpendCents BigInt?
+  /// statement (por fatura) | year (por ano civil)
+  feeWaiverPeriod     String?
+  isActive            Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  profile             LocalProfile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  institution         Institution?    @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  paymentAccount      Account?        @relation(fields: [paymentAccountId], references: [id], onDelete: SetNull)
+  statements          CardStatement[]
+  benefits            CardBenefit[]
+
+  @@unique([profileId, name])
+  @@index([profileId, isActive])
+  @@index([institutionId])
+  @@index([paymentAccountId])
+}
+
+/// Fatura de um cartão. O total em aberto (total menos pagamentos conciliados)
+/// entra no comprometido do Saldo Livre de Risco até o vencimento
+/// (docs/PRODUCT.md, V e I-4).
+model CardStatement {
+  id           String                 @id @default(uuid())
+  profileId    String
+  creditCardId String
+  /// Primeiro dia coberto pela fatura, quando conhecido.
+  periodStart  DateTime?
+  closingDate  DateTime
+  dueDate      DateTime
+  /// Total da fatura em centavos, positivo.
+  totalCents   BigInt
+  /// Valor informado como aproximado.
+  isEstimated  Boolean                @default(false)
+  /// open | paid | cancelled
+  status       String                 @default("open")
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  profile      LocalProfile           @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  creditCard   CreditCard             @relation(fields: [creditCardId], references: [id], onDelete: Cascade)
+  items        CardStatementItem[]
+  payments     CardStatementPayment[]
+
+  /// Uma fatura por vencimento: repetir o cadastro não cria outra.
+  @@unique([creditCardId, dueDate])
+  @@index([profileId, status, dueDate])
+}
+
+/// Item de fatura: compra, parcela, estorno ou tarifa. Positivo é cobrança;
+/// negativo é crédito.
+model CardStatementItem {
+  id                String        @id @default(uuid())
+  profileId         String
+  cardStatementId   String
+  occurredOn        DateTime
+  description       String
+  amountCents       BigInt
+  installmentNumber Int?
+  installmentCount  Int?
+  /// manual | import
+  source            String        @default("manual")
+  /// Chave de idempotência: a mesma linha importada de novo, ou o mesmo
+  /// formulário reenviado, não cria um segundo item.
+  externalId        String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  profile           LocalProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  cardStatement     CardStatement @relation(fields: [cardStatementId], references: [id], onDelete: Cascade)
+
+  @@unique([cardStatementId, externalId])
+  @@index([profileId, occurredOn])
+  @@index([cardStatementId, occurredOn])
+}
+
+/// Pagamento de fatura conciliado: liga o lançamento da conta bancária à
+/// fatura que ele pagou. Um lançamento paga no máximo uma fatura.
+model CardStatementPayment {
+  id              String        @id @default(uuid())
+  profileId       String
+  cardStatementId String
+  transactionId   String        @unique
+  /// Valor abatido da fatura, positivo.
+  amountCents     BigInt
+  createdAt       DateTime      @default(now())
+  profile         LocalProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  cardStatement   CardStatement @relation(fields: [cardStatementId], references: [id], onDelete: Cascade)
+  transaction     Transaction   @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, createdAt])
+  @@index([cardStatementId])
+}
+
+/// Saldo de um programa de benefício do cartão: cashback, pontos ou milhas.
+model CardBenefit {
+  id              String       @id @default(uuid())
+  profileId       String
+  creditCardId    String
+  /// cashback | points | miles
+  kind            String
+  programName     String
+  /// Cashback em centavos; pontos e milhas em unidades inteiras.
+  balance         BigInt
+  /// Parte do saldo que expira na próxima data de expiração.
+  expiringBalance BigInt?
+  expiresOn       DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  profile         LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  creditCard      CreditCard   @relation(fields: [creditCardId], references: [id], onDelete: Cascade)
+
+  @@unique([creditCardId, kind, programName])
+  @@index([profileId, expiresOn])
 }

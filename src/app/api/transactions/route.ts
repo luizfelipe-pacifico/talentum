@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { db } from '@/server/db';
-import { fail, guardWithProfile, isDenied, ok } from '@/server/http';
+import { fail, guardWithProfile, isDenied, ok, prismaFailure, readJson } from '@/server/http';
+import { createManualEntry, ManualEntryError } from '@/server/manual-entries';
 
 /* Listagem de lançamentos.
 
@@ -78,4 +79,66 @@ export async function GET(request: Request) {
     })),
     nextCursor: hasMore ? page[page.length - 1].id : null,
   });
+}
+
+/* Lançamento manual em dinheiro (MVP 5 de docs/ROADMAP.md).
+
+   O valor viaja como centavos inteiros em string, com sinal: negativo é gasto,
+   positivo é entrada. A data é um dia civil `AAAA-MM-DD`, nunca no futuro e no
+   máximo um ano para trás. A chave de idempotência é um UUID gerado pelo
+   cliente uma vez por formulário. */
+const manualSchema = z.object({
+  accountId: z.string().uuid(),
+  occurredOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  description: z.string().trim().min(1).max(120),
+  amountCents: z.string().regex(/^-?\d{1,13}$/).refine((value) => BigInt(value) !== 0n),
+  categoryId: z.string().uuid().nullable().optional(),
+  idempotencyKey: z.string().uuid(),
+}).strict();
+
+const MANUAL_ERRORS: Record<string, [string, number]> = {
+  ACCOUNT_NOT_FOUND: ['A conta informada não existe ou está desativada.', 404],
+  ACCOUNT_NOT_CASH: ['Lançamentos à mão só podem ir para uma conta do tipo Dinheiro.', 409],
+  CATEGORY_NOT_FOUND: ['A categoria não foi encontrada.', 404],
+  IDEMPOTENCY_KEY_REUSED: ['Este envio já foi usado para outro lançamento. Abra o formulário de novo.', 409],
+};
+
+/** Dia civil local; hoje usa o instante atual para ficar depois do saldo informado hoje. */
+function civilDate(value: string, now: Date): Date | null {
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (date > today) return null;
+  if (today.getTime() - date.getTime() > 366 * 86_400_000) return null;
+  return date.getTime() === today.getTime() ? now : date;
+}
+
+export async function POST(request: Request) {
+  const guarded = await guardWithProfile(request);
+  if (isDenied(guarded)) return guarded.response;
+
+  const parsed = manualSchema.safeParse(await readJson(request));
+  if (!parsed.success) return fail('INVALID_MANUAL_ENTRY', 'Confira o valor, a descrição e a data do lançamento.', 400);
+  const occurredOn = civilDate(parsed.data.occurredOn, new Date());
+  if (!occurredOn) return fail('INVALID_MANUAL_ENTRY_DATE', 'A data precisa ser de hoje ou de até um ano atrás.', 400);
+
+  try {
+    const result = await createManualEntry(guarded.profileId, {
+      accountId: parsed.data.accountId,
+      occurredOn,
+      description: parsed.data.description,
+      amountCents: BigInt(parsed.data.amountCents),
+      categoryId: parsed.data.categoryId ?? null,
+      idempotencyKey: parsed.data.idempotencyKey,
+    });
+    // Reenvio do mesmo pedido devolve o mesmo lançamento, com 200 em vez de 201.
+    return ok({ transactionId: result.transactionId, timelineEventId: result.timelineEventId, created: result.created }, result.created ? 201 : 200);
+  } catch (error) {
+    if (error instanceof ManualEntryError) {
+      const [message, status] = MANUAL_ERRORS[error.code] ?? ['O lançamento não pôde ser registrado.', 409];
+      return fail(error.code, message, status);
+    }
+    return prismaFailure(error);
+  }
 }

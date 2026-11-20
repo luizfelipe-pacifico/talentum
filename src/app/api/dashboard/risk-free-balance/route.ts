@@ -1,6 +1,6 @@
 import { guardWithProfile, isDenied, ok } from '@/server/http';
-import { cashProjection, endOfMonth, startOfDay } from '@/server/dashboard-metrics';
-import { loadConsolidatedBalance, loadOpenObligations } from '@/server/dashboard-queries';
+import { cardStatementObligations, cashProjection, endOfMonth, startOfDay } from '@/server/dashboard-metrics';
+import { loadConsolidatedBalance, loadOpenCardStatements, loadOpenObligations } from '@/server/dashboard-queries';
 
 /* Detalhe do Saldo Livre de Risco e projeção de caixa do período.
 
@@ -22,10 +22,23 @@ export async function GET(request: Request) {
   const periodEnd = endOfMonth(now);
   const from = startOfDay(now);
 
-  const [balance, obligations] = await Promise.all([
+  const [balance, scheduled, cardStatements] = await Promise.all([
     loadConsolidatedBalance(guarded.profileId),
     loadOpenObligations(guarded.profileId, periodEnd),
+    loadOpenCardStatements(guarded.profileId, periodEnd),
   ]);
+
+  /* Faturas de cartão em aberto entram como obrigação pelo que falta pagar,
+     no vencimento (docs/PRODUCT.md, V). Mesma regra do veredito em
+     `GET /api/dashboard`, pela mesma função. */
+  const cardObligations = cardStatements.flatMap((statement) =>
+    cardStatementObligations([statement]).map((obligation) => ({
+      id: statement.id,
+      description: statement.description,
+      ...obligation,
+    })),
+  );
+  const obligations = [...scheduled, ...cardObligations].sort((left, right) => left.dueDate.getTime() - right.dueDate.getTime());
 
   const committed = obligations.reduce((total, obligation) => total + obligation.amountCents, 0n);
   const projection = cashProjection(
@@ -49,6 +62,7 @@ export async function GET(request: Request) {
     riskFreeBalanceCents: (balance.cents - committed).toString(),
     accountsWithKnownBalance: balance.knownAccounts,
     accountsWithUnknownBalance: balance.unknownAccounts,
+    accountsInOtherCurrency: balance.accountsInOtherCurrency,
     /* Quantas obrigações têm valor aproximado. O veredito precisa sinalizar
        quando parte do desconto é estimativa (docs/PRODUCT.md, L-1). */
     estimatedObligations: estimated,

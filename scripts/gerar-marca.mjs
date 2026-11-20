@@ -129,3 +129,21 @@ for (const caminho of ['icon-badge.ico', 'src/app/favicon.ico', 'apps/web/src/ap
   writeFileSync(join(raiz, caminho), ico);
   console.log(`${caminho} — ${ico.length} bytes`);
 }
+
+/* PNGs do selo para os instaladores.
+
+   - icon-badge.png, 512 px: ícone do AppImage (package.json, build.linux).
+   - icon-badge-mac.png, 1024 px: ícone do macOS. O electron-builder gera o
+     .icns a partir dele. Segue a grade de ícones do macOS (Apple HIG): o selo
+     ocupa 824 px centrados numa tela transparente de 1024, e o sistema não
+     recorta nem redimensiona o desenho. */
+const selo512 = await sharp(Buffer.from(selo()), { density: 384 }).resize(512, 512).png().toBuffer();
+writeFileSync(join(raiz, 'icon-badge.png'), selo512);
+console.log(`icon-badge.png — ${selo512.length} bytes`);
+const selo824 = await sharp(Buffer.from(selo()), { density: 768 }).resize(824, 824).png().toBuffer();
+const mac = await sharp({ create: { width: 1024, height: 1024, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+  .composite([{ input: selo824, left: 100, top: 100 }])
+  .png()
+  .toBuffer();
+writeFileSync(join(raiz, 'icon-badge-mac.png'), mac);
+console.log(`icon-badge-mac.png — ${mac.length} bytes`);

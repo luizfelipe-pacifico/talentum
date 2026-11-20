@@ -22,7 +22,11 @@ export type DecisionInput =
 
 export async function decide(profileId:string, itemId:string, input:DecisionInput) {
   return db.$transaction(async (tx) => {
-    const item=await tx.reconciliationItem.findFirst({where:{id:itemId,profileId,status:'pending'},include:{transaction:true}});
+    // Reivindica o item antes de ler: entre duas decisões simultâneas, a primeira
+    // escrita reserva o banco e a segunda encontra o item já resolvido.
+    const claimed=await tx.reconciliationItem.updateMany({where:{id:itemId,profileId,status:'pending'},data:{status:'resolved'}});
+    if(claimed.count!==1) throw new ReconciliationError('ITEM_NOT_FOUND');
+    const item=await tx.reconciliationItem.findFirst({where:{id:itemId,profileId},include:{transaction:true}});
     if(!item) throw new ReconciliationError('ITEM_NOT_FOUND');
     const before:Snapshot[]=[snapshot(item.transaction)];
     let after:Snapshot[];
@@ -77,9 +81,12 @@ export async function decide(profileId:string, itemId:string, input:DecisionInpu
 
 export async function revertDecision(profileId:string, decisionId:string) {
   return db.$transaction(async(tx)=>{
-    const decision=await tx.reconciliationDecision.findFirst({where:{id:decisionId,profileId},select:{id:true,reconciliationItemId:true,beforeJson:true,revertedAt:true}});
+    // Reivindica a reversão antes de restaurar: dois cliques simultâneos não
+    // restauram o mesmo "antes" duas vezes.
+    const claimed=await tx.reconciliationDecision.updateMany({where:{id:decisionId,profileId,revertedAt:null},data:{revertedAt:new Date()}});
+    const decision=await tx.reconciliationDecision.findFirst({where:{id:decisionId,profileId},select:{id:true,kind:true,reconciliationItemId:true,beforeJson:true,revertedAt:true}});
     if(!decision) throw new ReconciliationError('DECISION_NOT_FOUND');
-    if(decision.revertedAt) throw new ReconciliationError('DECISION_REVERTED');
+    if(claimed.count!==1) throw new ReconciliationError('DECISION_REVERTED');
     const before=JSON.parse(decision.beforeJson) as Snapshot[];
     for(const value of before) {
       if(value.entity==='transaction') await tx.transaction.updateMany({where:{id:value.transactionId,profileId},data:{categoryId:value.categoryId,amountCents:BigInt(value.amountCents),status:value.status}});
@@ -87,9 +94,11 @@ export async function revertDecision(profileId:string, decisionId:string) {
     }
     await tx.financialAdjustment.deleteMany({where:{decisionId:decision.id,profileId}});
     await tx.ownAccountTransfer.deleteMany({where:{decisionId:decision.id,profileId}});
-    await tx.reconciliationDecision.update({where:{id:decision.id},data:{revertedAt:new Date()}});
     await tx.timelineEvent.updateMany({where:{profileId,reconciliationDecisionId:decision.id,revertedAt:null},data:{revertedAt:new Date(),reversible:false}});
-    await tx.reconciliationItem.updateMany({where:{profileId,transactionId:{in:before.filter((value):value is TransactionSnapshot=>value.entity==='transaction').map(value=>value.transactionId)}},data:{status:'pending'}});
+    // Regra desfeita volta para a fila sem a confiança da regra: a pessoa recusou
+    // aquela categoria, e a reaplicação de regras não toca mais neste item.
+    const reopened=decision.kind==='rule'?{status:'pending',reason:'rule_reverted',confidence:0}:{status:'pending'};
+    await tx.reconciliationItem.updateMany({where:{profileId,transactionId:{in:before.filter((value):value is TransactionSnapshot=>value.entity==='transaction').map(value=>value.transactionId)}},data:reopened});
     return {reverted:true};
   });
 }

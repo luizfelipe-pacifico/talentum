@@ -10,6 +10,8 @@
 
 import { NextResponse } from 'next/server';
 import { consumeActionCode } from '@/server/action-codes';
+import { readSessionToken } from '@/server/vault/session';
+import { prismaErrorKind } from '@/server/prisma-errors';
 import { getLocalProfileId } from '@/server/profile';
 
 export const NO_STORE = { 'Cache-Control': 'no-store' } as const;
@@ -41,7 +43,7 @@ export function fail(code: string, message: string, status: number) {
  */
 export function requireActionCode(request: Request): NextResponse | null {
   const path = new URL(request.url).pathname;
-  if (consumeActionCode(request.headers.get('X-Action-Code'), request.method, path)) return null;
+  if (consumeActionCode(request.headers.get('X-Action-Code'), request.method, path, readSessionToken(request))) return null;
   return fail('INVALID_ACTION_CODE', 'A ação não pôde ser validada.', 403);
 }
 
@@ -65,6 +67,32 @@ export async function guardWithProfile(request: Request): Promise<Guarded> {
 
 export function isDenied(guarded: Guarded): guarded is { response: NextResponse } {
   return 'response' in guarded;
+}
+
+type FailureText = { code: string; message: string };
+
+/**
+ * Traduz um erro de escrita em resposta no formato único.
+ *
+ * P2002 (unicidade ocupada por outra requisição) vira `409`; P2025 (a linha
+ * sumiu entre a leitura e a escrita) vira `404`. Qualquer outro erro vira `500`
+ * genérico, sem stack trace nem detalhe interno (docs/ARCHITECTURE.md, §5).
+ * As rotas passam o código do próprio domínio quando têm um.
+ */
+export function prismaFailure(
+  error: unknown,
+  texts: { conflict?: FailureText; notFound?: FailureText } = {},
+): NextResponse {
+  const kind = prismaErrorKind(error);
+  if (kind === 'conflict') {
+    const text = texts.conflict ?? { code: 'RESOURCE_CONFLICT', message: 'O registro mudou em outra janela. Recarregue e tente de novo.' };
+    return fail(text.code, text.message, 409);
+  }
+  if (kind === 'not_found') {
+    const text = texts.notFound ?? { code: 'RESOURCE_NOT_FOUND', message: 'O registro não foi encontrado.' };
+    return fail(text.code, text.message, 404);
+  }
+  return fail('INTERNAL_ERROR', 'A solicitação não pôde ser concluída.', 500);
 }
 
 /** Lê o corpo JSON sem deixar um payload malformado virar exceção não tratada. */

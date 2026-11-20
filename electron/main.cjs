@@ -1,9 +1,13 @@
-const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, session, shell } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, powerMonitor, safeStorage, session, shell } = require('electron');
+const { createCloudAuth, resolveCloudOrigin } = require('./cloud-auth.cjs');
 const { randomBytes } = require('node:crypto');
-const { spawn, spawnSync } = require('node:child_process');
+const { spawn } = require('node:child_process');
+const fs = require('node:fs');
 const http = require('node:http');
+const https = require('node:https');
 const net = require('node:net');
 const path = require('node:path');
+const update = require('./update-verify.cjs');
 
 /* `localhost` é o endereço documentado do backend local e o publicado pelo
    Compose. `scripts/dev-all.mjs` sobrescreve TALENTUM_URL quando confirma que
@@ -30,7 +34,8 @@ let bootstrapSecret = null;
 
 /* Links externos permitidos: abrem no navegador do sistema, nunca numa janela
    com o preload do Talentum (docs/ARCHITECTURE.md, Layer 2: Electron). */
-const EXTERNAL_HOSTS = new Set(['github.com', 'icons.getbootstrap.com']);
+// `agenciabrasil.ebc.com.br`: fonte das notícias públicas da área Invest (Etapa 15).
+const EXTERNAL_HOSTS = new Set(['github.com', 'icons.getbootstrap.com', 'agenciabrasil.ebc.com.br']);
 
 function openExternalSafely(target) {
   try {
@@ -148,9 +153,9 @@ async function startPackagedBackend() {
     DATABASE_URL: `file:${databasePath}`,
     TALENTUM_LOCAL_BOOTSTRAP_SECRET: bootstrapSecret,
   };
-  const prismaCli = path.join(appRoot, 'node_modules', 'prisma', 'build', 'index.js');
-  const migrated = spawnSync(process.execPath, [prismaCli, 'migrate', 'deploy'], { cwd: appRoot, env: environment, encoding: 'utf8' });
-  if (migrated.status !== 0) throw new Error('Não foi possível preparar o banco local com segurança.');
+  /* Sem `prisma migrate deploy`: o banco é cifrado e só abre com a senha. O backend
+     aplica as migrations pela conexão cifrada no desbloqueio (src/server/vault/migrations.ts). */
+  environment.TALENTUM_MIGRATIONS_DIR = path.join(appRoot, 'prisma', 'migrations');
   localServer = spawn(process.execPath, [path.join(appRoot, '.next', 'standalone', 'server.js')], {
     cwd: path.join(appRoot, '.next', 'standalone'),
     env: environment,
@@ -178,6 +183,153 @@ ipcMain.on('window:toggle-maximize', (event) => {
 });
 ipcMain.on('window:close', (event) => trustedSender(event)?.close());
 
+/* ── Atualização consentida (docs/PRODUCT.md, "New-version notice") ──────────
+   A janela só pede "instalar a versão X". Tudo o mais acontece aqui, no
+   processo principal: a URL vem da API do repositório oficial fixo, o download
+   só segue redirecionamentos para hosts do GitHub, o tamanho precisa bater com o
+   publicado, e o instalador só é executado se `verifyInstaller` aprovar o
+   checksum e a assinatura (electron/update-verify.cjs). Qualquer falha apaga o
+   arquivo e não executa nada. */
+
+const MAX_INSTALLER_BYTES = 512 * 1024 * 1024;
+let updateInProgress = false;
+
+function httpsRequest(target, onResponse, redirects = 0) {
+  return new Promise((resolve, reject) => {
+    if (!update.allowedDownloadUrl(target)) return reject(new Error('HOST_NOT_ALLOWED'));
+    const request = https.get(target, { headers: { 'User-Agent': 'Talentum-updater', Accept: 'application/octet-stream, application/json' } }, (response) => {
+      const status = response.statusCode ?? 0;
+      if (status >= 300 && status < 400 && response.headers.location) {
+        response.resume();
+        if (redirects >= 5) return reject(new Error('TOO_MANY_REDIRECTS'));
+        return resolve(httpsRequest(new URL(response.headers.location, target).href, onResponse, redirects + 1));
+      }
+      if (status !== 200) {
+        response.resume();
+        return reject(new Error('HTTP_STATUS'));
+      }
+      onResponse(response, resolve, reject);
+    });
+    request.setTimeout(30_000, () => request.destroy(new Error('TIMEOUT')));
+    request.once('error', reject);
+  });
+}
+
+function fetchText(target, maxBytes) {
+  return httpsRequest(target, (response, resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    response.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > maxBytes) response.destroy(new Error('TOO_LARGE'));
+      else chunks.push(chunk);
+    });
+    response.once('error', reject);
+    response.once('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+  });
+}
+
+/* Baixa para o arquivo calculando o SHA-256 no caminho. O tamanho precisa ser
+   exatamente o publicado: nem um byte a mais é gravado. */
+function downloadTo(target, filePath, expectedBytes) {
+  return httpsRequest(target, (response, resolve, reject) => {
+    const hash = update.sha256Stream();
+    const output = fs.createWriteStream(filePath, { flags: 'wx', mode: 0o600 });
+    let size = 0;
+    response.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > expectedBytes) return response.destroy(new Error('TOO_LARGE'));
+      hash.update(chunk);
+    });
+    response.once('error', reject);
+    output.once('error', reject);
+    output.once('finish', () => (size === expectedBytes ? resolve(hash.digest('hex')) : reject(new Error('SIZE_MISMATCH'))));
+    response.pipe(output);
+  });
+}
+
+async function installUpdate(version) {
+  if (!update.isNewerVersion(version, app.getVersion())) return { status: 'refused', reason: 'VERSION_INVALID' };
+  // Windows (NSIS) e macOS (.dmg). No Linux a janela leva à página da versão.
+  const name = update.installerAssetName(version, process.platform, process.arch);
+  if (!name) return { status: 'unsupported-platform' };
+  // Sem a chave pública nenhum instalador passa na verificação: recusar antes
+  // evita baixar centenas de megabytes só para apagá-los.
+  if (!update.UPDATE_SIGNING_PUBLIC_KEY) return { status: 'refused', reason: 'SIGNING_KEY_MISSING' };
+  if (updateInProgress) return { status: 'busy' };
+  updateInProgress = true;
+  const directory = fs.mkdtempSync(path.join(app.getPath('temp'), 'talentum-update-'));
+  const cleanup = () => fs.rmSync(directory, { recursive: true, force: true });
+  try {
+    const release = JSON.parse(await fetchText(`https://api.github.com/repos/${update.OFFICIAL_REPOSITORY}/releases/tags/v${version}`, 2_000_000));
+    if (!release || release.draft !== false || release.prerelease !== false || release.tag_name !== `v${version}`) {
+      cleanup();
+      return { status: 'refused', reason: 'RELEASE_INVALID' };
+    }
+    const assets = Array.isArray(release.assets) ? release.assets : [];
+    const asset = assets.find((candidate) => candidate && candidate.name === name);
+    const signatureAsset = assets.find((candidate) => candidate && candidate.name === `${name}.sig`);
+    if (!asset || typeof asset.browser_download_url !== 'string' || !Number.isInteger(asset.size) || asset.size <= 0 || asset.size > MAX_INSTALLER_BYTES) {
+      cleanup();
+      return { status: 'refused', reason: 'ASSET_INVALID' };
+    }
+    const expected = typeof asset.digest === 'string' && /^sha256:[a-f0-9]{64}$/i.test(asset.digest) ? asset.digest.slice(7).toLowerCase() : null;
+    const signature = typeof signatureAsset?.browser_download_url === 'string' ? await fetchText(signatureAsset.browser_download_url, 1024) : null;
+    const file = path.join(directory, name);
+    const actual = await downloadTo(asset.browser_download_url, file, asset.size);
+    const verdict = update.verifyInstaller({ fileName: name, actualSha256: actual, expectedSha256: expected, signatureBase64: signature });
+    if (!verdict.ok) {
+      cleanup();
+      return { status: 'refused', reason: verdict.reason };
+    }
+    if (process.platform === 'darwin') {
+      // No macOS a imagem .dmg é aberta pelo Finder e a pessoa arrasta o app
+      // para Aplicativos; o Gatekeeper confere a notarização ao abrir.
+      const failure = await shell.openPath(file);
+      if (failure) {
+        cleanup();
+        return { status: 'failed' };
+      }
+    } else {
+      spawn(file, [], { detached: true, stdio: 'ignore' }).unref();
+    }
+    setTimeout(() => app.quit(), 500);
+    return { status: 'installing' };
+  } catch {
+    cleanup();
+    return { status: 'failed' };
+  } finally {
+    updateInProgress = false;
+  }
+}
+
+ipcMain.handle('app:update-install', (event, version) =>
+  trustedSender(event) && typeof version === 'string' ? installUpdate(version) : { status: 'refused', reason: 'REQUEST_INVALID' },
+);
+
+/* Conta Talentum (Entrar com Google) pelo navegador do sistema: electron/cloud-auth.cjs.
+   O renderer só recebe o estado da conexão, nunca um token. */
+let cloudAuth = null;
+function cloud() {
+  cloudAuth ??= createCloudAuth({
+    origin: resolveCloudOrigin(process.env.TALENTUM_CLOUD_ORIGIN, app.isPackaged),
+    userDataPath: app.getPath('userData'),
+    safeStorage,
+    openExternal: (target) => shell.openExternal(target),
+  });
+  return cloudAuth;
+}
+const UNAVAILABLE = { available: false, connected: false, persistent: false, displayName: null };
+ipcMain.handle('cloud:status', (event) => (trustedSender(event) ? cloud().status() : UNAVAILABLE));
+ipcMain.handle('cloud:sign-in', (event) => (trustedSender(event) ? cloud().signIn() : UNAVAILABLE));
+ipcMain.handle('cloud:sign-out', (event) => (trustedSender(event) ? cloud().signOut() : UNAVAILABLE));
+
+/* Suspensão e bloqueio de tela do sistema (macOS, Windows e Linux com logind) pedem à
+   janela que bloqueie o cofre local: a janela tem a sessão e chama POST /api/vault/lock. */
+function requestVaultLock() {
+  for (const window of BrowserWindow.getAllWindows()) window.webContents.send('vault:lock-requested');
+}
+
 Menu.setApplicationMenu(null);
 app.setAppUserModelId('org.talentum.app');
 
@@ -186,6 +338,7 @@ if (hasSingleInstanceLock) {
     // Nenhuma permissão do navegador (câmera, notificações, geolocalização) é usada.
     session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
     session.defaultSession.setPermissionCheckHandler(() => false);
+    for (const signal of ['suspend', 'lock-screen']) powerMonitor.on(signal, requestVaultLock);
     try {
       await startPackagedBackend();
       await createWindow();
@@ -193,13 +346,26 @@ if (hasSingleInstanceLock) {
       dialog.showErrorBox('Falha ao iniciar o Talentum', error instanceof Error ? error.message : 'Falha interna.');
       app.quit();
     }
-    app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    // macOS: clicar no Dock sem janela aberta reabre. O backend empacotado foi
+    // encerrado ao fechar a última janela (o cofre fechou junto), então sobe de novo.
+    app.on('activate', async () => {
+      if (BrowserWindow.getAllWindows().length > 0) return;
+      try {
+        if (app.isPackaged && !localServer) await startPackagedBackend();
+        await createWindow();
+      } catch (error) {
+        dialog.showErrorBox('Falha ao iniciar o Talentum', error instanceof Error ? error.message : 'Falha interna.');
+      }
     });
   });
 }
 
+/* Fechar a última janela encerra o backend local em todas as plataformas: a chave
+   dos dados sai da memória. No macOS o aplicativo segue no Dock, como manda a
+   convenção da plataforma, e `activate` sobe o backend de novo. */
 app.on('window-all-closed', () => {
   localServer?.kill();
+  localServer = undefined;
   if (process.platform !== 'darwin') app.quit();
 });
+app.on('before-quit', () => localServer?.kill());

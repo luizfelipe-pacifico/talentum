@@ -1,2 +1,2 @@
-import { CardsPage } from '@/components/demo-pages';
+import { CardsPage } from '@/components/cards';
 export default function Page() { return <CardsPage />; }

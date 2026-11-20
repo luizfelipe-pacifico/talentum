@@ -90,3 +90,8 @@ Update this index whenever a document is added, removed, renamed or changes resp
 | [`0002-own-ofx-parser.md`](./decisions/0002-own-ofx-parser.md) | Own bounded OFX reader instead of `ofx-data-extractor` |
 | [`0003-local-device-key.md`](./decisions/0003-local-device-key.md) | Where the secret that protects own Pix identifiers lives |
 | [`0004-electron-packaging.md`](./decisions/0004-electron-packaging.md) | Desktop packaging with `electron-builder` (NSIS and AppImage) |
+| [`0005-biome-and-playwright.md`](./decisions/0005-biome-and-playwright.md) | Biome linter and Playwright end-to-end tests |
+| [`0006-pdf-import.md`](./decisions/0006-pdf-import.md) | Local PDF import with PDF.js text extraction, a versioned layout-reader registry and per-field confidence |
+| [`0007-local-encrypted-backup.md`](./decisions/0007-local-encrypted-backup.md) | Local restore points and passphrase-encrypted backup, no cloud storage and no key recovery |
+| [`0008-cloud-mfa-and-desktop-login.md`](./decisions/0008-cloud-mfa-and-desktop-login.md) | Two-step verification (TOTP) and desktop sign-in through the Worker (RFC 8252) |
+| [`0009-local-vault-and-encrypted-database.md`](./decisions/0009-local-vault-and-encrypted-database.md) | Local password and recovery code, whole-database encryption with libSQL, the migration runner, sessions and auto-lock, TOTP, and desktop "Entrar com Google" |

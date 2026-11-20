@@ -55,9 +55,13 @@ test('o arquivo LICENSE não é anunciado como pendente depois de existir', asyn
   assert.doesNotMatch(await read('apps/web/src/components/lp/legal.tsx'), /ainda será formalizada em arquivo/i);
 });
 
-test('modo de sobrevivência e patrimônio ARCA aparecem marcados como planejados', async () => {
-  const source = await lp();
-  for (const id of ['sobrevivencia', 'arca']) {
-    assert.match(section(source, id), /Planejad/, `#${id} sem marca de planejado`);
+test('modo de sobrevivência e patrimônio ARCA têm a marca do estado que o ROADMAP registra', async () => {
+  const [source, roadmap] = await Promise.all([lp(), read('docs/ROADMAP.md')]);
+  const stages = { sobrevivencia: '### Stage 13 — Survival mode and debts', arca: '### Stage 14 — Net worth and the ARCA methodology' };
+  for (const [id, heading] of Object.entries(stages)) {
+    const current = /\*\*Current:\*\*/.test(stageStatus(roadmap, heading));
+    // Enquanto a etapa não está no código, a seção diz planejado; depois, não pode mais dizer.
+    if (current) assert.doesNotMatch(section(source, id), /Planejad/, `#${id} ainda diz planejado`);
+    else assert.match(section(source, id), /Planejad/, `#${id} sem marca de planejado`);
   }
 });

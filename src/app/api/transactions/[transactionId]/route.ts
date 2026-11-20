@@ -9,13 +9,13 @@ const patchSchema = z.object({
   reason: z.string().trim().min(1).max(200).optional(),
 }).strict().refine((value) => value.description !== undefined || value.categoryId !== undefined || value.status !== undefined);
 
-const dto = (row: {id:string;occurredOn:Date;description:string;amountCents:bigint;status:string;externalId:string|null;importBatchId:string|null;account:{id:string;name:string};category:{id:string;name:string;kind:string}|null}) => ({
+const dto = (row: {id:string;occurredOn:Date;description:string;amountCents:bigint;status:string;externalId:string|null;importBatchId:string|null;account:{id:string;name:string};category:{id:string;name:string;kind:string}|null;reconciliationItem?:{id:string;status:string;reason:string}|null}) => ({
   ...row, occurredOn: row.occurredOn.toISOString(), amountCents: row.amountCents.toString(),
 });
 
 export async function GET(request: Request, context: { params: Promise<{ transactionId: string }> }) {
   const guarded=await guardWithProfile(request);if(isDenied(guarded))return guarded.response;const {transactionId}=await context.params;
-  const row=await db.transaction.findFirst({where:{id:transactionId,profileId:guarded.profileId},select:{id:true,occurredOn:true,description:true,amountCents:true,status:true,externalId:true,importBatchId:true,account:{select:{id:true,name:true}},category:{select:{id:true,name:true,kind:true}}}});
+  const row=await db.transaction.findFirst({where:{id:transactionId,profileId:guarded.profileId},select:{id:true,occurredOn:true,description:true,amountCents:true,status:true,externalId:true,importBatchId:true,account:{select:{id:true,name:true}},category:{select:{id:true,name:true,kind:true}},reconciliationItem:{select:{id:true,status:true,reason:true}}}});
   if(!row)return fail('TRANSACTION_NOT_FOUND','O lançamento não foi encontrado.',404);return ok({transaction:dto(row)});
 }
 

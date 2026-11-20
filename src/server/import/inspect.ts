@@ -22,7 +22,7 @@ import { looksLikeOfx, parseOfx } from './ofx.ts';
 import { decodeStatement, normalizeLabel } from './text.ts';
 import { endOfCivilDay } from './values.ts';
 
-export type StatementFormat = 'csv' | 'ofx';
+export type StatementFormat = 'csv' | 'ofx' | 'pdf';
 
 export type ImportIssueDraft = {
   lineNumber: number;
@@ -40,7 +40,8 @@ export type StatementInspectErrorCode =
   | 'NO_ROWS'
   | 'TOO_MANY_ROWS'
   | 'NO_USABLE_ROWS'
-  | 'MAPPING_INCOMPLETE';
+  | 'MAPPING_INCOMPLETE'
+  | 'PARSE_TIMEOUT';
 
 export class StatementInspectError extends Error {
   readonly code: StatementInspectErrorCode;
@@ -78,6 +79,23 @@ export type StatementInspection = {
   declaredAccount: { bankId: string | null; accountId: string | null; accountType: string | null } | null;
   currency: string | null;
   duplicateExternalIds: number;
+  /** Leitura de PDF: leitor usado e confiança por lançamento (ADR 0006). Ausente em CSV e OFX. */
+  pdf?: PdfInspectionDetail;
+};
+
+export type PdfInspectionDetail = {
+  parserId: string;
+  parserVersion: number;
+  parserName: string;
+  kind: 'bank' | 'card';
+  pageCount: number;
+  /** Confiança de cada campo, por número de linha dos lançamentos aceitos. */
+  confidence: Record<number, { date: number; amount: number; description: number; overall: number }>;
+  /** Linhas lidas com confiança abaixo do mínimo, declaradas como problema. */
+  lowConfidenceCount: number;
+  threshold: number;
+  activeContent: boolean;
+  declared: { dueDate: Date | null; closingDate: Date | null; totalCents: bigint | null };
 };
 
 /**
@@ -217,7 +235,34 @@ export type InspectOptions = {
   dialect?: Partial<CsvDialect>;
   /** Mapeamento confirmado pela pessoa; sobrepõe a sugestão automática. */
   mapping?: CsvMapping;
+  /**
+   * Instante-limite da leitura, em milissegundos de época. A rota passa
+   * `Date.now() + PARSE_TIMEOUT_MS`; sem ele, não há limite (uso em teste).
+   */
+  deadline?: number;
+  /** Relógio injetável, para o teste avançar o tempo sem esperar. */
+  now?: () => number;
 };
+
+/** Linhas convertidas entre duas consultas ao relógio. */
+const DEADLINE_CHECK_EVERY = 256;
+
+/**
+ * Prazo cooperativo da leitura.
+ *
+ * O parser roda no processo da requisição (o isolamento em processo próprio
+ * segue em aberto em docs/SECURITY.md). O prazo é conferido entre as fases e a
+ * cada bloco de linhas: um arquivo construído para ser lento é interrompido com
+ * `PARSE_TIMEOUT` em vez de prender a requisição sem limite.
+ */
+function deadlineGuard(options: InspectOptions): () => void {
+  const { deadline } = options;
+  if (deadline === undefined) return () => {};
+  const now = options.now ?? Date.now;
+  return () => {
+    if (now() > deadline) throw new StatementInspectError('PARSE_TIMEOUT');
+  };
+}
 
 /**
  * Inspeciona os bytes de um extrato e devolve tudo o que a decisão exige.
@@ -227,6 +272,7 @@ export type InspectOptions = {
  */
 export function inspectStatement(bytes: Uint8Array, options: InspectOptions = {}): StatementInspection {
   if (bytes.byteLength > MAX_FILE_BYTES) throw new StatementInspectError('FILE_TOO_LARGE');
+  const checkDeadline = deadlineGuard(options);
 
   let decoded;
   try {
@@ -239,10 +285,12 @@ export function inspectStatement(bytes: Uint8Array, options: InspectOptions = {}
     throw new StatementInspectError('UNSUPPORTED_FORMAT');
   }
 
+  checkDeadline();
   const fingerprint = fingerprintOf(decoded.text);
 
   if (looksLikeOfx(decoded.text)) {
     const statement = parseOfx(decoded.text);
+    checkDeadline();
     const issues: ImportIssueDraft[] = statement.issues.map((issue) => ({ ...issue, severity: 'error' as const }));
     if (statement.entries.length === 0) throw new StatementInspectError('NO_USABLE_ROWS');
 
@@ -291,6 +339,7 @@ export function inspectStatement(bytes: Uint8Array, options: InspectOptions = {}
   }
 
   if (table.rows.length > MAX_ROWS) throw new StatementInspectError('TOO_MANY_ROWS');
+  checkDeadline();
 
   const mapping = options.mapping ?? suggestMapping(table);
   const hasDate = mapping.roles.includes('date');
@@ -304,7 +353,8 @@ export function inspectStatement(bytes: Uint8Array, options: InspectOptions = {}
   const entries: RawEntry[] = [];
   const issues: ImportIssueDraft[] = [];
 
-  for (const row of table.rows) {
+  for (const [index, row] of table.rows.entries()) {
+    if (index % DEADLINE_CHECK_EVERY === 0) checkDeadline();
     const outcome = convertRow(row, mapping, table.dialect);
     if (outcome.ok) entries.push(outcome.entry);
     else issues.push({ lineNumber: outcome.lineNumber, severity: 'error', code: outcome.code, message: outcome.message });

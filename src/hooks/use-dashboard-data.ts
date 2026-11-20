@@ -20,9 +20,20 @@ export type DashboardMetrics = {
   dailyAverageChange: number | null;
   accountsWithKnownBalance: number;
   accountsWithUnknownBalance: number;
+  /** Contas ativas em outra moeda, fora do saldo consolidado (L-4). */
+  accountsInOtherCurrency: number;
   pendingCount: number;
   importCount: number;
+  /** Alertas locais de vencimento e de dados desatualizados (src/server/alerts.ts). */
+  alerts: DashboardAlert[];
 };
+
+export type AlertObligation = { id: string; description: string; amountCents: string; dueDate: string; isEstimated: boolean };
+
+export type DashboardAlert =
+  | { kind: 'obligation_overdue'; severity: 'danger'; count: number; obligations: AlertObligation[] }
+  | { kind: 'obligation_due_soon'; severity: 'warning'; count: number; obligations: AlertObligation[] }
+  | { kind: 'stale_data'; severity: 'info'; count: number; accounts: { id: string; name: string; lastDataAt: string }[] };
 
 export type DashboardPayload = { hasProfile: false } | ({ hasProfile: true } & DashboardMetrics);
 

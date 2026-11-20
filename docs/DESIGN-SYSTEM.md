@@ -445,7 +445,8 @@ Status: **Current**. `apps/web/src/styles/lp.css` defines its own `--lp-*` token
 | `--lp-on-amber` | `#fffdf8` | |
 | `--lp-amber-text` | `#8f5a24` | Pure Amber fails WCAG AA as small text on parchment; this variant passes |
 | `--lp-amber-strong` | `#9f6533` | Amber button background that passes AA with light text |
-| `--lp-ok`, `--lp-warn`, `--lp-info`, `--lp-warn-s`, `--lp-info-s` | Same as the light app values | No error tokens on the LP |
+| `--lp-ok`, `--lp-warn`, `--lp-info`, `--lp-warn-s`, `--lp-info-s` | Same as the light app values | |
+| `--lp-danger` | `#8b2e24` | Only for destructive actions on `/conta` and community moderation (`apps/web/src/styles/pages.css`) |
 | `--lp-radius-sm/md/lg`, `--lp-shadow-sm/md` | Same as the app | |
 | `--lp-ease-out` | `cubic-bezier(0.23, 1, 0.32, 1)` | Strong ease-out |
 | `--lp-page` | `1200px` (`1440px` at 1600 px and wider) | Page width |
@@ -686,6 +687,9 @@ For each pattern: the form per context, what Talentum does today, and the refere
 | Swipe on a list row to reveal actions | Apple Mail; Gmail | Observed product |
 | Browse rows navigated with the D-pad | Android TV browse template; Netflix and YouTube TV apps | Guideline; observed product |
 | Center overlay on TV for decisions | Android TV center-overlay template | Guideline |
+| Lock screen: one centered column, brand, one password field, one primary action, "forgot password" as the secondary path | macOS login window; 1Password and Bitwarden lock screens | Observed product |
+| Recovery code shown once, with copy and an explicit "I saved it" before continuing | 1Password Emergency Kit; GitHub two-factor recovery codes | Observed product |
+| Security settings: one section per factor, status in words, one action per section, re-entering the password to change a factor | 1Password, Bitwarden and Google Account security pages | Observed product |
 
 ### Test procedure
 
@@ -881,6 +885,22 @@ The profile and the Electron window controls share the header. Window controls a
 - Reserve Amber for selected rows, priority markers or a single important state.
 - Monetary values never wrap.
 - Provide empty, loading, error and no-results states.
+- **Card and statement lists (Current, Stage 8).** Card tiles (`.card-tiles`, `.card-tile`) are whole-card links: the tile has a destination, so it highlights its border on hover and focus. Statements, items, payment candidates and benefits use `.entity-list`, one row per item at every width: description and supporting line on the left, amount and row action on the right; at 600 px and below the amount and action drop below the description instead of squeezing it (the Nubank and Itaú statement pattern in the [pattern catalog](#pattern-catalog-the-best-form-per-context)). The selected statement row takes Amber in its title, the "selected row" use of Amber above.
+- **PDF reading confidence (Current).** Each preview row of a PDF shows `Lida com certeza` (`chip-ok`) or `Conferir data`, `Conferir valor`, `Conferir descrição` (`chip-warn`), naming the field to check; the percentage stays in the chip title. Text, not color alone, carries the state.
+
+### Lock and first-run screens
+
+Status: **Current** (`src/components/vault-screens.tsx`, `src/components/vault-gate.tsx`, `src/app/vault.css`; [ADR 0009](decisions/0009-local-vault-and-encrypted-database.md)). Reference: the lock-screen and recovery-code rows in [Reference products by pattern](#reference-products-by-pattern).
+
+- Until the vault is unlocked, nothing of the app renders: no sidebar, header or data request. A neutral "Verificando o bloqueio do Talentum…" line is the only loading state, so no value can flash.
+- One centered column (440 px, 520 px on TV-sized screens) on the page background, brand on top, eyebrow for the step, Playfair title, one primary full-width button. At 600 px and below the panel starts at the top with 16 px gutters. The same layout serves every viewport class: the task is a single short form, so there is nothing to rearrange; TV classes reach every control with Tab/Enter.
+- The brand mark switches with the theme (ebony mark on light, parchment mark on dark).
+- Password fields have a visible label, a show/hide toggle (`aria-pressed`, 44 px target), `autocomplete` (`new-password`, `current-password`, `one-time-code`) and 16 px text so iOS does not zoom. The strength meter has four segments plus the label in words; color is never the only cue. A reason the password is refused appears once, under the field.
+- The recovery code is shown in eight groups of four, selectable as a whole, with "Copiar código" and a required checkbox "Guardei o código de recuperação em um lugar seguro" before "Abrir o Talentum".
+- Errors use the in-form error strip with an icon and the backend's message, which never says which factor failed. The progressive delay shows a countdown ("Tente de novo em 0:28") and disables the button.
+- The QR code for the authenticator is always dark modules on a light plate with a quiet zone, in both themes, so every scanner reads it.
+- Copy states the consequence plainly: without the password and the recovery code no one can open the data, not even Talentum, and "Entrar com Google" does not unlock local data.
+- **Open:** no flat illustration humanizes these screens yet; a "locked safe" illustration must go through the [sourcing pipeline](#illustration-sourcing) (Gemini) in both themes.
 
 ### Forms and filters
 
@@ -888,6 +908,7 @@ The profile and the Electron window controls share the header. Window controls a
 - Keep related fields together and separate unrelated sections with spacing.
 - Explain validation errors next to the affected field.
 - Use borders, icons and text in addition to color for focus and error states.
+- **Inline subforms and confirmations (Current, Stage 8).** A form that adds to a list inside a card (new statement, item, benefit) opens in place as `.subform`, separated by a hairline, instead of a dialog: the list it changes stays in view. A destructive action (delete a card or statement) asks for confirmation by turning into a second, explicit button (`Confirmar exclusão da fatura e dos itens`) next to `Manter fatura`, never by a browser dialog. Optional fields say `(opcional)` in the label; amounts use `inputMode="decimal"` and dates `type="date"`.
 
 ### Status indicators
 
@@ -917,7 +938,7 @@ Status: **Current**. This is the map of every place in the local app and the lan
 - **Validation:** always in both themes (CLAUDE.md rule). Tests in `tests/regression/state-art.test.mjs`.
 - **Integrity (27 October 2026):** all illustrations were reviewed in both themes against the originals. The background is removed only where the color is practically that of the paper, so light objects without an outline are not swallowed (the card in `sem-cartoes` and the sheet in `importar-extrato` used to come out clipped). The sheet in `importar-extrato` was redrawn in the master, because its cream was indistinguishable from the original's paper. The ground in `nao-encontrada`, cut straight by the edge of the generated image, closes as a half-moon: elliptical clip, sand fill and outline. Tests in `tests/regression/state-art-integrity.test.mjs`.
 - **Sourcing:** see [Illustration sourcing](#illustration-sourcing) for how new illustrations are made.
-- `nova-versao` was drawn directly as a vector for the planned update notice (see [PRODUCT.md](PRODUCT.md)). It is generated in both themes but not yet used by any component and is not in the `StateArtName` union (**Planned**).
+- `nova-versao` was drawn directly as a vector for the update notice (see [PRODUCT.md](PRODUCT.md)). It is generated in both themes and rendered by `src/components/update-notice.tsx` (**Current**).
 
 ### Map
 
@@ -925,24 +946,25 @@ Status: **Current**. This is the map of every place in the local app and the lan
 | --- | --- | --- | --- |
 | Empty financial base | `/dashboard` · `EmptyState` | No profile or no stored data | `base-vazia` |
 | Indicators unavailable | `/dashboard` · `ErrorState` and area screens | The local database query failed | `falha-consulta` |
-| Empty spending by category | `/dashboard` · `CategoryChart` | Backend confirmed zero spending in the period | `sem-gastos` |
+| Empty spending by category | `/dashboard` · `CategoryChart`; `/planejamento/orcamento` | Backend confirmed zero spending in the period; no expense category to budget | `sem-gastos` |
 | Transactions | `/extratos` | No stored transaction | `sem-lancamentos` |
 | Cards | `/extratos/cartoes` and detail | No card; nonexistent ID | `sem-cartoes` |
 | Import | `/extratos/importar`, batch and import dialog | No file; nonexistent batch | `importar-extrato` |
-| Obligations | `/extratos/recorrencias` | No open obligation | `sem-obrigacoes` |
+| Obligations | `/extratos/recorrencias`; `/planejamento/dividas` | No open obligation; no registered debt | `sem-obrigacoes` |
 | Reconciliation | `/conciliacao` | No pending transaction | `nada-a-conciliar` |
 | Statement check | `/conciliacao/faturas` | No statement | `sem-faturas` |
 | Net worth and contributions | `/patrimonio`, `/patrimonio/aportes` | No registered asset | `sem-patrimonio` |
 | Goals | `/patrimonio/metas` and detail | No goal; nonexistent ID | `sem-metas` |
-| News | `/invest` and article | Integration not configured; nonexistent ID | `sem-noticias` |
-| History | `/historico` | No event | `historico-vazio` |
-| Profile | `/perfil` | Onboarding not completed | `perfil-vazio` |
-| Notifications | Notifications drawer | No alert generated | `sem-notificacoes` |
+| News | `/invest` and article | Integration not configured; confirmed empty; nonexistent ID (`falha-consulta` when the news service is offline) | `sem-noticias` |
+| History | `/historico` | No event, or no event in the filter; the query failed (`falha-consulta`) | `historico-vazio` |
+| Profile | `/perfil` (`ProfileProgressScreen`); `/planejamento/*` and `/patrimonio/*` | Onboarding not completed; the query failed (`falha-consulta`) | `perfil-vazio` |
+| Restore points | `/perfil/privacidade` (`DataBackupScreen`) | No restore point yet | `historico-vazio` (`sm`) |
+| Notifications | Notifications drawer and `/notificacoes` | No notification derived from local data | `sem-notificacoes` |
 | Accounts | Account selector dialog | No account | `sem-contas` |
 | Page not found | `src/app/not-found.tsx`, `apps/web/src/app/not-found.tsx` | Nonexistent route | `nao-encontrada` |
 | Screen error | `src/app/error.tsx`, `apps/web/src/app/error.tsx` | Rendering failure | `erro-tela` |
 | Downloads | `/downloads` on the LP | No published version | `sem-versoes` |
-| New version notice | Not yet rendered | Planned update notice | `nova-versao` (**Planned**) |
+| New version notice | `src/components/update-notice.tsx` | A stable version newer than the installed one exists and was not postponed | `nova-versao` |
 
 ### Illustration direction
 
@@ -1051,6 +1073,11 @@ Derived from the copy in `src/` (navigation in `src/lib/demo-data.ts`, screens i
 | Dashboard | The indicators area | painel, visão geral |
 | Primeiro acesso | The first-run setup | onboarding |
 | Tema: Claro, Escuro, Sistema | Theme options | light, dark, automático |
+| Senha do Talentum | The local password that unlocks the encrypted data on this computer | senha mestra, PIN, login |
+| Código de recuperação | The one-time code that replaces the password when forgotten | chave de recuperação, código de backup |
+| Desbloquear / Bloquear | Open or close the local data with the password | entrar, sair, logar (reserved for the Talentum account) |
+| Aplicativo autenticador; código reserva | The TOTP app and its single-use backup codes | token, 2FA (in copy) |
+| Conta Talentum | The cloud account used for downloads, updates and community | conta Google (Google is only the sign-in method) |
 
 ### Copy review checklist
 
@@ -1139,7 +1166,8 @@ Status: **Current**.
 - **Open — categorical chart palette.** The eight-slot categorical palette is not ratified (dashboard decision in [PRODUCT.md](PRODUCT.md)).
 - **Open — LP hover token divergence.** `--lp-amber-hover` is `#8a5629` while the app's `--amber-hover` is `#9f6533`, although `lp.css` says the tokens mirror each other. Decide whether the divergence is intended (AA on the LP) and align or document it.
 - **Open — orphan stylesheet.** `src/app/styles.css` is tracked but not imported anywhere; it defines unrelated tokens (`--background`, `--foreground`, `--accent`, `--muted`) and styles (system-ui font, 1.25rem radius, uppercase eyebrow) that contradict this system. Confirm it is dead and remove it, or document its purpose.
-- **Planned — `nova-versao` illustration.** Generated in both themes for the planned update notice but not used by any component yet.
+- **Open — LP `Início` screenshot caption.** The LP screenshot and caption still describe indicators showing zero, which no longer matches the dashboard's empty state; replacement awaits a maintainer decision.
+- ~~**Planned — `nova-versao` illustration.**~~ **Resolved 2026-11-20:** rendered by the update notice in both themes.
 - **Open — TV adaptation.** No CSS responds to TV viewing distance or remote input: no type scaling relative to viewport height, no 5% safe-area inset, no directional focus model, no way to hide amounts on a shared screen. See Responsiveness and viewport validation.
 - **Open — hover capability (local app).** Only `pointer: coarse` is handled in `globals.css`; add a `hover: none` rule (or equivalent) so no affordance depends on hover on touch and TV. The landing page already has one.
 - **Open — short viewports (local app).** No height-based rule exists in `globals.css` for 700 px desktops, 1366 × 768 laptops, TV S (540 px) or phones in landscape. The landing page has one for its hero.

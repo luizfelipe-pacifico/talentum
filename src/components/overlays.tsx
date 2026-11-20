@@ -7,6 +7,8 @@ import { AccountBalance } from '@/components/accounts';
 import { useAccounts } from '@/hooks/use-accounts';
 import { trapFocus } from '@/lib/focus-trap';
 import { StateArt, type StateArtName } from '@/components/state-art';
+import { NotificationList } from '@/components/notifications';
+import { CashEntryDialog } from '@/components/cash-entry';
 
 /* Cada diálogo prende o foco enquanto está aberto e o devolve a quem o abriu. */
 function useFocusTrap<T extends HTMLElement>() {
@@ -19,7 +21,7 @@ export function Overlays() {
   const app = useApp();
   return <>
     {app.overlay === 'notif' && <NotificationsDrawer/>}
-    {app.overlay === 'express' && <UnavailableDialog title="Lançamento manual" text="Cadastre uma conta e as categorias pelo backend antes de criar um lançamento."/>}
+    {app.overlay === 'express' && <CashEntryDialog/>}
     {app.overlay === 'import' && <ImportDialog/>}
     {app.overlay === 'onboarding' && <OnboardingDialog/>}
     {app.overlay === 'conta' && <AccountsDialog/>}
@@ -32,8 +34,8 @@ function NotificationsDrawer() {
   return <div className="drawer-wrap">
     <button type="button" className="overlay-scrim" aria-label="Fechar notificações" onClick={app.close}/>
     <aside ref={trapRef} className="drawer" role="dialog" aria-modal="true" aria-label="Notificações" tabIndex={-1}>
-      <div className="drawer-head"><h2 className="h-display">Notificações</h2><button type="button" className="close-button" onClick={app.close} aria-label="Fechar"><i className="bi bi-x-lg"/></button></div>
-      <div className="drawer-body"><StateArt name="sem-notificacoes"/><div className="callout callout-ok"><i className="bi bi-inbox"/><div><p className="callout-title">Nenhuma notificação</p><p className="small">Alertas aparecerão somente quando forem gerados a partir de dados persistidos.</p></div></div></div>
+      <div className="drawer-head"><h2 className="h-display">Notificações</h2><div className="row-tight"><Link className="close-button" href="/configuracoes#notificacoes" onClick={app.close} aria-label="Preferências de notificação" title="Preferências de notificação"><i className="bi bi-sliders" aria-hidden="true"/></Link><button type="button" className="close-button" onClick={app.close} aria-label="Fechar"><i className="bi bi-x-lg"/></button></div></div>
+      <div className="drawer-body"><NotificationList variant="panel" onNavigate={app.close} empty={<div className="empty"><StateArt name="sem-notificacoes" size="sm"/><p className="callout-title">Nenhuma notificação</p><p className="small muted">Avisos de obrigações a vencer, conciliação pendente e extratos antigos aparecem aqui.</p></div>}/></div>
     </aside>
   </div>;
 }
@@ -96,12 +98,6 @@ function AccountsDialog() {
       </div>
     </div>
   </div>;
-}
-
-function UnavailableDialog({title,text,art}:{title:string;text:string;art?:StateArtName}) {
-  const app=useApp();
-  const trapRef=useFocusTrap<HTMLDivElement>();
-  return <div className="overlay"><button type="button" className="overlay-scrim" aria-label="Fechar" onClick={app.close}/><div ref={trapRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className="dialog"><div className="row-between"><h2 className="dialog-title">{title}</h2><button type="button" className="close-button" onClick={app.close} aria-label="Fechar"><i className="bi bi-x-lg"/></button></div>{art&&<StateArt name={art} size="sm"/>}<p className="muted">{text}</p><button type="button" className="btn btn-neutral" onClick={app.close}>Fechar</button></div></div>;
 }
 
 /* A importação real mora em /extratos/importar: ela tem prévia, mapeamento de

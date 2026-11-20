@@ -50,8 +50,9 @@ test('a checagem de origem aceita o próprio site pelo Host, não por request.ur
   assert.equal(session.sameOrigin(headers({ origin: 'https://talentum-tech.vercel.app', host: 'interno', 'x-forwarded-host': 'talentum-tech.vercel.app' })), true);
   assert.equal(session.sameOrigin(headers({ origin: 'https://ataque.example', host: '127.0.0.1:3300' })), false);
   assert.equal(session.sameOrigin(headers({ origin: 'null', host: '127.0.0.1:3300' })), false);
-  // Sem Origin (navegação de formulário antiga), a decisão fica com SameSite=Lax.
-  assert.equal(session.sameOrigin(headers({ host: '127.0.0.1:3300' })), true);
+  // Sem Origin a mutação é recusada (docs/SECURITY.md, Open items, item 2):
+  // navegadores atuais enviam Origin em todo POST.
+  assert.equal(session.sameOrigin(headers({ host: '127.0.0.1:3300' })), false);
   for (const path of ['apps/web/src/app/api/auth/logout/route.ts', 'apps/web/src/app/api/releases/[releaseId]/download-grants/route.ts']) {
     const source = await read(path);
     assert.match(source, /sameOrigin\(request\.headers\)/, path);

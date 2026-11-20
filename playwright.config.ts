@@ -1,10 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /* Testes ponta a ponta do app local. Rodam contra um servidor isolado
-   (scripts/e2e-server.mjs): porta 3210, banco SQLite novo, build em .next-e2e.
-   As doze classes de viewport são as de docs/DESIGN-SYSTEM.md. */
+   (scripts/e2e-server.mjs): porta 3210 (ou TALENTUM_E2E_PORT), banco SQLite
+   novo e cifrado, build em .next-e2e. As doze classes de viewport são as de
+   docs/DESIGN-SYSTEM.md. tests/e2e/global-setup.ts desbloqueia o cofre com a
+   senha sintética e guarda o cookie de sessão em temp/e2e/storage-state.json,
+   usado por todos os testes; os que verificam a tela de bloqueio começam sem ele. */
 
-const PORT = 3210;
+const PORT = Number(process.env.TALENTUM_E2E_PORT) || 3210;
 
 type ViewportClass = { name: string; width: number; height: number; touch: boolean };
 
@@ -31,14 +34,16 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never' }]],
   timeout: 60_000,
+  globalSetup: './tests/e2e/global-setup.ts',
   globalTeardown: './tests/e2e/global-teardown.ts',
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
+    storageState: 'temp/e2e/storage-state.json',
     ...devices['Desktop Chrome'],
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'smoke', testMatch: 'smoke.spec.ts', use: { viewport: { width: 1536, height: 864 } } },
+    { name: 'smoke', testMatch: /(smoke|vault)\.spec\.ts/, use: { viewport: { width: 1536, height: 864 } } },
     ...VIEWPORT_CLASSES.map((viewport) => ({
       name: viewport.name,
       testMatch: 'viewports.spec.ts',

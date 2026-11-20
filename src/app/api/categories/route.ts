@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { db } from '@/server/db';
-import { fail, guardWithProfile, isDenied, ok, readJson } from '@/server/http';
+import { fail, guardWithProfile, isDenied, ok, prismaFailure, readJson } from '@/server/http';
 
 const schema = z.object({ name: z.string().trim().min(1).max(60), kind: z.enum(['income', 'expense', 'transfer']) }).strict();
 
@@ -16,6 +16,11 @@ export async function POST(request: Request) {
   if (!parsed.success) return fail('INVALID_CATEGORY', 'A categoria informada é inválida.', 400);
   const duplicate = await db.category.findFirst({ where: { profileId: guarded.profileId, name: parsed.data.name, kind: parsed.data.kind }, select: { id: true } });
   if (duplicate) return fail('CATEGORY_EXISTS', 'Essa categoria já existe.', 409);
-  const category = await db.category.create({ data: { profileId: guarded.profileId, ...parsed.data }, select: { id: true, name: true, kind: true } });
-  return ok({ category }, 201);
+  try {
+    const category = await db.category.create({ data: { profileId: guarded.profileId, ...parsed.data }, select: { id: true, name: true, kind: true } });
+    return ok({ category }, 201);
+  } catch (error) {
+    // Duas criações simultâneas passam pela checagem acima; a restrição única decide.
+    return prismaFailure(error, { conflict: { code: 'CATEGORY_EXISTS', message: 'Essa categoria já existe.' } });
+  }
 }

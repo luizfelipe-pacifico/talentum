@@ -12,6 +12,11 @@
       "migrations_dir": "migrations"
     }
   ],
+  // Cron: retenção mínima do D1 e busca das notícias públicas (docs/ARCHITECTURE.md §3.8).
+  // Entra em vigor no próximo deploy; não exige segredo.
+  "triggers": {
+    "crons": ["*/30 * * * *"]
+  },
   "vars": {
     "APP_ENV": "production",
     "ALLOWED_ORIGIN": "https://talentum.vercel.app",

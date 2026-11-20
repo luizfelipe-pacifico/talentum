@@ -6,6 +6,7 @@ import '@fontsource/playfair-display/600.css';
 import '@fontsource/playfair-display/700.css';
 import '../styles/base.css';
 import '../styles/lp.css';
+import '../styles/pages.css';
 import { headers } from 'next/headers';
 import type { Metadata, Viewport } from 'next';
 import { SITE_URL } from '../site';

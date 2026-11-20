@@ -1,0 +1,294 @@
+/* Central de notificações, perfil e progresso, dados e backup.
+
+   Folha própria para não disputar o fim de globals.css com outras frentes.
+   Usa só os tokens de globals.css, então os dois temas valem sem regra extra
+   (docs/DESIGN-SYSTEM.md, Local app tokens). */
+
+/* ── Notificações ─────────────────────────────────────────────── */
+
+.notif-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.notif-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 4px 12px;
+  padding: 14px 0 14px 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.notif-item:last-child {
+  border-bottom: 0;
+}
+
+.notif-item > i {
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.notif-item[data-severity='critical'] > i {
+  color: var(--err);
+}
+
+.notif-item[data-severity='warning'] > i {
+  color: var(--warn);
+}
+
+.notif-item[data-severity='info'] > i {
+  color: var(--info);
+}
+
+.notif-title {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* Não lida: peso maior e um ponto, nunca só a cor (WCAG 1.4.1). */
+.notif-item[data-read='false'] .notif-title {
+  font-weight: 700;
+}
+
+.notif-unread {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+  vertical-align: middle;
+}
+
+.notif-body {
+  grid-column: 2;
+  margin: 0;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--ink2);
+}
+
+.notif-meta {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ink2);
+}
+
+.notif-actions {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.notif-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+/* Aviso de desfazer, no padrão do Gmail: aparece no lugar, não some sozinho. */
+.undo-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--sunken);
+  font-size: 13px;
+}
+
+/* ── Perfil e progresso ───────────────────────────────────────── */
+
+.level-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 24px;
+}
+
+.level-xp {
+  font-family: var(--font-display);
+  font-size: 32px;
+  line-height: 40px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mission-list,
+.ledger-list,
+.badge-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mission-list li {
+  display: grid;
+  gap: 8px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.mission-list li:last-child,
+.ledger-list li:last-child {
+  border-bottom: 0;
+}
+
+.ledger-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.ledger-list .num {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  gap: 12px;
+}
+
+.badge-grid li {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 2px 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.badge-grid li > i {
+  grid-row: span 2;
+  font-size: 24px;
+  color: var(--amber);
+}
+
+/* Bloqueada: ícone de cadeado e texto, além do tom apagado. */
+.badge-grid li[data-locked='true'] > i {
+  color: var(--ink2);
+}
+
+.badge-grid li[data-locked='true'] strong {
+  color: var(--ink2);
+}
+
+/* ── Dados e backup ───────────────────────────────────────────── */
+
+.data-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.restore-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.restore-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.restore-list li:last-child {
+  border-bottom: 0;
+}
+
+.restore-list .restore-meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.confirm-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--sunken);
+}
+
+.confirm-panel-danger {
+  border-color: var(--err);
+}
+
+.field-hint {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink2);
+}
+
+.field-error {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--err);
+}
+
+.timeline-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+}
+
+.timeline-filters .field {
+  min-width: min(100%, 200px);
+}
+
+@media (max-width: 600px) {
+  .timeline-filters .field {
+    flex: 1 1 100%;
+  }
+
+  .restore-list li .btn {
+    flex: 1 1 auto;
+  }
+
+  .notif-actions .btn {
+    flex: 1 1 auto;
+  }
+}
+
+@media (pointer: coarse) {
+  .notif-actions .btn,
+  .restore-list .btn {
+    min-height: 44px;
+  }
+}

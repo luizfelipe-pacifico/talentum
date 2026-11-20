@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { timingSafeEqual } from 'node:crypto';
 import { issueActionCode } from '@/server/action-codes';
 import { sameOriginAsHost } from '@/server/local-host';
+import { readSessionToken } from '@/server/vault/session';
 
 const requestSchema = z.object({
   method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']),
@@ -33,7 +34,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: { code: 'INVALID_ACTION_TARGET', message: 'A ação solicitada é inválida.' } }, { status: 400 });
   }
 
-  return NextResponse.json(issueActionCode(parsed.data.method, parsed.data.path), {
+  // Fora das rotas que abrem o cofre, só quem tem sessão local recebe código (src/server/action-codes.ts).
+  const issued = issueActionCode(parsed.data.method, parsed.data.path, readSessionToken(request));
+  if (!issued) {
+    return NextResponse.json({ error: { code: 'VAULT_LOCKED', message: 'O Talentum está bloqueado. Desbloqueie para continuar.' } }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
+  }
+  return NextResponse.json(issued, {
     headers: { 'Cache-Control': 'no-store' },
   });
 }

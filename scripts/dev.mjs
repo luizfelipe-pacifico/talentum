@@ -8,17 +8,10 @@ import { listeningPids } from './ports.mjs';
 const port = 3000;
 const databaseUrl = process.env.DATABASE_URL ?? 'file:../temp/talentum-local.db';
 
-function applyMigrations() {
-  const prismaCli = resolve('node_modules', 'prisma', 'build', 'index.js');
-  execFileSync(process.execPath, [resolve('scripts', 'migration-preflight.mjs')], {
-    stdio: 'inherit',
-    env: { ...process.env, DATABASE_URL: databaseUrl },
-  });
-  execFileSync(process.execPath, [prismaCli, 'migrate', 'deploy'], {
-    stdio: 'inherit',
-    env: { ...process.env, DATABASE_URL: databaseUrl },
-  });
-}
+/* Sem `prisma migrate deploy` aqui: o banco local é cifrado e só abre com a
+   senha. As migrations são aplicadas pelo próprio backend, pela conexão
+   cifrada, no desbloqueio (src/server/vault/migrations.ts). Rodar o CLI do
+   Prisma criaria um banco em claro ao lado do cofre. */
 
 function killProcessOnPort() {
   if (platform() === 'win32') {
@@ -83,7 +76,6 @@ async function waitForPortRelease() {
 
 killProcessOnPort();
 await waitForPortRelease();
-applyMigrations();
 
 if (existsSync('.next')) {
   rmSync('.next', { recursive: true, force: true });

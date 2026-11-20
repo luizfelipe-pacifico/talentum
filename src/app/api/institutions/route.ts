@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { db } from '@/server/db';
-import { fail, guardWithProfile, isDenied, ok, readJson } from '@/server/http';
+import { fail, guardWithProfile, isDenied, ok, prismaFailure, readJson } from '@/server/http';
 
 /* Instituições financeiras do perfil local.
 
@@ -49,10 +49,13 @@ export async function POST(request: Request) {
   });
   if (existing) return ok({ institution: existing, created: false });
 
-  const institution = await db.institution.create({
-    data: { profileId: guarded.profileId, name },
-    select: { id: true, name: true },
-  });
-
-  return ok({ institution, created: true }, 201);
+  try {
+    const institution = await db.institution.create({
+      data: { profileId: guarded.profileId, name },
+      select: { id: true, name: true },
+    });
+    return ok({ institution, created: true }, 201);
+  } catch (error) {
+    return prismaFailure(error, { conflict: { code: 'INSTITUTION_NAME_TAKEN', message: 'Já existe uma instituição com esse nome.' } });
+  }
 }

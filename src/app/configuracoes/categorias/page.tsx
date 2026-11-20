@@ -1,2 +1,3 @@
 import { CategoriesPage } from '@/components/financial-planning';
-export default function Page() { return <CategoriesPage />; }
+import { MerchantRulesSection } from '@/components/merchant-rules';
+export default function Page() { return <div className="stack-lg"><CategoriesPage /><MerchantRulesSection /></div>; }

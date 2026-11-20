@@ -61,12 +61,12 @@ const STEPS = [
   {
     icon: 'bi-file-earmark-arrow-up',
     title: 'Importar',
-    text: 'Você escolhe o extrato do banco em OFX ou CSV. O arquivo é lido dentro do seu computador, você vê a prévia antes de gravar e pode desfazer a importação inteira.',
+    text: 'Você escolhe o extrato do banco em OFX, CSV ou PDF. O arquivo é lido dentro do seu computador, você vê a prévia antes de gravar e pode desfazer a importação inteira.',
   },
   {
     icon: 'bi-diagram-3',
     title: 'Organizar',
-    text: 'Cada lançamento entra com conta, data e valor. A classificação automática por regras de estabelecimento é planejada; hoje você define a categoria na conciliação.',
+    text: 'Cada lançamento entra com conta, data e valor. Regras por estabelecimento categorizam sozinhas o que é inequívoco; o que fica em dúvida vai para a conciliação.',
   },
   {
     icon: 'bi-check2-circle',
@@ -139,14 +139,14 @@ const AREAS: { icon: string; title: string; text: string; estado: Estado }[] = [
   {
     icon: 'bi-speedometer2',
     title: 'Dashboard',
-    text: 'Saldo consolidado, Saldo Livre de Risco com projeção diária, entradas e saídas do mês, média diária e gastos por categoria. Alertas de vencimento vêm depois.',
-    estado: 'parcial',
+    text: 'Saldo consolidado, Saldo Livre de Risco com projeção diária, entradas e saídas do mês, média diária, gastos por categoria e alertas de vencimento e de dados desatualizados.',
+    estado: 'pronto',
   },
   {
     icon: 'bi-receipt',
     title: 'Extratos',
-    text: 'Importação de OFX e CSV com prévia, lançamentos repetidos descartados, desfazer importação e histórico de cada edição. Cartões, faturas e PDF são planejados.',
-    estado: 'parcial',
+    text: 'Importação de OFX, CSV e PDF com prévia, lançamentos repetidos descartados, desfazer importação e histórico de cada edição; cartões com faturas e benefícios.',
+    estado: 'pronto',
   },
   {
     icon: 'bi-check2-square',
@@ -157,20 +157,20 @@ const AREAS: { icon: string; title: string; text: string; estado: Estado }[] = [
   {
     icon: 'bi-clock-history',
     title: 'Histórico',
-    text: 'Linha do tempo das importações, edições e decisões, com filtro e reversão. Backup cifrado e exportação ainda são planejados.',
-    estado: 'parcial',
+    text: 'Linha do tempo das importações, edições e decisões, com filtro e reversão; pontos de restauração, backup cifrado com senha e exportação em JSON e CSV.',
+    estado: 'pronto',
   },
   {
     icon: 'bi-pie-chart',
     title: 'Patrimônio e metas',
-    text: 'Caixinhas de objetivo com cálculo de viabilidade e orientação de aporte pelos quatro pilares.',
-    estado: 'planejado',
+    text: 'Metas com depósitos datados e viabilidade, e o patrimônio pelos quatro pilares, com simulação do próximo aporte só com dinheiro novo.',
+    estado: 'pronto',
   },
   {
     icon: 'bi-newspaper',
     title: 'Invest',
-    text: 'Notícias de economia filtradas pelos ativos que você tem, com resumo e crédito sempre visível para a fonte.',
-    estado: 'planejado',
+    text: 'Notícias de economia de fonte pública, com resumo e crédito sempre visível para a fonte. Nenhum dado seu é enviado para buscá-las.',
+    estado: 'parcial',
   },
 ];
 
@@ -330,7 +330,7 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                 </p>
                 <ul className="lp-hero-meta">
                   <li>
-                    <Icon name="bi-pc-display" /> Windows e Linux, planejados
+                    <Icon name="bi-pc-display" /> Windows e Linux; macOS em breve
                   </li>
                   <li>
                     <Icon name="bi-hdd" /> Dados financeiros no seu computador
@@ -565,8 +565,8 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                 </Reveal>
                 <Reveal delay={110}>
                   <p className="lp-chip">
-                    <Icon name="bi-circle" />
-                    Planejado: etapa de patrimônio
+                    <Icon name="bi-check2" />
+                    Pronto no aplicativo: etapa de patrimônio
                   </p>
                 </Reveal>
                 <Reveal delay={140}>
@@ -632,8 +632,8 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
               </Reveal>
               <Reveal delay={110}>
                 <p className="lp-chip">
-                  <Icon name="bi-circle" />
-                  Planejado: etapa de dívidas
+                  <Icon name="bi-check2" />
+                  Pronto no aplicativo: etapa de dívidas
                 </p>
               </Reveal>
               <Reveal delay={140}>
@@ -697,7 +697,7 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                     'Identidade mínima e sessão da sua conta',
                     'Consentimentos e preferências de comunicação',
                     'Metadados de versão e download do aplicativo',
-                    'Conteúdo público da comunidade de feedback (planejada)',
+                    'Conteúdo público da comunidade de feedback',
                     'Uma cópia de segurança já cifrada, se você ativar (planejada)',
                   ].map((item) => (
                     <li key={item} className="cloud">
@@ -713,9 +713,9 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
               <p className="lp-callout lp-callout-warn">
                 <Icon name="bi-cone-striped" />
                 <span>
-                  O backup cifrado com AES-256-GCM e a exportação em JSON e CSV são <strong>planejados</strong>. Não
-                  serão anunciados como prontos, nem descritos como conhecimento zero, antes de existirem, terem
-                  recuperação de chave documentada e passarem por auditoria.
+                  O backup cifrado com AES-256-GCM e a exportação em JSON e CSV já funcionam e ficam no seu
+                  computador. Sem a senha, o backup não abre e não há recuperação. A cópia na nuvem é{' '}
+                  <strong>planejada</strong> e não será descrita como conhecimento zero antes de passar por auditoria.
                 </span>
               </p>
             </Reveal>
@@ -829,13 +829,13 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                 <Reveal delay={200}>
                   <ol className="lp-timeline">
                     {[
-                      { title: 'Fundação técnica e segurança', state: 'em andamento' },
-                      { title: 'Cadastro, sessão e downloads autorizados', state: 'em andamento' },
+                      { title: 'Fundação técnica e segurança', state: 'pronto' },
+                      { title: 'Cadastro, sessão e downloads autorizados', state: 'pronto' },
                       { title: 'Electron seguro e primeiro acesso', state: 'em andamento' },
                       { title: 'Contas, categorias e obrigações', state: 'pronto' },
                       { title: 'Importação de OFX e CSV', state: 'pronto' },
-                      { title: 'Categorização e conciliação', state: 'em andamento' },
-                      { title: 'Dashboard e Saldo Livre de Risco', state: 'em andamento' },
+                      { title: 'Categorização e conciliação', state: 'pronto' },
+                      { title: 'Dashboard e Saldo Livre de Risco', state: 'pronto' },
                     ].map((item) => (
                       <li key={item.title} className={`lp-timeline-${item.state === 'pronto' ? 'done' : 'now'}`}>
                         <span className="lp-timeline-dot" aria-hidden="true">
@@ -858,7 +858,7 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
               </Reveal>
             </div>
 
-            <div className="lp-grid lp-grid-2 lp-download">
+            <div className="lp-grid lp-grid-3 lp-download">
               <Reveal as="article" className="lp-platform">
                 <Icon name="bi-windows" />
                 <div>
@@ -874,6 +874,14 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                   <p>Mesmo pipeline, mesmo checksum verificável e a mesma exigência de conta.</p>
                 </div>
                 <span className="lp-chip">Planejado</span>
+              </Reveal>
+              <Reveal as="article" delay={220} className="lp-platform">
+                <Icon name="bi-apple" />
+                <div>
+                  <h3>macOS</h3>
+                  <p>Para MacBook. Publicado só depois de assinado e notarizado pela Apple.</p>
+                </div>
+                <span className="lp-chip">Em breve</span>
               </Reveal>
             </div>
           </div>
@@ -970,7 +978,10 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                   </a>
                 </li>
                 <li>
-                  <span>Comunidade de feedback: planejada</span>
+                  <a href="/comunidade">Comunidade de sugestões</a>
+                </li>
+                <li>
+                  <a href="/entrar">Entrar na conta</a>
                 </li>
               </ul>
             </div>

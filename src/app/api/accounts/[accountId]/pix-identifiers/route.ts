@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { db } from '@/server/db';
-import { fail, guardWithProfile, isDenied, ok, readJson } from '@/server/http';
+import { fail, guardWithProfile, isDenied, ok, prismaFailure, readJson } from '@/server/http';
 import { PIX_KEY_TYPES, PixParseError, preparePixKey, type PixKeyType } from '@/server/pix';
 
 /* Chaves PIX próprias de uma conta.
@@ -93,7 +93,9 @@ export async function POST(request: Request, context: Context) {
   });
   if (existing) return fail('PIX_KEY_ALREADY_REGISTERED', 'Esta chave já está cadastrada.', 409);
 
-  const created = await db.pixIdentifier.create({
+  let created;
+  try {
+    created = await db.pixIdentifier.create({
     data: {
       profileId: guarded.profileId,
       accountId: account.id,
@@ -108,7 +110,11 @@ export async function POST(request: Request, context: Context) {
       source: 'declared',
     },
     select: { id: true, type: true, label: true, maskedValue: true, isActive: true },
-  });
+    });
+  } catch (error) {
+    // Duas abas cadastrando a mesma chave: o índice único decide qual fica.
+    return prismaFailure(error, { conflict: { code: 'PIX_KEY_ALREADY_REGISTERED', message: 'Esta chave já está cadastrada.' } });
+  }
 
   return ok({ pixIdentifier: created }, 201);
 }
