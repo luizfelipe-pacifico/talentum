@@ -11,6 +11,7 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:all": "node scripts/dev-all.mjs",
+    "dev:web": "pnpm --dir apps/web dev",
     "desktop:prepare": "node scripts/desktop-prepare.mjs",
     "desktop:build:win": "pnpm desktop:prepare && electron-builder --win nsis --x64",
     "desktop:build:linux": "pnpm desktop:prepare && electron-builder --linux AppImage --x64",

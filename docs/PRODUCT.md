@@ -181,11 +181,11 @@ This is the single authoritative list of product routes. Paths and Portuguese ro
 | `/invest` | **Current** (placeholder) | Stages 15–16 | No fictitious news. |
 | `/invest` | **Current** | Stages 15–16 | Public economic news read through the local backend from the Worker, with source credit, date and excerpt; local-only source filter; states for not configured (`TALENTUM_CLOUD_API_URL` unset), offline, confirmed empty and loading. No portfolio data leaves the device. |
 | `/invest/[noticiaId]` | **Current** | Stages 15–16 | Title, source, date, excerpt, `Resumir notícia` (AI summary or the article's first sentences, labelled), `Ler na fonte` (external) and credit; not-found state. |
+| `/historico` | **Current** | 8, Stage 11 | Redacted timeline filtered by subject (domain) and period, "Carregar mais eventos" with cursor, and revert. |
 | `/perfil` | **Current** | Stage 17 | Level, XP and progress to the next level, missions with progress and actions, badges (locked and unlocked) and the XP history. Without a profile, the `perfil-vazio` state linking to `/onboarding`. |
 | `/perfil/privacidade` | **Current** | Stages 11, 18, 19 | "Dados e backup": restore points (create, restore with confirmation, delete, scheduled-restore banner with cancel), encrypted backup (generate with passphrase, restore from file), JSON and CSV export, and "Apagar todos os dados locais" with typed confirmation. |
 | Quick cash entry (dialog, every screen) | **Current** | 5 | The `Lançar dinheiro` button in the top bar opens a sheet: expense or income, amount, description, date and optional category; it creates a `cash` account when none exists and offers `Desfazer` after saving. |
 | New-version notice (dialog in the app shell) | **Current** (installation gated) | Update notice | See [New-version notice](#new-version-notice-and-application-update). |
-| `/lp` | **Current** (development bridge) | — | Renders the landing page at the local origin during development only; must be removed before the first deploy (see [ARCHITECTURE.md](ARCHITECTURE.md)). |
 | `/layout-guide` | **Current** (development only) | — | Internal design reference; returns not found outside development. |
 
 The batch route parameter is `[loteId]` in code. The earlier sub-routes `/extratos/importar/[loteId]/mapeamento` and `/extratos/importar/[loteId]/revisao` were **not created**: mapping and preview happen inside the import wizard before any batch exists (see Feature 4).

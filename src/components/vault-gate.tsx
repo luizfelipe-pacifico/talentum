@@ -12,7 +12,6 @@
    chamada que descubra o cofre fechado (`VAULT_LOCKED_EVENT`) traz a tela de
    desbloqueio na hora. */
 
-import { usePathname } from 'next/navigation';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { VAULT_LOCKED_EVENT } from '@/lib/api-client';
 import { vault } from '@/lib/vault-client';
@@ -39,9 +38,6 @@ export function useVaultControls() {
 }
 
 export function VaultGate({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-  // A prévia da landing page em /lp é pública e não mostra dado nenhum.
-  const bypass = pathname === '/lp' || pathname.startsWith('/lp/');
   const [view, setView] = useState<View>({ kind: 'checking' });
   const unlocked = view.kind === 'unlocked';
 
@@ -57,9 +53,8 @@ export function VaultGate({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (bypass) return;
     void refresh();
-  }, [bypass, refresh]);
+  }, [refresh]);
 
   // Qualquer chamada que encontre o cofre fechado volta para o desbloqueio.
   useEffect(() => {
@@ -110,8 +105,6 @@ export function VaultGate({ children }: { children: ReactNode }) {
   }, [unlocked, lockNow]);
 
   const controls = useMemo(() => ({ lockNow }), [lockNow]);
-
-  if (bypass) return <>{children}</>;
 
   switch (view.kind) {
     case 'checking':

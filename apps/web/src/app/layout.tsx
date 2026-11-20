@@ -62,6 +62,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: '#1a110a',
   colorScheme: 'light',
+  // O fundo vai até a borda da tela; o texto respeita env(safe-area-inset-*).
+  viewportFit: 'cover',
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
