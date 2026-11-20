@@ -3,7 +3,7 @@
 /* Carrossel de pranchas. Sem avanço automático: quem lê decide o ritmo.
    Navegação por botões, teclado e indicadores, com anúncio para leitor de tela. */
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useReducedMotion } from './motion';
 import { Icon } from './icon';
 
@@ -115,14 +115,38 @@ const INTERVALO = 6000;
 export function ShotCarousel({ shots }: { shots: Shot[] }) {
   const [index, setIndex] = useState(0);
   const [pausado, setPausado] = useState(false);
+  const [visivel, setVisivel] = useState(false);
+  const raiz = useRef<HTMLDivElement>(null);
   const reduzido = useReducedMotion();
   const total = shots.length;
 
   const go = useCallback((next: number) => setIndex(((next % total) + total) % total), [total]);
 
+  // A troca só corre enquanto o carrossel está na tela e a aba está à vista:
+  // ninguém volta à seção e encontra a terceira tela sem ter visto a primeira.
+  useEffect(() => {
+    const elemento = raiz.current;
+    if (!elemento) return;
+    let naTela = false;
+    const atualizar = () => setVisivel(naTela && document.visibilityState === 'visible');
+    const observador = new IntersectionObserver(
+      ([entrada]) => {
+        naTela = entrada.isIntersecting;
+        atualizar();
+      },
+      { threshold: 0.4 },
+    );
+    observador.observe(elemento);
+    document.addEventListener('visibilitychange', atualizar);
+    return () => {
+      observador.disconnect();
+      document.removeEventListener('visibilitychange', atualizar);
+    };
+  }, []);
+
   // Com movimento reduzido a troca continua acontecendo, só que sem o
   // deslize: quem pediu menos movimento não quer perder o conteúdo.
-  const automatico = !pausado;
+  const automatico = !pausado && visivel;
 
   useEffect(() => {
     if (!automatico) return;
@@ -143,6 +167,7 @@ export function ShotCarousel({ shots }: { shots: Shot[] }) {
 
   return (
     <div
+      ref={raiz}
       className="lp-shots-carousel"
       role="group"
       aria-roledescription="carrossel"
@@ -225,7 +250,7 @@ export function ShotCarousel({ shots }: { shots: Shot[] }) {
 
         {/* Só anuncia quando a troca é decisão de quem lê: no modo automático
             um aviso a cada seis segundos atrapalharia o leitor de tela. */}
-        <p className="lp-tiny lp-muted" aria-live={automatico ? 'off' : 'polite'}>
+        <p className="lp-tiny lp-muted" aria-live={pausado ? 'polite' : 'off'}>
           Tela {index + 1} de {total}: {shots[index].title}
         </p>
 

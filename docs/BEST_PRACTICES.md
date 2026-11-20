@@ -177,6 +177,7 @@ Status: **Current**. This table lists every script in the root `package.json`.
 | --- | --- |
 | `pnpm dev` | runs `scripts/dev.mjs`: frees port 3000, waits for it, runs the migration preflight, applies `prisma migrate deploy`, removes `.next` and starts `next dev` on `127.0.0.1:3000` |
 | `pnpm dev:all` | runs `scripts/dev-all.mjs`: opens Electron on `http://localhost:3000`, attaching to a server that already answers or starting its own |
+| `pnpm dev:web` | runs `next dev` for the landing page in `apps/web`, bound to `127.0.0.1:3100` |
 | `pnpm desktop:prepare` | runs `scripts/desktop-prepare.mjs`: `prisma generate`, a standalone `next build` and a copy of `.next/static` and `public/` into the standalone output |
 | `pnpm desktop:build:win` | `desktop:prepare`, then `electron-builder --win nsis --x64` into the ignored `release/` directory (unsigned) |
 | `pnpm desktop:build:linux` | `desktop:prepare`, then `electron-builder --linux AppImage --x64` into `release/` (unsigned) |
@@ -216,7 +217,7 @@ Status: **Current**. This table lists every script in the root `package.json`.
 | `pnpm marca:gerar` | generates the vector brand (light, dark and seal SVG) and the `.ico` files for the app, the landing page and the window |
 | `pnpm estados:gerar` | generates the per-theme state illustrations from the masters in `design/estados-vetor/` |
 
-The landing page has its own scripts in `apps/web/package.json`; run it on the host with `pnpm --dir apps/web dev` (port 3100). Commands that publish or change remote resources (`cloudflare:deploy`, `cloudflare:migrations:apply:remote`) run only when explicitly requested, per `CLAUDE.md`.
+The landing page has its own scripts in `apps/web/package.json`; run it on the host with `pnpm dev:web` (port 3100). The system and the landing page never share a port: the system answers on 3000 and the landing page only on 3100. The former `/lp` preview route inside the system was removed so the two are never confused (`tests/regression/lp-own-port.test.mjs`). Commands that publish or change remote resources (`cloudflare:deploy`, `cloudflare:migrations:apply:remote`) run only when explicitly requested, per `CLAUDE.md`.
 
 ## Running locally
 
