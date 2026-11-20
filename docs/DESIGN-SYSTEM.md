@@ -590,7 +590,7 @@ Status: **Open**. Recorded here and in [Open items](#open-items); the CSS is not
 - **No height-based rule.** Nothing adapts to short viewports (Desktop S at 700 px, 1366 × 768 laptops, TV S at 540 px, phones in landscape).
 - **No safe-area handling.** Neither stylesheet uses `env(safe-area-inset-*)`; content can sit under a notch or home indicator in a full-screen mobile browser.
 - **Tablet S boundary.** At exactly 600 px the `max-width: 600px` rules apply, so a 600 px tablet gets the phone layout. Decide whether that is intended.
-- **Mobile S not yet measured.** The QA log measured 390 px and wider; 320 px has never been measured.
+- **Mobile S only measured automatically.** `pnpm test:e2e` checks horizontal scroll and text below 12 px at 320 px (and every other class) on `/`, `/dashboard`, `/extratos` and `/configuracoes`, in both themes, and passes; no visual review at 320 px is recorded yet.
 
 ### TV and the 10-foot interface
 
@@ -702,7 +702,8 @@ For every interface change:
    - **Legibility:** no text below 12 px (or below the TV minimum on TV classes); monetary values do not wrap; contrast holds.
    - **Focus order:** follows the visual order; focus is visible and not obscured (P27).
    - **Illustrations and states:** the theme-specific illustration renders in each theme.
-4. Record the result in the table below, attach evidence in ignored directories only (Visual QA process), and fix or report every failure.
+4. Run `pnpm test:e2e`: it already checks horizontal scroll and text below 12 px at every class and theme for the main screens. Add the changed screen to `ROUTES` in `tests/e2e/viewports.spec.ts` if it is not there. The automated checks do not replace steps 2 and 3.
+5. Record the result in the table below, attach evidence in ignored directories only (Visual QA process), and fix or report every failure.
 
 Results table template, to copy into reports:
 
@@ -1145,7 +1146,7 @@ Status: **Current**.
 - **Open — short viewports.** No height-based rule exists for 700 px desktops, 1366 × 768 laptops, TV S (540 px) or phones in landscape.
 - **Open — safe-area insets.** Neither stylesheet uses `env(safe-area-inset-*)`.
 - **Open — 600 px boundary.** A 600 px tablet takes the phone rules because `max-width: 600px` includes 600; confirm or change.
-- **Open — Mobile S measurement.** No QA record exists at 320 px; measure it.
+- **Open — Mobile S visual review.** The automated checks pass at 320 px; a visual review of every screen at that width is not recorded yet.
 - **Open — mobile navigation pattern.** Seven destinations exceed a bottom tab bar; decide whether a bar with the most used areas plus the drawer would serve phones better than the drawer alone.
 - **Open — mobile filter and transaction-list patterns.** No sheet-based filter and no transaction list exist yet; build them with the catalog patterns.
 - **Open — copy audit.** Visible strings in `src/components/demo-pages.tsx` and `src/components/overlays.tsx` use jargon forbidden by the UX writing rules (`backend`, `ID`, `SQLite`, `persistidas`, `onboarding`) and `banco local`, which reads as a local bank; one empty state says `transações` instead of `lançamentos`; `Lote` and `Desfazer lote` may be clearer as `importação`. Rewrite them in a dedicated change with tests updated.

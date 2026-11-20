@@ -182,7 +182,7 @@ pnpm prisma:migrate
 pnpm hooks:install
 ```
 
-`pnpm hooks:install` é obrigatório para contribuir: ativa os hooks que bloqueiam commit e push quando o typecheck ou algum teste, inclusive os de regressão, falha. Confira com `git config --get core.hooksPath`, que deve imprimir `.githooks`.
+`pnpm hooks:install` é obrigatório para contribuir: ativa os hooks que bloqueiam commit e push quando o typecheck, o linter ou algum teste, inclusive os de regressão, falha. Confira com `git config --get core.hooksPath`, que deve imprimir `.githooks`.
 
 ### Comandos disponíveis
 
@@ -196,7 +196,9 @@ pnpm hooks:install
 | `pnpm build` | Gera a build de produção do Next.js |
 | `pnpm start` | Executa a build de produção na porta 3000 |
 | `pnpm typecheck` | Verifica os tipos TypeScript |
+| `pnpm lint` | Roda o linter (Biome) |
 | `pnpm test` | Roda a suíte, inclusive os testes de regressão |
+| `pnpm test:e2e` | Roda os testes ponta a ponta (Playwright) num servidor isolado; antes, uma vez: `pnpm test:e2e:install` |
 | `pnpm hooks:install` | Ativa os hooks que rodam typecheck e testes antes de commit e push e garante que sejam executáveis |
 | `pnpm prisma:generate` | Gera o Prisma Client |
 | `pnpm prisma:validate` | Valida o schema Prisma |

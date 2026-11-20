@@ -80,8 +80,8 @@ prisma/                schema.prisma + 11 migrations (local SQLite only)
 cloudflare/            Worker (src/index.ts), D1 migrations, wrangler.jsonc (tracked working config), wrangler.example.jsonc, .dev.vars.example
 design/estados-vetor/  vector sources for empty-state illustrations
 public/                static assets of the local app
-scripts/               dev, dev:all, migration preflight, desktop packaging prep, palette validator, asset generators, typecheck helpers
-tests/                 node:test suites; tests/regression/ holds regression tests
+scripts/               dev, dev:all, migration preflight, desktop packaging prep, palette validator, the isolated end-to-end server, asset generators, typecheck helpers
+tests/                 node:test suites; tests/regression/ holds regression tests; tests/e2e/ holds Playwright specs
 .githooks/             versioned pre-commit and pre-push hooks
 .github/               CI workflow (workflows/ci.yml), CONTRIBUTING, CODE_OF_CONDUCT and the vulnerability-reporting policy (SECURITY.md)
 LICENSE                open-source license
@@ -89,6 +89,7 @@ LICENSE                open-source license
 docs/                  normative documentation and ADRs (docs/decisions/)
 README.md, CLAUDE.md, AGENTS.md   project overview, AI agent rules, pointer for other agents
 package.json, pnpm-workspace.yaml root scripts, dependencies, build allowances and overrides
+biome.json, playwright.config.ts  linter/formatter rules and end-to-end test configuration
 Dockerfile             local app image (Ubuntu 24.04 base)
 Dockerfile.web         LP/BFF image (node:22-bookworm-slim)
 compose.yaml           talentum-local (127.0.0.1:3000) and talentum-web (127.0.0.1:3100)

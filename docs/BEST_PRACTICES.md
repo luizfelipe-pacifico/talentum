@@ -186,9 +186,14 @@ Status: **Current**. This table lists every script in the root `package.json`.
 | `pnpm docker:down` | stops the containers without deleting the SQLite volume |
 | `pnpm build` | runs `next build` for the local application |
 | `pnpm start` | serves the build with `next start` on port 3000 |
-| `pnpm lint` | alias of `pnpm typecheck` (runs `scripts/typecheck.mjs`); there is no separate linter |
+| `pnpm lint` | runs the Biome linter (`biome lint .`) with the rules in `biome.json` |
+| `pnpm format` | formats the code with Biome (`biome format --write .`); see Automated quality before running it on the whole tree |
+| `pnpm format:check` | reports files whose formatting differs from `biome.json`, without changing them |
 | `pnpm typecheck` | regenerates the Prisma Client only when the schema changed, then runs `tsc --noEmit` |
 | `pnpm test` | runs `node --experimental-strip-types --test "tests/**/*.test.mjs"` |
+| `pnpm test:e2e` | runs the Playwright end-to-end tests in `tests/e2e/` against an isolated server (see Tests) |
+| `pnpm test:e2e:install` | downloads the Chromium build Playwright uses (once per machine) |
+| `pnpm test:manual` | starts the isolated server (fresh database, `127.0.0.1:3210`) for manual testing through the Claude in Chrome extension |
 | `pnpm prisma:generate` | runs `prisma generate` |
 | `pnpm prisma:validate` | runs `prisma validate` |
 | `pnpm prisma:preflight` | runs `scripts/migration-preflight.mjs`: stops when a pending migration is destructive and no verified backup is named in `TALENTUM_VERIFIED_BACKUP_ID` |
@@ -287,6 +292,21 @@ Status: **Current**.
 - Worker tests do not read the source text: `tests/regression/helpers/worker.mjs` builds an in-memory D1 with `node:sqlite` and the real migrations from `cloudflare/migrations`, and imports `cloudflare/src/index.ts` directly. This requires Node with `node:sqlite` (22.13 or later).
 - Contract tests read the source code and check invariants that must not regress silently: the `X-Action-Code` requirement, `profileId` scoping in every `where` clause, no formatted monetary text in the backend, no Prisma in the frontend and immutability of applied migrations. Feature-level contract tests: `onboarding-contracts.test.mjs` (relational migration, action code, profile scoping, optimistic concurrency and the four steps), `financial-planning-contracts.test.mjs` (categories, income, obligations and deterministic rules), `transaction-detail-contracts.test.mjs` (detail, edit and history), `reconciliation-contracts.test.mjs`, `timeline-contracts.test.mjs` and `electron-security.test.mjs`.
 - No test depends on a credential or a personal service.
+- End-to-end tests use Playwright (`playwright.config.ts`, files `tests/e2e/*.spec.ts`, which the `pnpm test` glob does not pick up). `pnpm test:e2e` starts `scripts/e2e-server.mjs`: a fresh SQLite database in `temp/e2e/`, `next dev` on `127.0.0.1:3210` and the build directory `.next-e2e`, so it never touches your database or a running `pnpm dev`. If something already answers on port 3210 outside CI, Playwright reuses it. The global teardown restores `next-env.d.ts`, which Next rewrites for the other build directory.
+- `tests/e2e/smoke.spec.ts` covers the basic flows on an empty database (Início without amounts, the empty Dashboard never showing `R$ 0,00`, action codes required and single-use, the not-found page). `tests/e2e/viewports.spec.ts` renders the main screens at the twelve viewport classes in both themes and fails on horizontal scroll or visible text below 12 px. It automates two checks of the visual QA procedure in [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md#test-procedure); it does not replace looking at the screens.
+- End-to-end tests are not in the Git hooks (they take about 35 seconds and need the downloaded browser). Run them before committing any interface or local API change.
+
+### Manual testing in the browser
+
+Status: **Current**. Mandatory for every interface or local API change, after the automated tests pass. It does not replace them: it finds what scripted tests do not look for, such as confusing copy, a step that feels broken, a missing focus state or an error the person cannot recover from.
+
+1. Run `pnpm test:manual`. It starts the same isolated server as the end-to-end tests (`scripts/e2e-server.mjs`): a fresh SQLite database in `temp/e2e/`, `next dev` on `http://127.0.0.1:3210`, and `next-env.d.ts` restored when the server stops. Never test against `pnpm dev`, whose database may hold real data.
+2. Open the app through the Claude in Chrome extension in a new tab and use each affected flow from start to finish as a person would: reach it from the navigation, click, type, submit, cancel, undo, and use the keyboard (Tab, Enter, Esc).
+3. Try what a person gets wrong: empty and invalid fields, double clicks on submit, the back button, reloading in the middle of a flow.
+4. Read the console and the network requests; any error, failed request or rejected action code is a finding.
+5. Repeat the main flow in the dark and the light theme and at least at one mobile and one desktop width.
+6. Use only synthetic data. Avoid controls that open native browser dialogs (`alert`, `confirm`), which block the extension.
+7. Report each flow tested, its result and what was not covered. A defect found here follows [Bug fixes and regression tests](#bug-fixes-and-regression-tests).
 
 The statement importer is tested in layers:
 
@@ -342,14 +362,14 @@ Regression tests live in `tests/regression/` and run with `pnpm test`. The whole
 
 Status: **Current**.
 
-`.githooks/pre-commit` and `.githooks/pre-push` run `pnpm typecheck` and `pnpm test` and block the operation on any failure. Install them once per clone with `pnpm hooks:install`, which sets `core.hooksPath` and marks both hooks executable. Git silently skips a hook without the executable bit and only prints a `hint`, so the hooks are versioned as `100755` and `tests/regression/git-hooks-executable.test.mjs` keeps them that way. To confirm the installation, `git config --get core.hooksPath` must print `.githooks`. Never bypass them with `--no-verify`. The mandatory [security gate in SECURITY.md](SECURITY.md#mandatory-pre-commit-and-pre-push-security-gate) applies in addition to the hooks.
+`.githooks/pre-commit` and `.githooks/pre-push` run `pnpm typecheck`, `pnpm lint` and `pnpm test` and block the operation on any failure. Install them once per clone with `pnpm hooks:install`, which sets `core.hooksPath` and marks both hooks executable. Git silently skips a hook without the executable bit and only prints a `hint`, so the hooks are versioned as `100755` and `tests/regression/git-hooks-executable.test.mjs` keeps them that way. To confirm the installation, `git config --get core.hooksPath` must print `.githooks`. Never bypass them with `--no-verify`. The mandatory [security gate in SECURITY.md](SECURITY.md#mandatory-pre-commit-and-pre-push-security-gate) applies in addition to the hooks.
 
 ## Automated quality
 
-- **Current:** type checking (`pnpm typecheck`, also exposed as `pnpm lint`), the Node test suite and the Git hooks above.
-- **Current:** continuous integration in `.github/workflows/ci.yml`, on pushes to `main` and on pull requests, with read-only `contents` permission. On Ubuntu 24.04 with Node 22.13.0 and pnpm 11.1.2 it runs `pnpm install --frozen-lockfile`, `pnpm audit --prod --audit-level high`, `prisma:generate`, `prisma:validate`, `typecheck`, `test`, `build`, `web:typecheck`, `web:build`, `cloudflare:build` and `cloudflare:test`. Its supply-chain hardening (actions pinned by SHA, `persist-credentials: false`) is owned by [SECURITY.md](SECURITY.md#supply-chain-ci-and-release-integrity).
-- **Planned:** reproducible formatting and linting rules (there is no formatter and no linter beyond the TypeScript compiler today).
-- **Planned:** formatting and static analysis in CI, plus CodeQL, dependency alerts and secret scanning; the current workflow has none of these beyond the `pnpm audit` step.
+- **Current:** type checking (`pnpm typecheck`), linting with Biome (`pnpm lint`, recommended rules; per-file exceptions are listed with their reason in `biome.json`), the Node test suite, the Playwright end-to-end suite and the Git hooks above. Third-party skills in `.claude/` are excluded from linting. Why Biome and Playwright: [decisions/0005-biome-and-playwright.md](decisions/0005-biome-and-playwright.md).
+- **Current:** continuous integration in `.github/workflows/ci.yml`, on pushes to `main` and on pull requests, with read-only `contents` permission. On Ubuntu 24.04 with Node 22.13.0 and pnpm 11.1.2 it runs `pnpm install --frozen-lockfile`, `pnpm audit --prod --audit-level high`, `prisma:generate`, `prisma:validate`, `typecheck`, `lint`, `test`, end-to-end tests (`playwright install --with-deps chromium`, then `test:e2e`), `build`, `web:typecheck`, `web:build`, `cloudflare:build` and `cloudflare:test`. Its supply-chain hardening (actions pinned by SHA, `persist-credentials: false`) is owned by [SECURITY.md](SECURITY.md#supply-chain-ci-and-release-integrity).
+- **Planned:** enforcing the Biome formatter. The formatter is configured in `biome.json` (2 spaces, single quotes, semicolons, trailing commas, 140 columns), but the existing code was never formatted consistently and a first run rewrites about 170 files. That one-time formatting commit waits until the `feat/conclusao-mvp` integration lands, so it does not conflict with it; after it, `pnpm format:check` joins the hooks. Until then, do not run `pnpm format` on the whole tree.
+- **Planned:** CodeQL, dependency alerts and secret scanning in CI; the workflow has none of these beyond the `pnpm audit` step.
 - Cover business rules with unit tests and critical flows with integration or end-to-end tests.
 - Do not use coverage percentage as the only quality measure; verify meaningful behavior and edge cases.
 - Interface changes are validated in both the light and the dark theme, as required by `CLAUDE.md` and detailed in [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md).
@@ -431,6 +451,7 @@ Never modify an already published version. Record meaningful changes in a change
 - [ ] The implementation is simple and readable.
 - [ ] Appropriate tests exist (a failing-first regression test for every bug fix) and `pnpm typecheck` and `pnpm test` pass.
 - [ ] Interface changes were validated in both the light and the dark theme.
+- [ ] Interface and local API changes were tested by hand through the Claude in Chrome extension ([Manual testing in the browser](#manual-testing-in-the-browser)).
 - [ ] No secrets, personal data or known vulnerabilities were introduced.
 - [ ] Relevant documentation was updated in the same change set.
 - [ ] The change was reviewed and can be safely released or reverted.

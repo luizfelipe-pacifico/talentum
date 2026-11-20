@@ -3,4 +3,5 @@
 # Ver "Bug fixes are test-first" em CLAUDE.md.
 set -e
 pnpm typecheck
+pnpm lint
 pnpm test

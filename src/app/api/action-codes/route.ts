@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { timingSafeEqual } from 'node:crypto';
 import { issueActionCode } from '@/server/action-codes';
+import { sameOriginAsHost } from '@/server/local-host';
 
 const requestSchema = z.object({
   method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']),
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: { code: 'UNSUPPORTED_MEDIA_TYPE', message: 'A solicitação não pôde ser concluída.' } }, { status: 415, headers: { 'Cache-Control': 'no-store' } });
   }
   const origin = request.headers.get('Origin');
-  if (origin && origin !== new URL(request.url).origin) {
+  if (origin && !sameOriginAsHost(request.headers)) {
     return NextResponse.json({ error: { code: 'ORIGIN_NOT_ALLOWED', message: 'A solicitação não foi autorizada.' } }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
   }
   const expected = process.env.TALENTUM_LOCAL_BOOTSTRAP_SECRET;

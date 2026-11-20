@@ -98,7 +98,8 @@ Talentum is an early-stage, open-source, local-first financial application plann
 ## Quality
 
 - Add or update tests in proportion to the change.
-- Run relevant checks and report validations and limitations.
+- Run relevant checks and report validations and limitations: `pnpm typecheck`, `pnpm lint` and `pnpm test` always; `pnpm test:e2e` for any interface or local API change.
+- Manual testing through the Claude in Chrome extension is mandatory for every interface or local API change, in addition to the automated tests, never instead of them. Start the isolated server with `pnpm test:manual` (fresh database, `http://127.0.0.1:3210`) and use the affected flows the way a person would: navigate, click, type, submit, undo, use the keyboard, and try wrong input and repeated clicks. Check the console and failed network requests, and check both themes. Use only synthetic data, never the maintainer's local database or real financial data, and avoid actions that open browser dialogs. Report each flow tested, its result and anything not covered. The procedure is in [Manual testing in the browser](docs/BEST_PRACTICES.md#manual-testing-in-the-browser).
 - Before build, commit, push or deploy, scan source, configuration, documentation and history as appropriate for secrets and personal data.
 - A feature is not done until implementation, tests and relevant documentation agree.
 

@@ -1,6 +1,9 @@
 # Dependências e saídas de build
 node_modules/
 .next/
+.next-e2e/
+test-results/
+playwright-report/
 dist/
 out/
 build/

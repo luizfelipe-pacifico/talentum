@@ -35,12 +35,12 @@ function transformar(entrada) {
   b = mix(b, luma, 0.12);
 
   // 2. Curva por canal: vermelho ganha, azul cede. É o calor do papel velho.
-  r = Math.pow(r, 0.94);
-  g = Math.pow(g, 0.98);
-  b = Math.pow(b, 1.06);
+  r = r ** 0.94;
+  g = g ** 0.98;
+  b = b ** 1.06;
 
   // 3. Altas-luzes puxadas para o âmbar, discretamente.
-  const alta = Math.pow(luma, 2.4) * 0.07;
+  const alta = luma ** 2.4 * 0.07;
   r = mix(r, AMBAR[0], alta * 0.5);
   g = mix(g, AMBAR[1], alta * 0.35);
   b = mix(b, AMBAR[2], alta * 0.2);
@@ -56,7 +56,7 @@ function transformar(entrada) {
   b = contraste(b);
 
   // 5. Sombras assentadas no ébano por último, para o preto nunca ser absoluto.
-  const sombra = Math.pow(1 - luma, 2.2) * 0.085;
+  const sombra = (1 - luma) ** 2.2 * 0.085;
   return [mix(r, EBANO[0], sombra), mix(g, EBANO[1], sombra), mix(b, EBANO[2], sombra)];
 }
 
