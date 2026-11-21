@@ -51,6 +51,26 @@ html.dark .vault-logo-dark {
   letter-spacing: 0.02em;
 }
 
+.vault-art {
+  display: flex;
+  margin: -4px 0 -8px;
+}
+
+/* Alinhada à esquerda, como a marca e o título da mesma coluna. */
+.vault-art .state-art {
+  margin: 0 0 0 -8px;
+  width: 112px;
+  height: 112px;
+}
+
+/* Janela baixa (celular pequeno, TV pequena, notebook com zoom): o campo de
+   senha vem antes da ilustração. */
+@media (max-height: 700px) {
+  .vault-art {
+    display: none;
+  }
+}
+
 .vault-title {
   font-family: var(--font-display);
   font-size: 28px;
@@ -141,7 +161,7 @@ html.dark .vault-logo-dark {
 }
 
 .vault-reveal:hover {
-  color: var(--amber);
+  color: var(--amber-text);
 }
 
 .vault-hint {

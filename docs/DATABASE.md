@@ -281,16 +281,18 @@ A commitment with an amount and a due date. It is the subtrahend of the risk-fre
 | --- | --- |
 | `profileId` | FK to `LocalProfile`, cascade |
 | `accountId`, `categoryId` | optional FKs, `SetNull` on delete |
+| `creditCardId` | optional FK to `CreditCard`, `SetNull` on delete (migration `obligation_credit_card`); set when the obligation is the bill of that card |
 | `description` | local label of the commitment |
 | `amountCents` | `BigInt`, integer cents |
 | `dueDate` | due date; decides whether the obligation falls in the period |
 | `status` | `open`, `paid` or `cancelled`; default `open` |
 | `recurrence` | `none`, `weekly`, `monthly` or `yearly`; default `none` |
 | `isEstimated` | amount informed as approximate during onboarding; default `false` |
+| `idempotencyKey` | UUID sent by the form once per submit (migration `obligation_income_idempotency`); unique with `profileId`, so a repeated `POST` returns the row already created. Older rows keep `null`, which SQLite never treats as a conflict |
 
-Invariant: **only `status = 'open'` is subtracted**. Without this field an obligation already paid would keep being subtracted and the risk-free balance would be permanently pessimistic. The dashboard query filters `profileId`, `status = 'open'` and `dueDate` up to the period end, which is why the main index is `(profileId, status, dueDate)`. Other indexes: `(accountId)`, `(categoryId)`.
+Invariant: **only `status = 'open'` is subtracted**. Without this field an obligation already paid would keep being subtracted and the risk-free balance would be permanently pessimistic. The dashboard query filters `profileId`, `status = 'open'` and `dueDate` up to the period end, which is why the main index is `(profileId, status, dueDate)`. Other indexes: `(accountId)`, `(categoryId)`, `(creditCardId)`.
 
-Before Stage 8 an open credit-card statement was represented as a `ScheduledObligation`. Since migration `cards_statements` it has its own model, `CardStatement` (next section), which the dashboard subtracts next to the obligations. **Open:** nothing prevents the same bill from being registered both as an obligation and as a card statement, which would subtract it twice; the card screen is the documented place for card bills.
+Before Stage 8 an open credit-card statement was represented as a `ScheduledObligation`. Since migration `cards_statements` it has its own model, `CardStatement` (next section), which the dashboard subtracts next to the obligations. **Current:** an obligation with `creditCardId` is left out of the committed total when the same card has a statement that is not cancelled with a due date in the same calendar month, so the same bill is not subtracted twice; an obligation without the link always weighs (rule and reasoning in [PRODUCT.md](PRODUCT.md), V). The API accepts only a card of the same profile (`404 CARD_NOT_FOUND`).
 
 ### `OnboardingSession` and `OnboardingAnswer`
 
@@ -327,7 +329,7 @@ Constraints: unique `(profileId, valueIndex)`, so the same key does not belong t
 
 ### `IncomeSource`
 
-Expected income, never treated as available balance (migration `mvp_income_merchant_rules`). Fields: `profileId` (cascade), optional `accountId` (`SetNull`), `description`, `amountCents` (`BigInt`), `frequency`, optional `nextExpectedDate`, `isActive`. Indexes: `(profileId, isActive)`, `(accountId)`. A forecast income never increases the Saldo Livre de Risco before it exists as an effective transaction.
+Expected income, never treated as available balance (migration `mvp_income_merchant_rules`). Fields: `profileId` (cascade), optional `accountId` (`SetNull`), `description`, `amountCents` (`BigInt`), `frequency`, optional `nextExpectedDate`, `isActive`, optional `idempotencyKey` (unique with `profileId`, migration `obligation_income_idempotency`; same replay rule as `ScheduledObligation`). Indexes: `(profileId, isActive)`, `(accountId)`. A forecast income never increases the Saldo Livre de Risco before it exists as an effective transaction.
 
 ### `MerchantRule`
 
@@ -498,6 +500,8 @@ Status: **Current**. The local schema evolves only through versioned Prisma migr
 | `20261120210000_planning_networth` | `Budget`, `Goal`, `GoalContribution`, `Debt`, `Asset`, `AssetSnapshot`; adds `isEssential` to `Category` |
 | `20261120200000_cards_statements` | `CreditCard`, `CardStatement`, `CardStatementItem`, `CardStatementPayment`, `CardBenefit`; adds `parser` to `ImportBatch` |
 | `20261120220000_notifications_gamification` | `NotificationState`, `MonthlyReview`; adds `kind` to `DatabaseBackup` |
+| `20261120230000_obligation_credit_card` | adds `creditCardId` (optional FK to `CreditCard`, `SetNull`) and its index to `ScheduledObligation` |
+| `20261121000000_obligation_income_idempotency` | adds the nullable `idempotencyKey` and the unique `(profileId, idempotencyKey)` to `ScheduledObligation` and `IncomeSource` |
 
 The migrations after `mvp_scheduled_obligations` are **additive**: new columns enter through `ALTER TABLE ... ADD COLUMN` and no already applied table is rebuilt.
 

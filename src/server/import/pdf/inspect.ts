@@ -18,7 +18,14 @@ import { selectLayout } from './layouts.ts';
 import type { PdfEntry } from './types.ts';
 
 /** Erros do PDF que a borda HTTP traduz para código e mensagem estáveis. */
-export const PDF_ERROR_CODES = ['PDF_ENCRYPTED', 'TOO_MANY_PAGES', 'PDF_TOO_MUCH_TEXT', 'PDF_TIMEOUT'] as const;
+export const PDF_ERROR_CODES = [
+  'PDF_ENCRYPTED',
+  'TOO_MANY_PAGES',
+  'PDF_TOO_MUCH_TEXT',
+  'PDF_TIMEOUT',
+  'PDF_TOO_COMPLEX',
+  'PDF_READER_FAILED',
+] as const;
 
 export class PdfInspectError extends Error {
   readonly code: string;

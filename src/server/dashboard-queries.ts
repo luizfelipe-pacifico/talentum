@@ -9,8 +9,10 @@
 
 import { db } from '@/server/db';
 import {
+  cardStatementObligations,
   consolidatedBalance,
   splitByReferenceCurrency,
+  withoutBillsCoveredByStatements,
   type ConsolidatedBalance,
   type CategoryKind,
   type TransactionInput,
@@ -103,7 +105,7 @@ export async function loadOpenObligations(profileId: string, until: Date) {
   return db.scheduledObligation.findMany({
     where: { profileId, status: 'open', dueDate: { lte: until } },
     orderBy: { dueDate: 'asc' },
-    select: { id: true, description: true, amountCents: true, dueDate: true, status: true, isEstimated: true },
+    select: { id: true, description: true, amountCents: true, dueDate: true, status: true, isEstimated: true, creditCardId: true },
   });
 }
 
@@ -137,6 +139,46 @@ export async function loadOpenCardStatements(profileId: string, until: Date) {
     status: row.status,
     isEstimated: row.isEstimated,
   }));
+}
+
+/**
+ * Tudo que já tem dono até o limite: compromissos abertos e faturas em aberto,
+ * sem contar duas vezes a mesma conta.
+ *
+ * Um compromisso ligado a um cartão deixa de pesar quando o mesmo cartão tem
+ * fatura não cancelada vencendo no mesmo mês (`withoutBillsCoveredByStatements`,
+ * docs/PRODUCT.md, V). As faturas que cobrem podem estar pagas e vencer depois
+ * do limite, por isso a consulta delas é separada da de faturas em aberto.
+ * O veredito, o detalhe do Saldo Livre de Risco e o modo sobrevivência leem
+ * esta mesma função, para o número ser o mesmo nas três telas.
+ */
+export async function loadCommittedObligations(profileId: string, until: Date) {
+  const [scheduled, statements] = await Promise.all([
+    loadOpenObligations(profileId, until),
+    loadOpenCardStatements(profileId, until),
+  ]);
+  const linked = scheduled.filter((obligation) => obligation.creditCardId);
+  const earliest = linked.reduce<Date | null>((first, obligation) => (!first || obligation.dueDate < first ? obligation.dueDate : first), null);
+  const coverage = earliest
+    ? await db.cardStatement.findMany({
+        where: {
+          profileId,
+          status: { not: 'cancelled' },
+          creditCardId: { in: [...new Set(linked.map((obligation) => obligation.creditCardId as string))] },
+          dueDate: { gte: new Date(earliest.getFullYear(), earliest.getMonth(), 1), lt: new Date(until.getFullYear(), until.getMonth() + 1, 1) },
+        },
+        select: { creditCardId: true, dueDate: true, status: true },
+      })
+    : [];
+
+  const cardObligations = statements.flatMap((statement) =>
+    cardStatementObligations([statement]).map((obligation) => ({
+      id: statement.id,
+      description: statement.description,
+      ...obligation,
+    })),
+  );
+  return [...withoutBillsCoveredByStatements(scheduled, coverage), ...cardObligations].sort((left, right) => left.dueDate.getTime() - right.dueDate.getTime());
 }
 
 /**
