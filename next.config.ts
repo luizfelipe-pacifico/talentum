@@ -8,6 +8,15 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['pdfjs-dist'],
   // The end-to-end server builds into its own directory so it never clashes with `pnpm dev`.
   distDir: process.env.TALENTUM_NEXT_DIST_DIR || '.next',
+  /* A leitura de PDF roda num worker_thread (src/server/import/pdf/extract.ts).
+     O webpack empacota `new Worker(new URL(...))` como chunk próprio em
+     `server/chunks/`, mas monta o endereço com o publicPath do servidor
+     (`/_next/`), que não é caminho de disco. `./` resolve o chunk ao lado dos
+     demais, em `next dev`, `next build` e no pacote standalone do Electron. */
+  webpack(config, { isServer, nextRuntime }) {
+    if (isServer && nextRuntime === 'nodejs') config.output = { ...config.output, workerPublicPath: './' };
+    return config;
+  },
 };
 
 export default nextConfig;

@@ -320,6 +320,8 @@ The statement importer is tested in layers:
 | `import-csv.test.mjs` | dialect, quoting, mapping and encoding | no |
 | `import-ofx.test.mjs` | OFX in SGML and in XML | no |
 | `import-inspect.test.mjs` | full inspection and security limits | no |
+| `import-pdf.test.mjs` | PDF extraction, layout readers, confidence and hostile synthetic PDFs | no |
+| `import-pdf-worker.test.mjs` | PDF worker isolation: hard deadline, heap limit, crash, reply validation, empty environment (fixture threads in `tests/helpers/pdf-workers/`) | no |
 | `import-e2e.test.mjs` | real HTTP flow and security controls | **yes** |
 
 The dashboard, accounts and color validation have their own suites:

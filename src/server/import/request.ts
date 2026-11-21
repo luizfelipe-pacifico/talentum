@@ -158,7 +158,12 @@ export const IMPORT_ERROR_MESSAGES: Record<string, string> = {
   PDF_ENCRYPTED: 'O PDF está protegido por senha. Exporte uma cópia sem senha no site ou aplicativo do banco.',
   TOO_MANY_PAGES: 'O PDF tem mais páginas do que o importador aceita.',
   PDF_TOO_MUCH_TEXT: 'O PDF tem mais texto do que o importador aceita.',
-  PDF_TIMEOUT: 'A leitura do PDF passou do tempo limite e foi interrompida.',
+  PDF_TIMEOUT:
+    'A leitura do PDF passou do tempo limite e foi interrompida. Nada foi importado. Confira se é o PDF do extrato ou da fatura, baixado no site ou aplicativo do banco.',
+  PDF_TOO_COMPLEX:
+    'O PDF exigiu mais memória do que o importador permite, e a leitura foi interrompida. Nada foi importado. Confira se é o PDF do extrato ou da fatura, baixado no site ou aplicativo do banco.',
+  PDF_READER_FAILED:
+    'Não foi possível ler o PDF: a leitura parou antes do fim. Nada foi importado. Baixe o extrato ou a fatura de novo no site ou aplicativo do banco e tente outra vez.',
 };
 
 /** Códigos que representam erro da pessoa, e não falha do servidor. */
@@ -172,5 +177,7 @@ export const CLIENT_ERROR_STATUS: Record<string, number> = {
   PDF_TOO_MUCH_TEXT: 413,
   PDF_ENCRYPTED: 422,
   PDF_TIMEOUT: 422,
+  PDF_TOO_COMPLEX: 413,
+  PDF_READER_FAILED: 422,
   PARSE_TIMEOUT: 422,
 };

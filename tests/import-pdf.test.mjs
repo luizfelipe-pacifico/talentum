@@ -220,7 +220,7 @@ test('leitura de campos: datas e valores', () => {
 });
 
 test('a extração não busca nada fora dos bytes e não avalia código', async () => {
-  const source = await readFile(new URL('../src/server/import/pdf/extract.ts', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../src/server/import/pdf/read-pdf.ts', import.meta.url), 'utf8');
   for (const option of [
     'isEvalSupported: false',
     'enableXfa: false',
