@@ -229,6 +229,7 @@ async function listeningPorts(rootPid) {
 
 async function screenshot(file) {
   if (process.platform === 'darwin') await run('screencapture', ['-x', file]);
+  else if (process.platform === 'linux') await run('import', ['-window', 'root', file]);
   else if (process.platform === 'win32') {
     const script = [
       'Add-Type -AssemblyName System.Windows.Forms,System.Drawing',
@@ -240,6 +241,22 @@ async function screenshot(file) {
     ].join('; ');
     await run('powershell.exe', ['-NoProfile', '-Command', script]);
   }
+}
+
+/** Quando o app não sobe: processos da árvore, portas em escuta e a tela (num diálogo de erro, a mensagem aparece nela). */
+async function diagnose(rootPid) {
+  console.log('Diagnóstico do aplicativo');
+  if (process.platform === 'win32') {
+    const { stdout } = await run('powershell.exe', ['-NoProfile', '-Command', 'Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name | Format-Table -AutoSize | Out-String -Width 200']).catch(() => ({ stdout: '' }));
+    console.log(stdout);
+  } else {
+    const { stdout } = await run('ps', ['-A', '-o', 'pid=,ppid=,command=']).catch(() => ({ stdout: '' }));
+    console.log(stdout.split('\n').filter((line) => /talentum|Talentum|next-server/.test(line)).join('\n'));
+    const listening = await run('lsof', ['-nP', '-iTCP', '-sTCP:LISTEN']).catch(() => ({ stdout: '' }));
+    console.log(listening.stdout);
+  }
+  console.log(`processo raiz: ${rootPid}; portas da árvore: ${JSON.stringify(await listeningPorts(rootPid))}`);
+  if (process.env.SMOKE_SCREENSHOT) await screenshot(path.resolve(process.env.SMOKE_SCREENSHOT)).catch(() => {});
 }
 
 async function stopApp(child) {
@@ -268,7 +285,10 @@ async function smokeApp(pkg, dataDir) {
         if (await healthy(`http://127.0.0.1:${port}`)) return `http://127.0.0.1:${port}`;
       }
       return null;
-    }, 'o aplicativo não subiu o backend local');
+    }, 'o aplicativo não subiu o backend local').catch(async (error) => {
+      await diagnose(child.pid);
+      throw error;
+    });
     expect(true, 'o executável abre e sobe o backend no loopback');
     const page = await fetch(`${base}/`);
     const html = await page.text();
