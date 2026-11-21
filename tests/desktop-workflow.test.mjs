@@ -22,7 +22,9 @@ test('empacota Windows, macOS das duas arquiteturas e Linux', () => {
 
 test('abre cada pacote antes de guardar o artefato', () => {
   assert.ok(workflow.indexOf('pnpm desktop:smoke') < workflow.indexOf('actions/upload-artifact'));
-  assert.match(workflow, /xvfb-run --auto-servernum pnpm desktop:smoke/);
+  assert.match(workflow, /apt-get install -y xvfb lsof \.\/release\/\*\.deb/, 'o Linux testa o app instalado pelo .deb');
+  assert.match(workflow, /xvfb-run --auto-servernum pnpm desktop:smoke \/opt\/Talentum/);
+  assert.match(workflow, /StartupWMClass=talentum/, 'o atalho instalado liga a janela ao ícone');
   assert.match(workflow, /SHA256SUMS\.txt/);
 });
 

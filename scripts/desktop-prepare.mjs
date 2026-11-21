@@ -1,6 +1,8 @@
 import { realpathSync } from 'node:fs';
 import { cp, mkdir, readdir, rm } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
+import path from 'node:path';
 
 function run(command, args, env = process.env) {
   return new Promise((resolve, reject) => {
@@ -23,6 +25,18 @@ await cp('.next/server/chunks', '.next/standalone/.next/server/chunks', { recurs
    importa, então também escapa do rastreamento. Copia a pasta real (o pnpm a
    guarda atrás de um link simbólico). */
 await cp(realpathSync('node_modules/pdfjs-dist'), '.next/standalone/node_modules/pdfjs-dist', { recursive: true, force: true, dereference: true });
+
+/* O libsql escolhe o binário nativo por um nome montado em tempo de execução
+   (`@libsql/${alvo}`), que o rastreamento do Next não segue: no macOS e no
+   Windows ele ficava de fora. Copia o pacote nativo do sistema que está
+   empacotando, onde o libsql o encontra subindo pelas pastas node_modules.
+   tests/regression/packaged-app-loses-pnpm-links-and-native-libsql.test.mjs */
+// Resolve pelos pontos de entrada: os dois pacotes não exportam o próprio package.json.
+const libsqlEntry = realpathSync(createRequire(realpathSync('node_modules/@libsql/client/package.json')).resolve('libsql'));
+const fromLibsql = createRequire(libsqlEntry);
+const target = fromLibsql('@neon-rs/load').currentTarget();
+const nativeDir = path.dirname(fromLibsql.resolve(`@libsql/${target}`));
+await cp(realpathSync(nativeDir), `.next/standalone/node_modules/@libsql/${target}`, { recursive: true, force: true, dereference: true });
 
 /* O Next copia o .env da raiz para .next/standalone. Segredo de
    desenvolvimento nunca entra no instalador: remove e confere. */

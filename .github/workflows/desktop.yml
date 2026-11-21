@@ -86,15 +86,23 @@ jobs:
         with:
           node-version: 22.13.0
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      # node_modules plano, sem links simbólicos: o pacote do Windows perdia os
+      # links do layout padrão do pnpm ("Cannot find package '@libsql/core'").
+      # Recomendação do electron-builder para pnpm; o desenvolvimento não muda.
+      - run: pnpm install --frozen-lockfile --config.node-linker=hoisted
       - run: pnpm desktop:prepare
       - run: pnpm exec electron-builder ${{ matrix.build }} --publish never
-      - name: Smoke test (Linux, virtual display)
+      # No Linux o teste roda no app instalado pelo .deb, como uma pessoa usaria:
+      # o pós-instalação ajusta o chrome-sandbox e o perfil do AppArmor do Ubuntu
+      # 24.04, sem o qual o Chromium recusa abrir com o sandbox.
+      - name: Install the deb and smoke test it (Linux, virtual display)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb lsof
-          xvfb-run --auto-servernum pnpm desktop:smoke
+          sudo apt-get install -y xvfb lsof ./release/*.deb
+          grep -q '^StartupWMClass=talentum$' /usr/share/applications/talentum.desktop
+          test -f /usr/share/icons/hicolor/512x512/apps/talentum.png
+          xvfb-run --auto-servernum pnpm desktop:smoke /opt/Talentum
       - name: Smoke test
         if: runner.os != 'Linux'
         env:

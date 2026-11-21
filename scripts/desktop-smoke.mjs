@@ -1,6 +1,7 @@
 /* Teste de fumaça do pacote desktop, no sistema em que ele foi gerado.
 
-   Uso: `pnpm desktop:smoke` depois de `pnpm desktop:build:<sistema>`.
+   Uso: `pnpm desktop:smoke` depois de `pnpm desktop:build:<sistema>`, ou
+   `pnpm desktop:smoke /opt/Talentum` com o .deb instalado.
 
    Os testes unitários e ponta a ponta rodam contra o código-fonte e já deixaram
    passar um pacote que nem abria (docs/MEMORY-AI.md, 20/11/2026). Este script
@@ -35,20 +36,21 @@ const PASSWORD = 'cofre sintetico do teste de fumaca';
 function locatePackage() {
   if (process.platform === 'win32') {
     const dir = path.join(release, 'win-unpacked');
-    return { exe: path.join(dir, 'Talentum.exe'), resources: path.join(dir, 'resources')};
+    return { exe: path.join(dir, 'Talentum.exe'), resources: path.join(dir, 'resources') };
   }
   if (process.platform === 'darwin') {
     // O electron-builder usa `mac` para x64 e `mac-arm64` para Apple silicon.
     for (const name of ['mac-arm64', 'mac', 'mac-universal']) {
       const app = path.join(release, name, 'Talentum.app');
       if (existsSync(app)) {
-        return { exe: path.join(app, 'Contents', 'MacOS', 'Talentum'), resources: path.join(app, 'Contents', 'Resources')};
+        return { exe: path.join(app, 'Contents', 'MacOS', 'Talentum'), resources: path.join(app, 'Contents', 'Resources') };
       }
     }
     throw new Error(`nenhum Talentum.app em ${release}`);
   }
-  const dir = path.join(release, 'linux-unpacked');
-  return { exe: path.join(dir, 'talentum'), resources: path.join(dir, 'resources')};
+  // `release/linux-unpacked` do build, ou a pasta do app instalado pelo .deb (/opt/Talentum).
+  const dir = existsSync(path.join(release, 'talentum')) ? release : path.join(release, 'linux-unpacked');
+  return { exe: path.join(dir, 'talentum'), resources: path.join(dir, 'resources') };
 }
 
 function freePort() {
