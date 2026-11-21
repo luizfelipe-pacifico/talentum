@@ -38,7 +38,7 @@ function brokenLinksUnder(dir, found = [], limit = 5) {
 
 test('o empacotamento usa node_modules plano e inclui o libsql nativo', async () => {
   const workflow = await readFile(path.join(root, '.github/workflows/desktop.yml'), 'utf8');
-  assert.match(workflow, /pnpm install --frozen-lockfile --config\.node-linker=hoisted/, 'node_modules sem links no CI de empacotamento');
+  assert.match(workflow, /^\s+pnpm_config_node_linker: hoisted$/m, 'node_modules sem links em todo comando do CI de empacotamento');
   const prepare = await readFile(path.join(root, 'scripts/desktop-prepare.mjs'), 'utf8');
   assert.match(prepare, /@libsql\/\$\{target\}/, 'o pacote nativo do libsql do sistema entra no standalone');
   assert.doesNotMatch(prepare, /replaceLinksWithCopies/, 'cópias no lugar dos links quebram a resolução do pnpm');

@@ -72,6 +72,12 @@ jobs:
     env:
       # Nenhum certificado é procurado na máquina do CI.
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      # node_modules plano, sem links simbólicos: o pacote do Windows perdia os
+      # links do layout padrão do pnpm ("Cannot find package '@libsql/core'").
+      # Pelo ambiente, para valer em todo comando: o pnpm reinstala antes de cada
+      # script com a configuração ativa. Recomendação do electron-builder para
+      # pnpm; o desenvolvimento não muda.
+      pnpm_config_node_linker: hoisted
       DATABASE_URL: file:./temp/desktop.db
     steps:
       # Actions fixadas por SHA: uma tag pode ser movida para outro código.
@@ -86,10 +92,7 @@ jobs:
         with:
           node-version: 22.13.0
           cache: pnpm
-      # node_modules plano, sem links simbólicos: o pacote do Windows perdia os
-      # links do layout padrão do pnpm ("Cannot find package '@libsql/core'").
-      # Recomendação do electron-builder para pnpm; o desenvolvimento não muda.
-      - run: pnpm install --frozen-lockfile --config.node-linker=hoisted
+      - run: pnpm install --frozen-lockfile
       - run: pnpm desktop:prepare
       - run: pnpm exec electron-builder ${{ matrix.build }} --publish never
       # No Linux o teste roda no app instalado pelo .deb, como uma pessoa usaria:
