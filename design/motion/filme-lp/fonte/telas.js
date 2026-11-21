@@ -7,11 +7,15 @@
 const P = {
   shell: '#f4f1ea', side: '#1a110a', surface: '#fffdf8', ink: '#1a110a', ink2: '#4a4a4a',
   line: 'rgba(26,17,10,0.16)', lineStrong: 'rgba(26,17,10,0.3)', amber: '#b8773d', onAmber: '#fffdf8',
+  // contraste AA: preenchimento com texto claro em --amber-strong, texto em âmbar em --amber-text
+  amberStrong: '#9f6533', amberText: '#8f5a24',
   sideText: '#f1ece3', sideMuted: '#b7b2a9', navText: '#cfc9c0', walnut: '#5c4033', info: '#3e5c76', infoS: '#e7edf3', data1: '#2a78d6',
 };
 // Como na LP: Playfair só nos títulos grandes; rótulos, chips, listas e legendas em Montserrat.
 const _fontKit = font;
-font = (size, weight = 400, ui = false) => _fontKit(size, weight, ui || size < 40);
+// As telas do produto ficam de fora: os títulos delas são Playfair em qualquer tamanho.
+let _fonteDoProduto = false;
+font = (size, weight = 400, ui = false) => _fontKit(size, weight, ui || (size < 40 && !_fonteDoProduto));
 const IMG = {}; // imagens carregadas em cenas.js (marca e ilustração de estado)
 
 // Bootstrap Icons (preenchidos, viewBox 16) além dos Lucide do kit.
@@ -28,13 +32,14 @@ icon = function (c, name, x, y, size, color, opts = {}) {
 
 // texto pelo topo e altura da caixa medida no DOM (centro vertical da linha)
 function txu(c, s, x, top, h, size, { w = 400, color = P.ink, align = 'left', track = 0, disp = false } = {}) {
-  tx(c, s, x, top + h / 2, size, { w, color, align, track, ui: !disp });
+  _fonteDoProduto = disp;
+  try { tx(c, s, x, top + h / 2, size, { w, color, align, track, ui: !disp }); } finally { _fonteDoProduto = false; }
 }
 function linhaH(c, x, y, w, color = P.line) { c.fillStyle = color; c.fillRect(x, y, w, 1); }
 function tracejado(c, x, y, w, h, r, color) { c.save(); c.setLineDash([4, 3]); strokeR(c, x, y, w, h, r, color); c.restore(); }
 function cartao(c, x, y, w, h) { fillR(c, x, y, w, h, 8, P.surface); strokeR(c, x, y, w, h, 8, P.line); }
 function botao(c, s, x, y, w, h, { primario = false, ic = null } = {}) {
-  if (primario) fillR(c, x, y, w, h, 6, P.amber); else strokeR(c, x, y, w, h, 6, P.lineStrong);
+  if (primario) fillR(c, x, y, w, h, 6, P.amberStrong); else strokeR(c, x, y, w, h, 6, P.lineStrong);
   if (ic) { icon(c, ic, x + 14, y + h / 2 - 7.5, 15, P.ink); tx(c, s, x + 37, y + h / 2, 13, { w: 600, color: P.ink, ui: true }); }
   else tx(c, s, x + w / 2, y + h / 2, primario ? 14 : 13, { w: 600, color: primario ? P.onAmber : P.ink, align: 'center', ui: true });
 }
@@ -70,7 +75,7 @@ function cascoApp(c, ativo, titulo, contexto) {
   botao(c, 'Lançar dinheiro', 1215, 23, 157, 42, { ic: 'cash-coin' });
   strokeR(c, 1382, 25, 38, 38, 6, P.lineStrong); icon(c, 'lock', 1393, 36, 16, P.ink);
   strokeR(c, 1430, 25, 38, 38, 6, P.lineStrong); icon(c, 'bell', 1441, 36, 16, P.ink);
-  c.beginPath(); c.arc(1464, 29, 9, 0, 7); c.fillStyle = P.amber; c.fill(); tx(c, '2', 1464, 29.5, 10, { w: 700, color: P.onAmber, align: 'center', ui: true });
+  c.beginPath(); c.arc(1464, 29, 9, 0, 7); c.fillStyle = P.amberStrong; c.fill(); tx(c, '2', 1464, 29.5, 10, { w: 700, color: P.onAmber, align: 'center', ui: true });
   fillR(c, 1478, 25, 124, 38, 6, P.surface); strokeR(c, 1478, 25, 124, 38, 6, P.lineStrong);
   icon(c, 'sun', 1489, 37, 14, P.ink); txu(c, 'Claro', 1511, 32, 24, 13, { w: 500 }); icon(c, 'chevron-down', 1581, 39, 10, P.ink2);
   strokeR(c, 1612, 24, 181, 40, 6, P.lineStrong); fillR(c, 1618, 30, 28, 28, 6, P.walnut);
@@ -115,7 +120,7 @@ function cardImportacoes(c, x, y, w) {
   [['ARQUIVO', col[0]], ['CONTA', col[1]], ['PERÍODO', col[2]]].forEach(([s, cx]) => txu(c, s, x + cx, y + 73, 45, 12, { w: 700, color: P.ink2, track: 0.06 }));
   txu(c, 'GRAVADOS', x + col[3], y + 73, 45, 12, { w: 700, color: P.ink2, track: 0.06, align: 'right' });
   linhaH(c, x + 25, y + 118, w - 50, P.lineStrong);
-  const nome = 'extrato-ficticio.csv'; txu(c, nome, x + col[0], y + 130, 18, 14, { color: P.amber });
+  const nome = 'extrato-ficticio.csv'; txu(c, nome, x + col[0], y + 130, 18, 14, { color: P.amberText });
   txu(c, '· CSV', x + col[0] + tw(c, nome, 14, 400, 0, true) + 4, y + 131, 16, 13, { color: P.ink2 });
   txu(c, 'Conta corrente', x + col[1], y + 118, 42, 13, { color: P.ink2 });
   txu(c, w >= 1200 ? '01/11/2026 – 20/11/2026' : '01/11 – 20/11/2026', x + col[2], y + 118, 42, 13);
@@ -127,10 +132,10 @@ const FILA = [['SALARIO EMPRESA EXEMPLO', 1, 'R$ 5.200,00'], ['MERCADO BOM PRECO
   ['POSTO ESTRADA', 4, 'R$ -180,00'], ['STREAMING FILMES', 5, 'R$ -39,90'], ['FARMACIA CENTRAL', 6, 'R$ -64,30']];
 function itemFila(c, x, y, w, [nome, dia, valor]) {
   cartao(c, x, y, w, 125);
-  txu(c, nome, x + 25, y + 27, 19, 16, { w: 700, color: P.amber });
+  txu(c, nome, x + 25, y + 27, 19, 16, { w: 700, color: P.amberText });
   txu(c, `Conta corrente · ${dia} de novembro de 2026`, x + 25, y + 49, 24, 16, { color: P.ink2 });
   strokeR(c, x + 25, y + 73, 103, 27, 4, P.lineStrong); tx(c, 'Sem categoria', x + 76.5, y + 87, 11, { w: 700, color: P.ink2, align: 'center', ui: true });
-  txu(c, valor, x + w - 25, y + 25, 24, 16, { w: 700, color: P.amber, align: 'right' });
+  txu(c, valor, x + w - 25, y + 25, 24, 16, { w: 700, color: P.amberText, align: 'right' });
 }
 // st.pendentes: número no título · st.sem: índice do item que virou um plano à parte · st.sobe: 0..1, a fila fecha o vão
 function telaConciliacao(c, st = {}) {
