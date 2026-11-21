@@ -29,6 +29,10 @@ import { promisify } from 'node:util';
 import { buildPdf, tableLines } from '../tests/helpers/synthetic-pdf.mjs';
 
 const run = promisify(execFile);
+/* O lsof sai com código 1 quando algum filtro não acha nada ou quando avisa
+   sobre um sistema de arquivos que não consegue ler, mesmo tendo listado as
+   portas pedidas: a saída vale do mesmo jeito. */
+const lsof = (args) => run('lsof', args).catch((error) => ({ stdout: String(error.stdout ?? '') }));
 const release = path.resolve(process.argv[2] ?? 'release');
 const PASSWORD = 'cofre sintetico do teste de fumaca';
 
@@ -223,7 +227,7 @@ async function listeningPorts(rootPid) {
       }
     }
   }
-  const { stdout } = await run('lsof', ['-nP', '-a', '-p', [...tree].join(','), '-iTCP@127.0.0.1', '-sTCP:LISTEN', '-Fn']).catch(() => ({ stdout: '' }));
+  const { stdout } = await lsof(['-nP', '-a', '-p', [...tree].join(','), '-iTCP@127.0.0.1', '-sTCP:LISTEN', '-Fn']);
   return [...stdout.matchAll(/^n127\.0\.0\.1:(\d+)$/gm)].map((match) => Number(match[1]));
 }
 
@@ -252,7 +256,7 @@ async function diagnose(rootPid) {
   } else {
     const { stdout } = await run('ps', ['-A', '-o', 'pid=,ppid=,command=']).catch(() => ({ stdout: '' }));
     console.log(stdout.split('\n').filter((line) => /talentum|Talentum|next-server/.test(line)).join('\n'));
-    const listening = await run('lsof', ['-nP', '-iTCP', '-sTCP:LISTEN']).catch(() => ({ stdout: '' }));
+    const listening = await lsof(['-nP', '-iTCP', '-sTCP:LISTEN']);
     console.log(listening.stdout);
   }
   console.log(`processo raiz: ${rootPid}; portas da árvore: ${JSON.stringify(await listeningPorts(rootPid))}`);
@@ -271,7 +275,11 @@ async function smokeApp(pkg, dataDir) {
   const home = path.join(dataDir, 'home');
   await mkdir(home, { recursive: true });
   const child = spawn(pkg.exe, [`--user-data-dir=${path.join(dataDir, 'perfil')}`], {
-    env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(home, '.config'), APPDATA: path.join(home, 'AppData'), ELECTRON_ENABLE_LOGGING: '1' },
+    /* Os dados do app ficam em --user-data-dir. No Linux a configuração também
+       vai para o diretório temporário; no macOS o HOME fica o real, porque o
+       Chromium guarda a chave dos cookies cifrados no Keychain da sessão, e sem
+       ele o macOS abre o diálogo "Keychain Not Found" e o app espera. */
+    env: { ...process.env, ...(process.platform === 'linux' ? { HOME: home, XDG_CONFIG_HOME: path.join(home, '.config') } : {}), ELECTRON_ENABLE_LOGGING: '1' },
     stdio: ['ignore', 'inherit', 'inherit'],
   });
   let exited = null;
