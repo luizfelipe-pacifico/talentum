@@ -4,3 +4,7 @@ resultados/
 rodadas/
 fonte/audio/
 fonte/beats.json
+
+# Renderizador da skill motion-product (modelos/comum/render.mjs, v2.0.1): copiado
+# da skill antes de renderizar, não versionado aqui (ferramenta local de terceiros).
+fonte/render.mjs

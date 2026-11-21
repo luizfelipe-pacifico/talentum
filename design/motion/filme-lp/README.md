@@ -7,7 +7,8 @@ Filme publicitário de 32 s (16:9) exibido abaixo do herói da LP. Feito com a s
 - `fonte/telas.js`: casco, importação, conciliação e dashboard, com as medidas tiradas do DOM do aplicativo no servidor isolado de teste.
 - `fonte/cenas.js`: o roteiro (dúvida do mês → CLAREZA → apresentação → importar, conciliar, saldo livre → o número que sobra → lema → slogan → marca).
 - `fonte/audio.mjs`: trilha sintetizada; só a seção ARRANJO é do projeto.
-- `fonte/kit.js`, `motor.js`, `render.mjs`, `film.html`: motor da skill, sem alteração.
+- `fonte/kit.js`, `motor.js`, `film.html`: motor da skill, sem alteração.
+- `fonte/render.mjs` não é versionado: copie `modelos/comum/render.mjs` da skill `motion-product` v2.0.1 (repositório público do mantenedor, licença MIT) para `fonte/` antes de renderizar. É uma ferramenta local de terceiros e não entra em nenhum build.
 - `assets/`: fontes do build (`@fontsource`), a marca e a ilustração de estado da importação.
 
 ## Dados
@@ -16,7 +17,7 @@ Os números são os que o próprio aplicativo calcula para estes dados fictício
 
 ## Regenerar
 
-Requer Node 22+, o Chromium do Playwright (`pnpm test:e2e:install`) e `ffmpeg` com libx264.
+Requer Node 22+, o Chromium do Playwright (`pnpm test:e2e:install`) e `ffmpeg` com libx264. Antes do primeiro render, copie o `render.mjs` da skill (veja Estrutura).
 
 ```bash
 cd design/motion/filme-lp/fonte
