@@ -3,6 +3,13 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   output: process.env.TALENTUM_STANDALONE_BUILD === '1' ? 'standalone' : undefined,
   poweredByHeader: false,
+  /* O rastreamento de arquivos do standalone seguia leituras dinâmicas de
+     `prisma/` pela raiz inteira e copiava cópias de trabalho de agentes,
+     pacotes antigos e dados de teste para o pacote. Nada disso é do app.
+     tests/regression/packaged-app-cannot-open-database.test.mjs */
+  outputFileTracingExcludes: {
+    '*': ['.claude/**', 'release/**', 'temp/**', '.next-*/**', 'playwright-report/**', 'test-results/**', 'design/**'],
+  },
   // O pdf.js roda como módulo do Node, sem passar pelo bundler: o worker local é
   // importado do pacote instalado e nada é baixado em tempo de execução (ADR 0006).
   serverExternalPackages: ['pdfjs-dist'],

@@ -288,6 +288,7 @@ A commitment with an amount and a due date. It is the subtrahend of the risk-fre
 | `status` | `open`, `paid` or `cancelled`; default `open` |
 | `recurrence` | `none`, `weekly`, `monthly` or `yearly`; default `none` |
 | `isEstimated` | amount informed as approximate during onboarding; default `false` |
+| `idempotencyKey` | UUID sent by the form once per submit (migration `obligation_income_idempotency`); unique with `profileId`, so a repeated `POST` returns the row already created. Older rows keep `null`, which SQLite never treats as a conflict |
 
 Invariant: **only `status = 'open'` is subtracted**. Without this field an obligation already paid would keep being subtracted and the risk-free balance would be permanently pessimistic. The dashboard query filters `profileId`, `status = 'open'` and `dueDate` up to the period end, which is why the main index is `(profileId, status, dueDate)`. Other indexes: `(accountId)`, `(categoryId)`, `(creditCardId)`.
 
@@ -328,7 +329,7 @@ Constraints: unique `(profileId, valueIndex)`, so the same key does not belong t
 
 ### `IncomeSource`
 
-Expected income, never treated as available balance (migration `mvp_income_merchant_rules`). Fields: `profileId` (cascade), optional `accountId` (`SetNull`), `description`, `amountCents` (`BigInt`), `frequency`, optional `nextExpectedDate`, `isActive`. Indexes: `(profileId, isActive)`, `(accountId)`. A forecast income never increases the Saldo Livre de Risco before it exists as an effective transaction.
+Expected income, never treated as available balance (migration `mvp_income_merchant_rules`). Fields: `profileId` (cascade), optional `accountId` (`SetNull`), `description`, `amountCents` (`BigInt`), `frequency`, optional `nextExpectedDate`, `isActive`, optional `idempotencyKey` (unique with `profileId`, migration `obligation_income_idempotency`; same replay rule as `ScheduledObligation`). Indexes: `(profileId, isActive)`, `(accountId)`. A forecast income never increases the Saldo Livre de Risco before it exists as an effective transaction.
 
 ### `MerchantRule`
 
@@ -500,6 +501,7 @@ Status: **Current**. The local schema evolves only through versioned Prisma migr
 | `20261120200000_cards_statements` | `CreditCard`, `CardStatement`, `CardStatementItem`, `CardStatementPayment`, `CardBenefit`; adds `parser` to `ImportBatch` |
 | `20261120220000_notifications_gamification` | `NotificationState`, `MonthlyReview`; adds `kind` to `DatabaseBackup` |
 | `20261120230000_obligation_credit_card` | adds `creditCardId` (optional FK to `CreditCard`, `SetNull`) and its index to `ScheduledObligation` |
+| `20261121000000_obligation_income_idempotency` | adds the nullable `idempotencyKey` and the unique `(profileId, idempotencyKey)` to `ScheduledObligation` and `IncomeSource` |
 
 The migrations after `mvp_scheduled_obligations` are **additive**: new columns enter through `ALTER TABLE ... ADD COLUMN` and no already applied table is rebuilt.
 

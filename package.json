@@ -97,7 +97,6 @@
     "directories": { "output": "release" },
     "files": [
       "electron/**/*",
-      ".next/standalone/**/*",
       "node_modules/prisma/**/*",
       "prisma/**/*",
       "package.json",
@@ -108,6 +107,18 @@
       "!**/*.db*",
       "!**/*.key",
       "!**/*.vault"
+    ],
+    "extraResources": [
+      {
+        "from": ".next/standalone",
+        "to": "standalone",
+        "filter": ["**/*", "!**/.env*", "!**/.dev.vars*", "!**/*.db*", "!**/*.key", "!**/*.vault", "!.claude/**"]
+      },
+      {
+        "from": ".next/standalone/node_modules",
+        "to": "standalone/node_modules",
+        "filter": ["**/*"]
+      }
     ],
     "win": { "target": "nsis", "icon": "icon-badge.ico", "artifactName": "Talentum-${version}-Windows-${arch}.${ext}" },
     "linux": { "target": "AppImage", "icon": "icon-badge.png", "category": "Office;Finance", "artifactName": "Talentum-${version}-Linux-${arch}.${ext}" },

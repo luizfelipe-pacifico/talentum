@@ -54,6 +54,15 @@ const isAppUrl = (target) => {
   }
 };
 
+/* Empacotado, o app não abre com chave de depuração: com a porta do Chromium
+   aberta, qualquer programa do mesmo usuário leria a tela desbloqueada e usaria
+   a sessão local. Os fuses só cobrem --inspect e NODE_OPTIONS.
+   tests/regression/packaged-app-accepts-remote-debugging.test.mjs */
+const DEBUG_SWITCHES = ['remote-debugging-port', 'remote-debugging-pipe', 'remote-debugging-address', 'remote-allow-origins', 'inspect', 'inspect-brk'];
+if (app.isPackaged && DEBUG_SWITCHES.some((name) => app.commandLine.hasSwitch(name))) {
+  app.exit(1);
+}
+
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
 if (!hasSingleInstanceLock) {
@@ -156,8 +165,12 @@ async function startPackagedBackend() {
   /* Sem `prisma migrate deploy`: o banco é cifrado e só abre com a senha. O backend
      aplica as migrations pela conexão cifrada no desbloqueio (src/server/vault/migrations.ts). */
   environment.TALENTUM_MIGRATIONS_DIR = path.join(appRoot, 'prisma', 'migrations');
-  localServer = spawn(process.execPath, [path.join(appRoot, '.next', 'standalone', 'server.js')], {
-    cwd: path.join(appRoot, '.next', 'standalone'),
+  /* O standalone vem por extraResources, cópia literal com o próprio node_modules
+     (cliente Prisma gerado incluído); em `files` o electron-builder descartaria
+     essa pasta. tests/regression/packaged-app-cannot-open-database.test.mjs */
+  const standalone = path.join(process.resourcesPath, 'standalone');
+  localServer = spawn(process.execPath, [path.join(standalone, 'server.js')], {
+    cwd: standalone,
     env: environment,
     stdio: 'ignore',
   });

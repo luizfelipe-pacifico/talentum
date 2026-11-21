@@ -578,7 +578,7 @@ Every interface change is validated at the twelve classes below, in the light th
 | Desktop S | 1024 × 700 | Electron minimum window; small laptops | Documented Electron minimum | ≤ 1040 single-column grids, ≤ 1180 tightened header, fixed sidebar | 1000 to 1099: three-column grids, header navigation |
 | Desktop M | 1536 × 864 | 1920 × 1080 laptops at 125% scaling | Second most used desktop resolution on StatCounter (August 2026); spot-check 1366 × 768 for short laptop screens | No rule above 1280; content capped at 1440 | 1100 to 1599 |
 | Desktop L | 1920 × 1080 | Full HD monitors | Most used desktop resolution on StatCounter (August 2026) | No rule above 1280; content capped at 1440 | 1600 and above: page width 1440 |
-| TV S | 960 × 540 | 1080p TV browser at a device pixel ratio of 2 | Android TV design canvas (960 × 540 dp) | ≤ 1040 single-column grids, ≤ 1180 tightened header, fixed sidebar | below 1000: `Seções` menu, parallax off |
+| TV S | 960 × 540 | 1080p TV browser at a device pixel ratio of 2 | Android TV design canvas (960 × 540 dp) | ≤ 1040 single-column grids, ≤ 1180 tightened header, fixed sidebar in compact density (≤ 640 px of height: 34 px items, every area visible without scrolling; the dense sidebars of Finder, Gmail and Material density −2) | below 1000: `Seções` menu, parallax off |
 | TV M | 1280 × 720 | 720p TV, or 1080p TV at a device pixel ratio of 1.5 | 720p panel resolution; between the Android TV (960 × 540) and tvOS (1920 × 1080) canvases | ≤ 1280: two-column settings grid | 1100 to 1599 |
 | TV L | 1920 × 1080 | 1080p TV at a device pixel ratio of 1; 4K TV at 2 | tvOS layout canvas (1920 × 1080 pt) | Same as Desktop L | 1600 and above |
 

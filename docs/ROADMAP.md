@@ -42,7 +42,7 @@ What exists today:
 - 79 Node test files (including `tests/regression/`) and a Playwright suite over the twelve viewport classes in both themes, enforced by versioned Git hooks and CI; CI also runs gitleaks, dependency review, CodeQL and a Vercel-isolation check, and Dependabot is configured.
 - ADRs 0001 to 0009.
 
-What does not exist yet: signed or published installers and a validated packaged build on any platform; provider-side settings (Turnstile widget, Worker secrets, remote D1 migrations, WAF rules, Workers AI, the production domain); process isolation of the CSV and OFX parsers (PDF parsing already runs in an isolated worker thread); legal review of the terms, privacy and debt copy; Stages 21 (beyond the notice) to 25.
+What does not exist yet: signed or published installers, and a validated packaged build on Windows and macOS (the Linux AppImage was built and exercised end to end on 2026-11-20); provider-side settings (Turnstile widget, Worker secrets, remote D1 migrations, WAF rules, Workers AI, the production domain); process isolation of the CSV and OFX parsers (PDF parsing already runs in an isolated worker thread); legal review of the terms, privacy and debt copy; Stages 21 (beyond the notice) to 25.
 
 ## Cross-cutting rules for every stage
 
