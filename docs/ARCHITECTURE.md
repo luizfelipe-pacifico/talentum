@@ -322,7 +322,7 @@ Reconciliation (**Current**): the person confirms, categorizes, links an obligat
 
 ### 2.6 Risk-free balance
 
-**Status: Current** for the dashboard calculation in `src/server/dashboard-metrics.ts` (formulas and criteria in [PRODUCT.md](PRODUCT.md)). The calculation starts from confirmed balances and subtracts obligations due within the period: scheduled obligations and, since Stage 8, the outstanding amount of each open `CardStatement` (`cardStatementObligations`, loaded by `loadOpenCardStatements` in `src/server/dashboard-queries.ts` for both dashboard routes). Uncertain future income must not increase the free balance. The formula and its inclusion criteria require tests covering boundary dates, cancellations, partial payments and duplicates.
+**Status: Current** for the dashboard calculation in `src/server/dashboard-metrics.ts` (formulas and criteria in [PRODUCT.md](PRODUCT.md)). The calculation starts from confirmed balances and subtracts obligations due within the period: scheduled obligations and, since Stage 8, the outstanding amount of each open `CardStatement` (`cardStatementObligations`). `loadCommittedObligations` in `src/server/dashboard-queries.ts` builds that list once for both dashboard routes and the survival status, leaving out an obligation linked to a card (`creditCardId`) whose statement of the same month exists, so the same bill is not subtracted twice (`withoutBillsCoveredByStatements`). Uncertain future income must not increase the free balance. The formula and its inclusion criteria require tests covering boundary dates, cancellations, partial payments and duplicates.
 
 ### 2.7 Net worth and contributions
 
@@ -505,7 +505,7 @@ The BFF middleware sends private pages (`/downloads`, `/conta/*`, `/comunidade/n
 
 **Current.** The Worker (`cloudflare/src/`, entry `index.ts` with `fetch` and `scheduled`) accesses D1 only through the `DB` binding with bound prepared statements, and the optional `AI` binding for summaries. D1 tables come only from `cloudflare/migrations` (`0001_cloud_core` to `0004_release_macos`); their schema is documented in [DATABASE.md](DATABASE.md). Outbound calls go only to fixed URLs (Google token and JWKS, Turnstile Siteverify, the allowlisted news hosts), each with a timeout.
 
-**Mandatory boundary between the databases.** All twelve Prisma migrations in `prisma/migrations` belong only to the Electron local SQLite. They contain profiles, onboarding, institutions, accounts, Pix identifiers, balances, import batches and files, transactions, obligations, income, rules, reconciliation, timeline and backup metadata, cards, card statements and benefits, and **must never run on D1**. The browser and Electron never access D1 directly: every read or write goes through the Worker API. Do not use `prisma db push` on D1 and do not copy migrations from `prisma/migrations` into `cloudflare/migrations`.
+**Mandatory boundary between the databases.** All Prisma migrations in `prisma/migrations` belong only to the Electron local SQLite. They contain profiles, onboarding, institutions, accounts, Pix identifiers, balances, import batches and files, transactions, obligations, income, rules, reconciliation, timeline and backup metadata, cards, card statements and benefits, and **must never run on D1**. The browser and Electron never access D1 directly: every read or write goes through the Worker API. Do not use `prisma db push` on D1 and do not copy migrations from `prisma/migrations` into `cloudflare/migrations`.
 
 ### 3.7 Configuration variables (names and locations)
 
@@ -829,8 +829,8 @@ The access token lives only in main-process memory. The refresh token and the pu
 | `GET`/`POST` | `/api/categories` | list and create categories |
 | `PATCH`/`DELETE` | `/api/categories/:categoryId` | edit and delete a category |
 | `GET`/`POST` | `/api/incomes` | list and register expected income sources |
-| `GET`/`POST` | `/api/obligations` | list and register scheduled obligations |
-| `PATCH`/`DELETE` | `/api/obligations/:obligationId` | edit and delete an obligation |
+| `GET`/`POST` | `/api/obligations` | list and register scheduled obligations; optional `creditCardId` (card of the same profile, else `404 CARD_NOT_FOUND`) marks the obligation as that card's bill |
+| `PATCH`/`DELETE` | `/api/obligations/:obligationId` | edit (status, description, `creditCardId` or `null` to unlink) and delete an obligation |
 | `GET`/`POST` | `/api/merchant-rules` | list active rules (with the category name) and create one; recreating a deactivated rule reactivates it |
 | `POST` | `/api/merchant-rules/apply` | reapply active rules to pending, uncategorized items (`{applied, suggested, conflicts}`); idempotent |
 | `DELETE` | `/api/merchant-rules/:ruleId` | deactivate a rule; what it already categorized stays, with its auditable decision |

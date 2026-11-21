@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { db } from '@/server/db';
 import { fail, guardWithProfile, isDenied, ok, readJson } from '@/server/http';
 
-const patchSchema = z.object({ status: z.enum(['open', 'paid', 'cancelled']).optional(), description: z.string().trim().min(1).max(100).optional() }).strict().refine((value) => Object.keys(value).length > 0);
+const patchSchema = z.object({ status: z.enum(['open', 'paid', 'cancelled']).optional(), description: z.string().trim().min(1).max(100).optional(), creditCardId: z.string().uuid().nullable().optional() }).strict().refine((value) => Object.keys(value).length > 0);
 
 export async function PATCH(request: Request, context: { params: Promise<{ obligationId: string }> }) {
   const guarded = await guardWithProfile(request); if (isDenied(guarded)) return guarded.response;
@@ -10,6 +10,11 @@ export async function PATCH(request: Request, context: { params: Promise<{ oblig
   const { obligationId } = await context.params;
   const owned = await db.scheduledObligation.findFirst({ where: { id: obligationId, profileId: guarded.profileId }, select: { id: true } });
   if (!owned) return fail('OBLIGATION_NOT_FOUND', 'O compromisso não foi encontrado.', 404);
+  // Ligar a um cartão só vale para cartão do mesmo perfil; `null` desfaz a ligação.
+  const { creditCardId } = parsed.data;
+  if (creditCardId && !(await db.creditCard.findFirst({ where: { id: creditCardId, profileId: guarded.profileId }, select: { id: true } }))) {
+    return fail('CARD_NOT_FOUND', 'O cartão informado não foi encontrado.', 404);
+  }
   await db.scheduledObligation.update({ where: { id: obligationId, profileId: guarded.profileId }, data: parsed.data });
   return ok({ updated: true });
 }
