@@ -55,6 +55,24 @@ for (const theme of THEMES) {
         return found;
       });
       expect(smallText, 'texto abaixo de 12 px').toEqual([]);
+
+      // Menu lateral fixo (fora do celular, onde vira gaveta): todas as áreas
+      // aparecem inteiras, sem rolar. tests/regression/sidebar-cut-on-short-tv.test.mjs
+      if (route === '/dashboard' && (page.viewportSize()?.width ?? 0) > 600) {
+        const cut = await page.evaluate(() => {
+          const nav = document.querySelector('.sidebar-nav');
+          if (!nav || getComputedStyle(nav).visibility === 'hidden') return [];
+          const box = nav.getBoundingClientRect();
+          if (box.right <= 0) return [];
+          return [...nav.querySelectorAll<HTMLElement>('.nav-item')]
+            .filter((item) => {
+              const rect = item.getBoundingClientRect();
+              return rect.top < box.top - 0.5 || rect.bottom > box.bottom + 0.5;
+            })
+            .map((item) => item.getAttribute('aria-label'));
+        });
+        expect(cut, 'áreas cortadas no menu lateral').toEqual([]);
+      }
     });
   }
 }

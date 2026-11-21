@@ -355,6 +355,9 @@ model ScheduledObligation {
   profileId   String
   accountId   String?
   categoryId  String?
+  /// Cartão cuja fatura este compromisso representa. Com fatura do mesmo
+  /// cartão no mesmo mês, o compromisso sai do comprometido (docs/PRODUCT.md, V).
+  creditCardId String?
   description String
   amountCents BigInt
   dueDate     DateTime
@@ -364,15 +367,20 @@ model ScheduledObligation {
   recurrence  String       @default("none")
   /// Valor informado como aproximado no onboarding.
   isEstimated Boolean      @default(false)
+  /// Chave gerada pelo formulário a cada envio: o reenvio devolve este registro.
+  idempotencyKey String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   profile     LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   account     Account?     @relation(fields: [accountId], references: [id], onDelete: SetNull)
   category    Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  creditCard  CreditCard?  @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
 
   @@index([profileId, status, dueDate])
   @@index([accountId])
   @@index([categoryId])
+  @@index([creditCardId])
+  @@unique([profileId, idempotencyKey])
 }
 
 /// Histórico local e imutável de uma edição manual de lançamento.
@@ -546,11 +554,14 @@ model IncomeSource {
   frequency        String
   nextExpectedDate DateTime?
   isActive         Boolean      @default(true)
+  /// Chave gerada pelo formulário a cada envio: o reenvio devolve este registro.
+  idempotencyKey   String?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
   profile          LocalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   account          Account?     @relation(fields: [accountId], references: [id], onDelete: SetNull)
 
+  @@unique([profileId, idempotencyKey])
   @@index([profileId, isActive])
   @@index([accountId])
 }
@@ -719,6 +730,7 @@ model CreditCard {
   paymentAccount      Account?        @relation(fields: [paymentAccountId], references: [id], onDelete: SetNull)
   statements          CardStatement[]
   benefits            CardBenefit[]
+  obligations         ScheduledObligation[]
 
   @@unique([profileId, name])
   @@index([profileId, isActive])

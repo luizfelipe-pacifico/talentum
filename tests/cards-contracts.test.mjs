@@ -73,10 +73,12 @@ test('o pagamento conciliado é revalidado no backend e grava a situação na me
 
 test('o painel soma as faturas em aberto pela mesma função nas duas rotas', async () => {
   for (const route of ['src/app/api/dashboard/route.ts', 'src/app/api/dashboard/risk-free-balance/route.ts']) {
-    const source = await read(route);
-    assert.match(source, /loadOpenCardStatements\(/, route);
-    assert.match(source, /cardStatementObligations\(/, route);
+    assert.match(await read(route), /loadCommittedObligations\(/, route);
   }
+  const queries = await read('src/server/dashboard-queries.ts');
+  const loader = queries.slice(queries.indexOf('export async function loadCommittedObligations('));
+  assert.match(loader, /loadOpenCardStatements\(/);
+  assert.match(loader, /cardStatementObligations\(/);
 });
 
 test('as telas de cartão usam só a API local e substituem os placeholders', async () => {

@@ -348,7 +348,7 @@ Status: **Current**. Defined in `src/app/globals.css`: light values in `:root`, 
 | --- | --- | --- | --- |
 | `--parchment` | `#f4f1ea` | (unchanged) | Brand primitive |
 | `--ebony` | `#1a110a` | (unchanged) | Brand primitive; sidebar and other always-dark elements |
-| `--amber` | `#b8773d` | (unchanged) | Accent, primary action, focus ring, links |
+| `--amber` | `#b8773d` | (unchanged) | Accent for borders, focus ring, active markers, progress fills and icons (non-text, 3:1). Never small text and never the fill behind light text |
 | `--graphite` | `#4a4a4a` | (unchanged) | Brand primitive |
 | `--walnut` | `#5c4033` | `#8a6a57` | Secondary emphasis; lightened for presence in dark, not redesigned |
 | `--bg` | `var(--parchment)` | `#211e1a` | Page background |
@@ -358,8 +358,10 @@ Status: **Current**. Defined in `src/app/globals.css`: light values in `:root`, 
 | `--line` | `rgb(26 17 10 / 16%)` | `rgb(241 236 227 / 14%)` | Borders and dividers |
 | `--line-strong` | `rgb(26 17 10 / 30%)` | `rgb(241 236 227 / 28%)` | Stronger borders, scrollbar thumb |
 | `--sunken` | `#eee9dd` | `#1d1a16` | Recessed areas |
-| `--amber-hover` | `#9f6533` | (unchanged) | Primary action hover, link hover |
-| `--on-amber` | `#fffdf8` | (unchanged) | Text on Amber |
+| `--amber-hover` | `#9f6533` | (unchanged) | Legacy hover primitive; new rules use the two pairs below |
+| `--amber-strong` / `--amber-strong-hover` | `#9f6533` / `#8a5629` | (unchanged) | Fill behind `--on-amber` text: primary button, selected segment and filter chip, counters. 4.7:1 and 6.0:1 with `--on-amber` |
+| `--amber-text` / `--amber-text-hover` | `#8f5a24` / `#75491c` | `#c98a4f` / `#d4a06a` | Amber as text: links, `.btn-link`, hovered quiet buttons, the selected row title. At least 4.7:1 on `--bg`, `--surface` and `--sunken` in each theme |
+| `--on-amber` | `#fffdf8` | (unchanged) | Text on `--amber-strong` |
 | `--ok` / `--ok-s` | `#4a6741` / `#e9efe6` | `#8fb283` / `#2d372a` | Success foreground / soft background |
 | `--warn` / `--warn-s` | `#8a6d1b` / `#f5eeda` | `#d9a93e` / `#3a3120` | Warning foreground / soft background |
 | `--err` / `--err-s` | `#8b1e1e` / `#f6e7e7` | `#e08c8c` / `#3a2727` | Error foreground / soft background |
@@ -385,7 +387,7 @@ Dark mode is a minimal, deliberate swap, not a second palette: the off-white sur
 - `--bg` `#211e1a` is the one required change; `--surface` `#2a2622` is slightly lighter to keep the same elevation relationship as light mode.
 - `--ink` flips to `#f1ece3` because Ebony on dark gray would be unreadable. Ebony itself is unchanged and still used directly for the sidebar and other intentionally always-dark elements.
 - `--ink2` and `--walnut` are lightened only enough to clear WCAG contrast on the dark background.
-- `--amber` is **unchanged**: its contrast against light text was already tuned for a mid-tone background, so darkening the page does not require darkening the accent.
+- `--amber` and `--amber-strong` are **unchanged**: a fill keeps its contrast with the text on it whatever the page behind it. Pure Amber as text measures only 4.1:1 on the dark surface, so `--amber-text` lightens to `#c98a4f` in dark mode (rule P25; locked by `tests/regression/amber-text-contrast-below-aa.test.mjs`).
 - The primary navigation (Ebony background) is **unchanged**: it is a fixed dark structural anchor regardless of theme and does not participate in the toggle.
 - Semantic status colors are lightened in dark mode only enough to remain legible; their meaning does not change.
 
@@ -578,7 +580,7 @@ Every interface change is validated at the twelve classes below, in the light th
 | Desktop S | 1024 × 700 | Electron minimum window; small laptops | Documented Electron minimum | ≤ 1040 single-column grids, ≤ 1180 tightened header, fixed sidebar | 1000 to 1099: three-column grids, header navigation |
 | Desktop M | 1536 × 864 | 1920 × 1080 laptops at 125% scaling | Second most used desktop resolution on StatCounter (August 2026); spot-check 1366 × 768 for short laptop screens | No rule above 1280; content capped at 1440 | 1100 to 1599 |
 | Desktop L | 1920 × 1080 | Full HD monitors | Most used desktop resolution on StatCounter (August 2026) | No rule above 1280; content capped at 1440 | 1600 and above: page width 1440 |
-| TV S | 960 × 540 | 1080p TV browser at a device pixel ratio of 2 | Android TV design canvas (960 × 540 dp) | ≤ 1040 single-column grids, ≤ 1180 tightened header, fixed sidebar | below 1000: `Seções` menu, parallax off |
+| TV S | 960 × 540 | 1080p TV browser at a device pixel ratio of 2 | Android TV design canvas (960 × 540 dp) | ≤ 1040 single-column grids, ≤ 1180 tightened header, fixed sidebar in compact density (≤ 640 px of height: 34 px items, every area visible without scrolling; the dense sidebars of Finder, Gmail and Material density −2) | below 1000: `Seções` menu, parallax off |
 | TV M | 1280 × 720 | 720p TV, or 1080p TV at a device pixel ratio of 1.5 | 720p panel resolution; between the Android TV (960 × 540) and tvOS (1920 × 1080) canvases | ≤ 1280: two-column settings grid | 1100 to 1599 |
 | TV L | 1920 × 1080 | 1080p TV at a device pixel ratio of 1; 4K TV at 2 | tvOS layout canvas (1920 × 1080 pt) | Same as Desktop L | 1600 and above |
 
@@ -912,7 +914,7 @@ Status: **Current** (`src/components/vault-screens.tsx`, `src/components/vault-g
 - Errors use the in-form error strip with an icon and the backend's message, which never says which factor failed. The progressive delay shows a countdown ("Tente de novo em 0:28") and disables the button.
 - The QR code for the authenticator is always dark modules on a light plate with a quiet zone, in both themes, so every scanner reads it.
 - Copy states the consequence plainly: without the password and the recovery code no one can open the data, not even Talentum, and "Entrar com Google" does not unlock local data.
-- **Open:** no flat illustration humanizes these screens yet; a "locked safe" illustration must go through the [sourcing pipeline](#illustration-sourcing) (Gemini) in both themes.
+- The first-run ("Proteja seus dados") and unlock screens show the `cofre-trancado` illustration (112 px, `alt=""`) between the brand and the title, so the state reads as "your data is locked away and needs the key" before any sentence (**Current**, 20 November 2026; sourced through the [pipeline](#illustration-sourcing): Gemini, potrace layers, both themes). The recovery-code and recovery screens omit it, because they are already long. Below 700 px of height (small phones, TV S, zoomed laptops) it is hidden so the password field stays in the first view.
 
 ### Forms and filters
 
@@ -944,8 +946,8 @@ Status: **Current**. This is the map of every place in the local app and the lan
 ### Pipeline
 
 - **Origin:** flat illustrations generated with Gemini and supplied by the maintainer as 1024 × 1024 JPEGs. The JPEGs stay outside Git in `design/estados-fonte/` (ignored), because they are not needed to build or run.
-- **Vector masters:** `design/estados-vetor/<key>.svg` (20 files), vectorized with a median filter against JPEG noise, separation into flat color layers and Bézier tracing (potrace), stacked from lightest to darkest color so no gaps open. They are the source of truth. New illustrations enter as masters in `design/estados-vetor/` with the paper in `#F4F1EA`, and the variants are always produced by the script.
-- **Variants:** `pnpm estados:gerar` (`scripts/gerar-estados.mjs`) generates `public/estados/claro/` and `public/estados/escuro/` (20 files each) and, for the landing page keys, `apps/web/public/estados/` (`erro-tela`, `nao-encontrada`, `sem-versoes`). The plate is removed and the paper areas take the exact color of the surface where the illustration appears (`#FFFDF8` light, `#2A2622` dark, `#F4F1EA` on the LP), so it looks integrated. In dark, neutrals invert to the warm tone of light text and browns rise in luminance; light neutrals become muted cream instead of disappearing into the background.
+- **Vector masters:** `design/estados-vetor/<key>.svg` (21 files), vectorized with a median filter against JPEG noise, separation into flat color layers and Bézier tracing (potrace), stacked from lightest to darkest color so no gaps open. They are the source of truth. New illustrations enter as masters in `design/estados-vetor/` with the paper in `#F4F1EA`, and the variants are always produced by the script.
+- **Variants:** `pnpm estados:gerar` (`scripts/gerar-estados.mjs`) generates `public/estados/claro/` and `public/estados/escuro/` (21 files each) and, for the landing page keys, `apps/web/public/estados/` (`erro-tela`, `nao-encontrada`, `sem-versoes`). The plate is removed and the paper areas take the exact color of the surface where the illustration appears (`#FFFDF8` light, `#2A2622` dark, `#F4F1EA` on the LP), so it looks integrated. In dark, neutrals invert to the warm tone of light text and browns rise in luminance; light neutrals become muted cream instead of disappearing into the background.
 - **Behavior:** `StateArt` (`src/components/state-art.tsx`) renders both variants and CSS shows only the one for the active theme (`.state-art-escuro` hidden by default, `.state-art-claro` hidden under `html.dark`), with no JavaScript needed and no visible swap on load. Sizes: `sm` 112 px, `lg` 200 px, and 128 px for default and `lg` at 600 px and below. The image is decorative (`alt=""`), cannot be dragged (`draggable={false}`, `dragstart` canceled, `-webkit-user-drag: none`) or selected (`user-select: none`), and lets clicks pass through (`pointer-events: none`). The landing page uses its own light-only component, `apps/web/src/components/lp/state-art.tsx`, reading `/estados/<key>.svg`.
 - **Validation:** always in both themes (CLAUDE.md rule). Tests in `tests/regression/state-art.test.mjs`.
 - **Integrity (27 October 2026):** all illustrations were reviewed in both themes against the originals. The background is removed only where the color is practically that of the paper, so light objects without an outline are not swallowed (the card in `sem-cartoes` and the sheet in `importar-extrato` used to come out clipped). The sheet in `importar-extrato` was redrawn in the master, because its cream was indistinguishable from the original's paper. The ground in `nao-encontrada`, cut straight by the edge of the generated image, closes as a half-moon: elliptical clip, sand fill and outline. Tests in `tests/regression/state-art-integrity.test.mjs`.
@@ -977,6 +979,7 @@ Status: **Current**. This is the map of every place in the local app and the lan
 | Screen error | `src/app/error.tsx`, `apps/web/src/app/error.tsx` | Rendering failure | `erro-tela` |
 | Downloads | `/downloads` on the LP | No published version | `sem-versoes` |
 | New version notice | `src/components/update-notice.tsx` | A stable version newer than the installed one exists and was not postponed | `nova-versao` |
+| Lock screens | `SetupScreen` and `UnlockScreen` in `src/components/vault-screens.tsx` | First run, and every time the vault is locked | `cofre-trancado` |
 
 ### Illustration direction
 

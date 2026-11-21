@@ -1,6 +1,6 @@
 import { guardWithProfile, isDenied, ok } from '@/server/http';
-import { cardStatementObligations, cashProjection, endOfMonth, startOfDay } from '@/server/dashboard-metrics';
-import { loadConsolidatedBalance, loadOpenCardStatements, loadOpenObligations } from '@/server/dashboard-queries';
+import { cashProjection, endOfMonth, startOfDay } from '@/server/dashboard-metrics';
+import { loadCommittedObligations, loadConsolidatedBalance } from '@/server/dashboard-queries';
 
 /* Detalhe do Saldo Livre de Risco e projeção de caixa do período.
 
@@ -22,23 +22,13 @@ export async function GET(request: Request) {
   const periodEnd = endOfMonth(now);
   const from = startOfDay(now);
 
-  const [balance, scheduled, cardStatements] = await Promise.all([
+  /* Compromissos e faturas de cartão em aberto (pelo que falta pagar), sem
+     contar duas vezes a fatura também cadastrada como compromisso
+     (docs/PRODUCT.md, V). Mesma lista do veredito em `GET /api/dashboard`. */
+  const [balance, obligations] = await Promise.all([
     loadConsolidatedBalance(guarded.profileId),
-    loadOpenObligations(guarded.profileId, periodEnd),
-    loadOpenCardStatements(guarded.profileId, periodEnd),
+    loadCommittedObligations(guarded.profileId, periodEnd),
   ]);
-
-  /* Faturas de cartão em aberto entram como obrigação pelo que falta pagar,
-     no vencimento (docs/PRODUCT.md, V). Mesma regra do veredito em
-     `GET /api/dashboard`, pela mesma função. */
-  const cardObligations = cardStatements.flatMap((statement) =>
-    cardStatementObligations([statement]).map((obligation) => ({
-      id: statement.id,
-      description: statement.description,
-      ...obligation,
-    })),
-  );
-  const obligations = [...scheduled, ...cardObligations].sort((left, right) => left.dueDate.getTime() - right.dueDate.getTime());
 
   const committed = obligations.reduce((total, obligation) => total + obligation.amountCents, 0n);
   const projection = cashProjection(

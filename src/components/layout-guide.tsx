@@ -172,7 +172,9 @@ export function LayoutGuidePage() {
           <div className="swatch-grid">
             <Swatch token="--parchment" name="Alabastro" light="#F4F1EA" dark="não muda" use="Fundo da aplicação" />
             <Swatch token="--ebony" name="Ébano" light="#1A110A" dark="não muda" use="Texto e sidebar fixa" />
-            <Swatch token="--amber" name="Âmbar clássico" light="#B8773D" dark="#B8773D" use="Ação primária e estado ativo" />
+            <Swatch token="--amber" name="Âmbar clássico" light="#B8773D" dark="#B8773D" use="Borda, foco, marca de item ativo e ícone" />
+            <Swatch token="--amber-strong" name="Âmbar forte" light="#9F6533" dark="não muda" use="Fundo do botão principal e de tudo com texto claro em cima" />
+            <Swatch token="--amber-text" name="Âmbar de texto" light="#8F5A24" dark="#C98A4F" use="Link e texto em âmbar" />
             <Swatch token="--graphite" name="Grafite" light="#4A4A4A" dark="não muda" use="Texto de apoio" />
             <Swatch token="--walnut" name="Nogueira" light="#5C4033" dark="#8A6A57" use="Profundidade e ênfase secundária" />
           </div>

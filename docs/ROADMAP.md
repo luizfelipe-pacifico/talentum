@@ -42,7 +42,7 @@ What exists today:
 - 79 Node test files (including `tests/regression/`) and a Playwright suite over the twelve viewport classes in both themes, enforced by versioned Git hooks and CI; CI also runs gitleaks, dependency review, CodeQL and a Vercel-isolation check, and Dependabot is configured.
 - ADRs 0001 to 0009.
 
-What does not exist yet: signed or published installers and a validated packaged build on any platform; provider-side settings (Turnstile widget, Worker secrets, remote D1 migrations, WAF rules, Workers AI, the production domain); process isolation of the import parsers; legal review of the terms, privacy and debt copy; Stages 21 (beyond the notice) to 25.
+What does not exist yet: signed or published installers, and a validated packaged build on Windows and macOS (the Linux AppImage was built and exercised end to end on 2026-11-20); provider-side settings (Turnstile widget, Worker secrets, remote D1 migrations, WAF rules, Workers AI, the production domain); process isolation of the CSV and OFX parsers (PDF parsing already runs in an isolated worker thread); legal review of the terms, privacy and debt copy; Stages 21 (beyond the notice) to 25.
 
 ## Cross-cutting rules for every stage
 
@@ -188,7 +188,7 @@ Status (**Current**): deterministic categorization by local rules with confidenc
 
 **Exit:** the first MVP release for Windows and Linux, with installation, usage, security and limitations documentation.
 
-Partial state (**Current**): all dashboard elements with pure tested formulas, open card statements counted as committed, one balance and one reference currency for the verdict and the projection (L-4 resolved), local due-date and stale-data alerts, empty and error states in both themes and end-to-end tests. **Open:** a bill entered both as an obligation and as a card statement is subtracted twice. **Planned:** release documentation for the first installer.
+Partial state (**Current**): all dashboard elements with pure tested formulas, open card statements counted as committed, one balance and one reference currency for the verdict and the projection (L-4 resolved), local due-date and stale-data alerts, empty and error states in both themes and end-to-end tests. A bill entered both as an obligation and as a card statement is subtracted once: an obligation linked to a card gives way to that card's statement of the same month (**Current**, see [PRODUCT.md](PRODUCT.md), V). **Planned:** release documentation for the first installer.
 
 ## Later stages: one macro-feature per stage
 
@@ -196,7 +196,7 @@ Every stage below is a **Next stage** and **Planned** unless marked **Open**.
 
 ### Stage 7 — PDF import
 
-**Current** ([ADR 0006](decisions/0006-pdf-import.md)): local PDF.js extraction under page, character and time limits, a versioned layout-reader registry with two generic readers, per-field confidence and hostile synthetic fixtures. **Open:** process isolation; no institution-specific reader yet.
+**Current** ([ADR 0006](decisions/0006-pdf-import.md)): local PDF.js extraction in an isolated worker thread (no environment or secrets, 256 MiB heap limit, 12-second hard deadline with `terminate()`, validated output) under page, character and time limits, a versioned layout-reader registry with two generic readers, per-field confidence and hostile synthetic fixtures. **Open:** no institution-specific reader yet.
 
 Local parsers per institution/layout, defensive extraction, per-field confidence, tests with hostile synthetic files and versioned parser maintenance. Open Finance is not part of this stage.
 

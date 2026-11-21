@@ -213,6 +213,34 @@ export function cardStatementObligations(statements: CardStatementInput[]): Obli
   return obligations;
 }
 
+/** Fatura que pode cobrir um compromisso ligado ao mesmo cartão. */
+export type StatementCoverage = { creditCardId: string; dueDate: Date; status: string };
+
+/**
+ * Compromissos que não são a mesma conta de uma fatura já acompanhada.
+ *
+ * Um compromisso ligado a um cartão (`creditCardId`) representa a fatura desse
+ * cartão. Quando o mesmo cartão tem fatura não cancelada com vencimento no
+ * mesmo mês, a fatura é a fonte do valor (conhece total e pagamentos
+ * conciliados) e o compromisso sai do comprometido; sem isso a mesma conta
+ * seria descontada duas vezes (docs/PRODUCT.md, V). Fatura paga também cobre:
+ * a conta já saiu do saldo. Compromisso sem ligação nunca é removido: a regra
+ * não adivinha pela descrição nem pelo valor.
+ */
+export function withoutBillsCoveredByStatements<T extends { creditCardId?: string | null; dueDate: Date }>(
+  obligations: T[],
+  statements: StatementCoverage[],
+): T[] {
+  const covered = new Set(
+    statements
+      .filter((statement) => statement.status !== 'cancelled')
+      .map((statement) => `${statement.creditCardId}:${monthKey(statement.dueDate)}`),
+  );
+  return obligations.filter(
+    (obligation) => !obligation.creditCardId || !covered.has(`${obligation.creditCardId}:${monthKey(obligation.dueDate)}`),
+  );
+}
+
 export type CommittedSummary = { cents: bigint; count: number; estimatedCount: number };
 
 /**

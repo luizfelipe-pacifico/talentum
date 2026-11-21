@@ -30,6 +30,8 @@ RUN groupadd --system --gid 1001 nodejs \
     && chown nextjs:nodejs /data
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# A thread de leitura de PDF não é rastreada pelo standalone (tests/regression/pdf-worker-missing-from-standalone.test.mjs).
+COPY --from=builder --chown=nextjs:nodejs /app/.next/server/chunks ./.next/server/chunks
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
