@@ -11,6 +11,7 @@ import { Overlays } from '@/components/overlays';
 import { NotificationBell } from '@/components/notifications';
 import { UpdateNotice } from '@/components/update-notice';
 import { LockNowButton } from '@/components/vault-gate';
+import { WindowControls, WindowStateClasses } from '@/components/window-controls';
 import { NAV, THEME_OPTIONS } from '@/lib/demo-data';
 import { activeTab as findActiveTab, isActive, pageMeta, tabsFor } from '@/lib/navigation';
 
@@ -159,7 +160,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <div className="shell-main">
+        <WindowStateClasses />
         <header className="topbar">
+          <WindowControls position="start" />
           <button
             type="button"
             className="menu-button"
@@ -209,18 +212,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <i className="bi bi-chevron-down" style={{ fontSize: 11, color: 'var(--ink2)' }} />
             </Link>
 
-            {/* biome-ignore lint/a11y/useSemanticElements: fieldset groups form fields; these are window buttons outside any form */}
-            <div className="window-controls" role="group" aria-label="Controles da janela">
-              <button type="button" onClick={() => window.talentumWindow?.minimize()} aria-label="Minimizar" title="Minimizar">
-                <i className="bi bi-dash-lg" />
-              </button>
-              <button type="button" onClick={() => window.talentumWindow?.toggleMaximize()} aria-label="Maximizar ou restaurar" title="Maximizar ou restaurar">
-                <i className="bi bi-square" />
-              </button>
-              <button type="button" onClick={() => window.talentumWindow?.close()} aria-label="Fechar" title="Fechar">
-                <i className="bi bi-x-lg" />
-              </button>
-            </div>
+            <WindowControls position="end" />
           </div>
         </header>
 

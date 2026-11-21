@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useApp } from '@/components/app-state';
 import { callApi, getJson } from '@/lib/api-client';
+import { WindowPreferencesCard } from '@/components/window-controls';
 
 type KindPreference = { kind: string; label: string; description: string; enabled: boolean };
 type Preferences = { hasProfile: false } | { hasProfile: true; quiet: boolean; kinds: KindPreference[] };
@@ -131,6 +132,7 @@ export function SettingsScreen() {
           </select>
         </label>
       </section>
+      <WindowPreferencesCard />
       <section className="card" id="notificacoes" aria-labelledby="titulo-notificacoes">
         <div className="card-header">
           <h2 className="h-display" id="titulo-notificacoes">

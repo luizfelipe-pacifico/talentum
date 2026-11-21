@@ -4,6 +4,8 @@
   "private": true,
   "description": "Talentum - Piloto Automatico Financeiro",
   "main": "electron/main.cjs",
+  "homepage": "https://github.com/luizfelipe-pacifico/talentum",
+  "desktopName": "talentum.desktop",
   "packageManager": "pnpm@11.1.2",
   "engines": {
     "node": ">=22.13.0"
@@ -14,8 +16,10 @@
     "dev:web": "pnpm --dir apps/web dev",
     "desktop:prepare": "node scripts/desktop-prepare.mjs",
     "desktop:build:win": "pnpm desktop:prepare && electron-builder --win nsis --x64",
-    "desktop:build:linux": "pnpm desktop:prepare && electron-builder --linux AppImage --x64",
+    "desktop:build:linux": "pnpm desktop:prepare && electron-builder --linux AppImage deb --x64",
     "desktop:build:mac": "pnpm desktop:prepare && electron-builder --mac dmg zip",
+    "desktop:smoke": "node scripts/desktop-smoke.mjs",
+    "instalador:gerar": "node scripts/gerar-instalador.mjs",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up --build",
     "docker:up:detached": "docker compose up --build --detach --wait",
@@ -121,7 +125,17 @@
       }
     ],
     "win": { "target": "nsis", "icon": "icon-badge.ico", "artifactName": "Talentum-${version}-Windows-${arch}.${ext}" },
-    "linux": { "target": "AppImage", "icon": "icon-badge.png", "category": "Office;Finance", "artifactName": "Talentum-${version}-Linux-${arch}.${ext}" },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon": "icon-badge.png",
+      "category": "Office;Finance",
+      "executableName": "talentum",
+      "syncDesktopName": true,
+      "synopsis": "Finanças pessoais local-first",
+      "description": "Lê extratos, organiza gastos e mostra quanto sobra, com os dados cifrados no computador.",
+      "maintainer": "Projeto Talentum <https://github.com/luizfelipe-pacifico/talentum>",
+      "artifactName": "Talentum-${version}-Linux-${arch}.${ext}"
+    },
     "mac": {
       "target": ["dmg", "zip"],
       "icon": "icon-badge-mac.png",
@@ -133,7 +147,32 @@
       "entitlementsInherit": "packaging/entitlements.mac.plist",
       "notarize": true
     },
-    "dmg": { "artifactName": "Talentum-${version}-macOS-${arch}.${ext}" },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "deleteAppDataOnUninstall": false }
+    "dmg": {
+      "artifactName": "Talentum-${version}-macOS-${arch}.${ext}",
+      "title": "Talentum ${version}",
+      "background": "packaging/instalador/dmg-fundo.png",
+      "iconSize": 96,
+      "window": { "width": 540, "height": 380 },
+      "contents": [
+        { "x": 140, "y": 232, "type": "file" },
+        { "x": 400, "y": 232, "type": "link", "path": "/Applications" }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "language": "1046",
+      "installerLanguages": ["pt_BR"],
+      "multiLanguageInstaller": false,
+      "installerIcon": "icon-badge.ico",
+      "uninstallerIcon": "icon-badge.ico",
+      "installerSidebar": "packaging/instalador/nsis-lateral.bmp",
+      "uninstallerSidebar": "packaging/instalador/nsis-lateral.bmp",
+      "installerHeader": "packaging/instalador/nsis-cabecalho.bmp",
+      "shortcutName": "Talentum",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   }
 }

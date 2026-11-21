@@ -328,6 +328,9 @@ textarea {
   border-right: 1px solid var(--line);
 }
 
+/* Controles da janela (docs/DESIGN-SYSTEM.md, "Window controls"). macOS e
+   Windows usam os botões nativos; só o Linux desenha estes, no lado que a área
+   de trabalho ou a pessoa escolheu. */
 .window-controls {
   -webkit-app-region: no-drag;
   display: inline-flex;
@@ -335,6 +338,13 @@ textarea {
   gap: 3px;
   padding-left: 4px;
   border-left: 1px solid var(--line);
+}
+
+.window-controls-left {
+  order: -1;
+  padding: 0 4px 0 0;
+  border-left: 0;
+  border-right: 1px solid var(--line);
 }
 
 h1,
@@ -613,6 +623,71 @@ p {
 .window-controls i {
   font-size: 10px;
   line-height: 1;
+}
+
+/* Estilo colorido, como no macOS: círculos de 14px num alvo de 24px; os
+   símbolos aparecem ao passar o mouse ou focar o grupo. */
+.window-controls-colorido {
+  gap: 2px;
+}
+
+.window-controls-colorido button,
+.window-controls-colorido button:hover,
+.window-controls-colorido button:last-child:hover {
+  width: 24px;
+  height: 24px;
+  background: transparent;
+}
+
+.window-controls-colorido i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  font-size: 8px;
+  color: transparent;
+  box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 22%);
+}
+
+.window-controls-colorido .window-button-close i {
+  background: #ff5f57;
+}
+
+.window-controls-colorido .window-button-minimize i {
+  background: #febc2e;
+}
+
+.window-controls-colorido .window-button-maximize i {
+  background: #28c840;
+}
+
+.window-controls-colorido:hover i,
+.window-controls-colorido:focus-within i {
+  color: rgb(0 0 0 / 62%);
+}
+
+/* macOS: os botões nativos ficam sobre a barra lateral, que ganha recuo e passa
+   a arrastar a janela, como no Finder e no Music. Em tela cheia eles somem. */
+html.platform-darwin .sidebar {
+  -webkit-app-region: drag;
+  padding-top: 52px;
+}
+
+html.platform-darwin .sidebar a,
+html.platform-darwin .sidebar button {
+  -webkit-app-region: no-drag;
+}
+
+html.platform-darwin.window-fullscreen .sidebar {
+  padding-top: 20px;
+}
+
+/* Windows: os botões nativos ocupam o canto superior direito; a barra superior
+   reserva a largura que a sobreposição informa (titlebar-area). */
+html.platform-win32 .topbar {
+  padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, calc(100vw - 138px)) + 16px);
 }
 
 /* A marca é o link para o Início. Mantém 44px de altura de alvo e ganha os
@@ -1707,6 +1782,21 @@ p {
   color: var(--ink2);
 }
 
+/* Grupo de opções com o mesmo rótulo de um campo (.field). */
+.field-group {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.field-group legend {
+  padding: 0;
+  margin-bottom: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink2);
+}
+
 .field select,
 .field input {
   min-width: 0;
@@ -2461,8 +2551,9 @@ kbd {
 
 .shell-map-side .shell-map-strong {
   color: #fffdf8;
-  border-left: 3px solid var(--amber);
-  padding-left: 8px;
+  background: rgb(184 119 61 / 22%);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
   flex: 1;
 }
 

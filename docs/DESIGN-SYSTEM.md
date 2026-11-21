@@ -15,6 +15,7 @@ This document is the source of truth for Talentum's visual identity and interfac
 - [Iconography and imagery](#iconography-and-imagery)
 - [Motion](#motion)
 - [Components and layout patterns](#components-and-layout-patterns)
+- [Installer screens](#installer-screens)
 - [State illustrations](#state-illustrations)
 - [Accessibility](#accessibility)
 - [UX writing and copy](#ux-writing-and-copy)
@@ -305,7 +306,7 @@ The marks are true vectors (about 1.2 KB each), drawn once in `scripts/gerar-mar
 | `icon-badge.svg` (repository root) | The rounded badge used for the window icon and favicons. |
 | `icon-badge.ico`, `src/app/favicon.ico`, `apps/web/src/app/favicon.ico` | Multiresolution ICO files (16, 24, 32, 48, 64, 128 and 256 px), rasterized with the `sharp` copy installed with Next. |
 
-The frameless Electron window uses `icon-badge.ico` as its native Windows window and taskbar icon (`electron/main.cjs`). `tests/regression/brand-vectors.test.mjs` guards the vector marks.
+The app icon in the taskbar or Dock comes from the badge on every system (`electron/window-chrome.cjs`, **Current** since 2026-11-21): `icon-badge.ico` on Windows (window, taskbar and installer), `icon-badge.png` (512 px) on Linux (window and the `.desktop` entry, which the `deb` package installs with `StartupWMClass=talentum`, matching `desktopName`), and `icon-badge-mac.png`, converted to `.icns`, for the macOS Dock. Electron reads `.ico` only on Windows, so before that date the Linux window had no icon. `tests/regression/brand-vectors.test.mjs` guards the vector marks; `tests/regression/window-icon-and-controls-wrong-per-system.test.mjs` guards the icon per system.
 
 If the logo is used anywhere new, preserve its clear space and never distort it, recolor it or add effects without updating this document.
 
@@ -317,6 +318,7 @@ If the logo is used anywhere new, preserve its clear space and never distort it,
 | `pnpm lp:telas` | `scripts/redimensionar-telas-lp.mjs` | 640 px `-640.webp` variants of the app screenshots in `apps/web/public/telas/`, used in the landing page `srcset`. |
 | `pnpm lp:icones` | `scripts/gerar-icones-lp.mjs` | Inline SVG icon map for the landing page (see Iconography). |
 | `pnpm estados:gerar` | `scripts/gerar-estados.mjs` | Themed state illustrations (see State illustrations). |
+| `pnpm instalador:gerar` | `scripts/gerar-instalador.mjs` | Installer screens in `packaging/instalador/` (see [Installer screens](#installer-screens)). |
 
 ## Color system
 
@@ -694,6 +696,8 @@ For each pattern: the form per context, what Talentum does today, and the refere
 | Lock screen: one centered column, brand, one password field, one primary action, "forgot password" as the secondary path | macOS login window; 1Password and Bitwarden lock screens | Observed product |
 | Recovery code shown once, with copy and an explicit "I saved it" before continuing | 1Password Emergency Kit; GitHub two-factor recovery codes | Observed product |
 | Security settings: one section per factor, status in words, one action per section, re-entering the password to change a factor | 1Password, Bitwarden and Google Account security pages | Observed product |
+| Window controls native to each system: left traffic lights on macOS, right caption buttons with snap layouts on Windows, desktop-defined side on Linux | Apple HIG; Windows 11 title bar; GNOME and KDE button layout settings | Guideline; observed product |
+| Disk image with the app icon, an arrow and an Applications shortcut | Figma, Slack, Visual Studio Code DMGs | Observed product |
 
 ### Test procedure
 
@@ -873,7 +877,17 @@ Status: **Rule** (guidance).
 
 ### Header and window controls
 
-The profile and the Electron window controls share the header. Window controls are intentionally compact and talk to the Electron main process only through the isolated preload bridge (see the Electron layer in [ARCHITECTURE.md](ARCHITECTURE.md)). They remain visible in browser development previews wider than 900 px so their proportions can be reviewed, but only the Electron preload bridge makes them operational. The theme selector has its own width, arrow and hit area so the native control does not overlap it.
+The profile and, on Linux, the window controls share the header. The theme selector has its own width, arrow and hit area so the native control does not overlap it.
+
+**Window controls** (**Current**, 2026-11-21; `electron/window-chrome.cjs`, `src/components/window-controls.tsx`, `src/lib/window-layout.ts`). Each system keeps the controls people already use there (Jakob's law):
+
+| System | Controls | Reference |
+| --- | --- | --- |
+| macOS | Native close, minimize and zoom buttons on the left, in colour (`titleBarStyle: 'hidden'`, `trafficLightPosition` 18 × 22). They sit over the sidebar, which gains 52 px of top padding and drags the window; in full screen the buttons disappear and the padding returns to 20 px. | Apple HIG, Windows (macOS); Finder, Music and Notes sidebars |
+| Windows | Native caption buttons on the right through the title bar overlay (40 px high, colours of the top bar in each theme: `#fffdf8`/`#1a110a` light, `#2a2622`/`#f1ece3` dark). Native buttons keep the Windows 11 snap layouts menu on maximize. The top bar reserves the overlay width with `env(titlebar-area-*)`. | Windows 11 title bar guidance; Spotify, Teams and VS Code |
+| Linux | Buttons drawn by the app, on the side and in the order set by the desktop: GNOME, Cinnamon and MATE `button-layout`, Xfce `xfwm4` `button_layout`, KDE `kwinrc` `ButtonsOnLeft`/`ButtonsOnRight`. GNOME shows only close by default, and Talentum follows it. **Configurações > Botões da janela** (Linux only) lets the person keep the system layout or fix the left (close, minimize, maximize) or right (minimize, maximize, close) side, and choose discreet icons or coloured macOS-style circles (`#ff5f57`, `#febc2e`, `#28c840`, 14 px in a 24 px target, symbols on hover or focus). The choice applies at once and is stored only in `localStorage`. | GNOME HIG header bars; KDE window decorations; elementary OS |
+
+Maximize shows `Restaurar` and the `bi-window-stack` icon while the window is maximized. Outside Electron the header shows no window controls. Deliberate deviation: on Linux the buttons are drawn instead of native decorations, because the frameless window keeps one header for brand, title and actions; the layout reading keeps them where the desktop puts its own.
 
 ### Buttons
 
@@ -931,6 +945,20 @@ Every financial or operational status must have a concise text label, a stable s
 ### Error strip
 
 An in-component error strip (`.error-strip` in `globals.css`) shows a failure inside the affected component rather than replacing the page; see the dashboard rules in [PRODUCT.md](PRODUCT.md).
+
+## Installer screens
+
+Status: **Current** in configuration (2026-11-21); **Planned**: seeing them on a real Windows and macOS install, through the `Desktop` workflow.
+
+The installers carry the brand instead of the generic NSIS and DMG art. `pnpm instalador:gerar` (`scripts/gerar-instalador.mjs`) renders HTML scenes with Playfair Display and Montserrat in Playwright's Chromium and writes, into `packaging/instalador/`:
+
+| File | Size | Use |
+| --- | --- | --- |
+| `nsis-lateral.bmp` | 164 × 314, 24-bit BMP | Welcome and finish pages of the Windows installer and uninstaller: Ebony background, light mark, wordmark, amber rule, the brand motto and "Seus dados financeiros ficam neste computador, cifrados com a sua senha." |
+| `nsis-cabecalho.bmp` | 150 × 57, 24-bit BMP | Header of the inner pages, on the right, white background like the Modern UI header |
+| `dmg-fundo.png`, `dmg-fundo@2x.png` | 540 × 380 and 1080 × 760 | macOS disk window: mark, "Arraste o Talentum para a pasta Aplicativos", the app icon at (140, 232), a dotted arrow, and the Applications link at (400, 232) |
+
+The Windows installer runs in Brazilian Portuguese (`nsis.language` 1046), lets the person choose the folder, and creates Start menu and desktop shortcuts named Talentum with the badge icon. The DMG band under the icons is `#A16938`: the Finder writes icon names in black in the light appearance and in white in the dark one, regardless of the background, and this tone keeps both at or above 4.5:1 (`tests/regression/installer-art.test.mjs`). Linux packages (`AppImage`, `deb`) have no installer screen.
 
 ## State illustrations
 
