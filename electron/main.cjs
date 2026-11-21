@@ -8,6 +8,7 @@ const https = require('node:https');
 const net = require('node:net');
 const path = require('node:path');
 const update = require('./update-verify.cjs');
+const chrome = require('./window-chrome.cjs');
 
 /* `localhost` é o endereço documentado do backend local e o publicado pelo
    Compose. `scripts/dev-all.mjs` sobrescreve TALENTUM_URL quando confirma que
@@ -77,15 +78,15 @@ if (!hasSingleInstanceLock) {
 }
 
 async function createWindow() {
-  const windowIcon = nativeImage.createFromPath(path.join(__dirname, '..', 'icon-badge.ico'));
+  const iconPath = chrome.windowIconPath(process.platform, path.join(__dirname, '..'));
   const window = new BrowserWindow({
     width: 1440,
     height: 900,
     minWidth: 1024,
     minHeight: 700,
-    frame: false,
     autoHideMenuBar: true,
-    icon: windowIcon,
+    ...(iconPath ? { icon: nativeImage.createFromPath(iconPath) } : {}),
+    ...chrome.chromeOptions(process.platform),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -93,6 +94,12 @@ async function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
     },
   });
+
+  // Maximizada e tela cheia mudam o ícone de restaurar e o recuo dos botões do macOS.
+  const sendState = () => {
+    if (!window.isDestroyed()) window.webContents.send('window:state', { maximized: window.isMaximized(), fullscreen: window.isFullScreen() });
+  };
+  for (const name of ['maximize', 'unmaximize', 'enter-full-screen', 'leave-full-screen']) window.on(name, sendState);
 
   window.webContents.setWindowOpenHandler(({ url: target }) => {
     openExternalSafely(target);
@@ -195,6 +202,23 @@ ipcMain.on('window:toggle-maximize', (event) => {
   else window.maximize();
 });
 ipcMain.on('window:close', (event) => trustedSender(event)?.close());
+/* A janela informa só o tema ('light' ou 'dark'); as cores da sobreposição do
+   Windows ficam aqui. Outros valores são ignorados. */
+ipcMain.on('window:theme', (event, theme) => {
+  const window = trustedSender(event);
+  if (!window || process.platform !== 'win32' || (theme !== 'light' && theme !== 'dark')) return;
+  window.setTitleBarOverlay(chrome.overlayFor(theme));
+});
+ipcMain.handle('window:chrome', async (event) => {
+  const window = trustedSender(event);
+  if (!window) return null;
+  return {
+    platform: process.platform,
+    systemLayout: process.platform === 'linux' ? await chrome.detectLinuxLayout() : null,
+    maximized: window.isMaximized(),
+    fullscreen: window.isFullScreen(),
+  };
+});
 
 /* ── Atualização consentida (docs/PRODUCT.md, "New-version notice") ──────────
    A janela só pede "instalar a versão X". Tudo o mais acontece aqui, no
@@ -345,6 +369,8 @@ function requestVaultLock() {
 
 Menu.setApplicationMenu(null);
 app.setAppUserModelId('org.talentum.app');
+// Em desenvolvimento o Dock do macOS mostraria o ícone do Electron; o pacote usa o .icns.
+if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(path.join(__dirname, '..', 'icon-badge-mac.png'));
 
 if (hasSingleInstanceLock) {
   app.whenReady().then(async () => {

@@ -28,6 +28,7 @@ This document is the single development reference for Talentum: how the reposito
 - [Security](#security)
 - [Configuration and operations](#configuration-and-operations)
 - [Releases](#releases)
+- [Desktop packages](#desktop-packages)
 - [Definition of done](#definition-of-done)
 - [References](#references)
 
@@ -115,7 +116,7 @@ Status: **Current** for what is installed; usage noted per item.
 - The generic "Node-OFX" had been made concrete as `ofx-data-extractor`. When Feature 4 was implemented the library proved unsuitable: it fails on OFX 1.x/SGML, the format Brazilian banks export, and normalizes money to `number`, which [DATABASE.md](DATABASE.md) forbids. The dependency was **removed** and replaced by an own bounded reader in `src/server/import/ofx.ts`; the decision, with alternatives and consequences, is [ADR 0002](decisions/0002-own-ofx-parser.md).
 - AES-256-GCM uses `node:crypto` and needs no extra library.
 - **Planned:** Workers AI and Ollama are future HTTP integrations and need no SDK now.
-- **Current:** `electron-builder` is the packager for the Windows NSIS installer and the Linux AppImage ([ADR 0004](decisions/0004-electron-packaging.md)).
+- **Current:** `electron-builder` is the packager for the Windows NSIS installer, the macOS DMG and ZIP, and the Linux AppImage and `deb` ([ADR 0004](decisions/0004-electron-packaging.md)).
 
 ## Icons and assets
 
@@ -180,7 +181,9 @@ Status: **Current**. This table lists every script in the root `package.json`.
 | `pnpm dev:web` | runs `next dev` for the landing page in `apps/web`, bound to `127.0.0.1:3100` |
 | `pnpm desktop:prepare` | runs `scripts/desktop-prepare.mjs`: `prisma generate`, a standalone `next build` and a copy of `.next/static` and `public/` into the standalone output |
 | `pnpm desktop:build:win` | `desktop:prepare`, then `electron-builder --win nsis --x64` into the ignored `release/` directory (unsigned) |
-| `pnpm desktop:build:linux` | `desktop:prepare`, then `electron-builder --linux AppImage --x64` into `release/` (unsigned) |
+| `pnpm desktop:build:linux` | `desktop:prepare`, then `electron-builder --linux AppImage deb --x64` into `release/` (unsigned) |
+| `pnpm desktop:smoke` | runs `scripts/desktop-smoke.mjs` against the package in `release/` (see [Desktop packages](#desktop-packages)) |
+| `pnpm instalador:gerar` | regenerates the installer screens in `packaging/instalador/` (see DESIGN-SYSTEM, Installer screens) |
 | `pnpm desktop:build:mac` | on a Mac only: `desktop:prepare`, then `electron-builder --mac dmg zip` for the Mac's own architecture (`arm64` on Apple silicon, `x64` on Intel) into `release/`; unsigned and not notarized without an Apple Developer ID |
 | `pnpm docker:build` | builds the isolated images of the local application and the landing page |
 | `pnpm docker:up` | builds and starts the application on `127.0.0.1:3000` and the landing page on `127.0.0.1:3100` |
@@ -451,9 +454,35 @@ When the project has a public API, use Semantic Versioning in the `MAJOR.MINOR.P
 
 Never modify an already published version. Record meaningful changes in a changelog and tag releases in Git. **Planned:** signed Windows, Linux and macOS installers published to GitHub Releases (see [ROADMAP.md](ROADMAP.md)). The packager is `electron-builder` ([ADR 0004](decisions/0004-electron-packaging.md)); local builds are unsigned and for testing only.
 
-Release assets must keep the names in `build.*.artifactName`, because the in-app update notice looks them up by name: `Talentum-<version>-Windows-x64.exe`, `Talentum-<version>-macOS-arm64.dmg`, `Talentum-<version>-macOS-x64.dmg` (plus the `.zip` of each Mac architecture) and `Talentum-<version>-Linux-x64.AppImage`. Each installer the app can install needs a `<file>.sig` asset with the Ed25519 signature of `talentum-update:v1:<file name>:<sha256>`, made with the release key, whose public half goes into `UPDATE_SIGNING_PUBLIC_KEY` in `electron/update-verify.cjs` (**Planned**: the key does not exist yet, so the app refuses to install and links to the release page).
+Release assets must keep the names in `build.*.artifactName`, because the in-app update notice looks them up by name: `Talentum-<version>-Windows-x64.exe`, `Talentum-<version>-macOS-arm64.dmg`, `Talentum-<version>-macOS-x64.dmg` (plus the `.zip` of each Mac architecture) and `Talentum-<version>-Linux-x86_64.AppImage` (electron-builder names the AppImage architecture `x86_64` and the `deb` architecture `amd64`). Each installer the app can install needs a `<file>.sig` asset with the Ed25519 signature of `talentum-update:v1:<file name>:<sha256>`, made with the release key, whose public half goes into `UPDATE_SIGNING_PUBLIC_KEY` in `electron/update-verify.cjs` (**Planned**: the key does not exist yet, so the app refuses to install and links to the release page).
 
-**macOS (Planned for signing and notarization).** Building requires a Mac; build each architecture on a Mac of that architecture (Apple silicon for `arm64`, Intel for `x64`), so the Prisma engines bundled match. `build.mac` enables the hardened runtime with `packaging/entitlements.mac.plist` (only `com.apple.security.cs.allow-jit`) and `notarize: true`. Signing needs a Developer ID Application certificate in the Mac's keychain (or `CSC_LINK`/`CSC_KEY_PASSWORD`), and notarization reads Apple credentials only from the environment (`APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`, preferred, or `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`). None of these values ever enters the repository, `.env.example` or a log. Without them the build is unsigned, Gatekeeper blocks it on other Macs, and it serves only for local testing.
+**macOS (Planned for signing and notarization).** Building requires a Mac; build each architecture on a Mac of that architecture (Apple silicon for `arm64`, Intel for `x64`), so the Prisma engines bundled match. `build.mac` enables the hardened runtime with `packaging/entitlements.mac.plist` (only `com.apple.security.cs.allow-jit`) and `notarize: true`. Signing needs a Developer ID Application certificate in the Mac's keychain (or `CSC_LINK`/`CSC_KEY_PASSWORD`), and notarization reads Apple credentials only from the environment (`APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`, preferred, or `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`). None of these values ever enters the repository, `.env.example` or a log. Without them the build is unsigned, Gatekeeper blocks it on other Macs, and it serves only for local testing. Without a Mac, the `Desktop` workflow builds both architectures on GitHub's macOS runners ([Desktop packages](#desktop-packages)).
+
+## Desktop packages
+
+Status: **Current** in code (2026-11-21). **Planned**: the first green run of the workflow on Windows and macOS.
+
+Each package is built on its own system, so the libSQL and Prisma native binaries inside it are that system's. The `Desktop` workflow (`.github/workflows/desktop.yml`) runs on manual dispatch and on pull requests or `main` pushes that touch `electron/`, `packaging/`, `prisma/`, the desktop scripts, `next.config.ts`, `package.json` or the lockfile:
+
+| Job | Runner | Output |
+| --- | --- | --- |
+| Windows x64 | `windows-2025` | `Talentum-<v>-Windows-x64.exe` (NSIS) |
+| macOS arm64 | `macos-15` | `Talentum-<v>-macOS-arm64.dmg` and `.zip`, ad hoc signed |
+| macOS x64 | `macos-15-intel` | `Talentum-<v>-macOS-x64.dmg` and `.zip`, ad hoc signed |
+| Linux x64 | `ubuntu-24.04` | `Talentum-<v>-Linux-x86_64.AppImage` and `Talentum-<v>-Linux-amd64.deb` |
+
+Every job runs `pnpm desktop:prepare`, `electron-builder … --publish never`, then `pnpm desktop:smoke` (the Linux job first installs the `deb` with `apt`, checks the installed `.desktop` entry and icon, and tests the installed app in `/opt/Talentum`), writes `SHA256SUMS.txt` and keeps the files as a workflow artifact for 14 days (the Windows and macOS jobs also keep a screenshot of the open window). The workflow reads no secret and looks for no certificate (`CSC_IDENTITY_AUTO_DISCOVERY=false`). The macOS jobs sign ad hoc (`mac.identity=-`, required to run on Apple silicon) with the hardened runtime and notarization turned off: ad hoc signing with the hardened runtime would need `disable-library-validation`, which the Developer ID build does not need, so the hardened configuration is exercised only when a Developer ID exists.
+
+`scripts/desktop-smoke.mjs` opens the package itself, with data in a temporary directory, never the person's profile:
+
+1. starts `resources/standalone/server.js` with the package's own Electron binary as Node, as `electron/main.cjs` does, and checks health, `403 BOOTSTRAP_DENIED` without the bootstrap secret, vault setup, an encrypted database file (the libSQL native binary loaded), profile and account creation, a synthetic PDF read in the isolated thread, lock and unlock;
+2. opens the executable, finds the loopback port its process tree listens on, checks health and the start page, and confirms the window stays open; then closes it.
+
+The workflow sets `pnpm_config_node_linker=hoisted` in the job environment, so every pnpm command (pnpm checks and reinstalls dependencies before each script) keeps a flat `node_modules` without symbolic links, as electron-builder recommends for pnpm; a `--node-linker` flag on `pnpm install` alone is undone by the next script: the Windows package lost the links of pnpm's default layout, and replacing them with copies breaks pnpm's resolution (the server no longer finds `styled-jsx`). Development keeps the default layout. `desktop:prepare` also copies the libSQL native package of the building system (`@libsql/<target>`), which Next's file tracing cannot see because libsql builds its name at run time (`tests/regression/packaged-app-loses-pnpm-links-and-native-libsql.test.mjs`).
+
+**Open (Linux AppImage on Ubuntu 24.04 and later):** Ubuntu restricts unprivileged user namespaces through AppArmor, and Chromium refuses to start its sandbox there unless `chrome-sandbox` is owned by root with mode 4755 or an AppArmor profile allows the app. The `deb` handles both in its post-install script; a bare AppImage does not, so on those systems the `deb` is the supported package. Turning the sandbox off (`--no-sandbox`) is not an accepted workaround.
+
+Test artifacts are not releases: they are unsigned, Windows SmartScreen warns about them, and on macOS Gatekeeper blocks them until the quarantine attribute is removed (Control-click > Abrir, or `xattr -dr com.apple.quarantine /Applications/Talentum.app`). Run them only on test machines.
 
 ## Definition of done
 

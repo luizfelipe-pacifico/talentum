@@ -72,6 +72,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     const apply = () => {
       const dark = theme === 'Escuro' || (theme === 'Sistema' && media.matches);
       document.documentElement.classList.toggle('dark', dark);
+      // Os botões nativos do Windows acompanham o tema da barra superior.
+      window.talentumWindow?.setTheme?.(dark ? 'dark' : 'light');
     };
     apply();
     media.addEventListener('change', apply);

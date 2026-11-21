@@ -1,13 +1,23 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 window.addEventListener('DOMContentLoaded', () => {
-  document.documentElement.classList.add('electron');
+  // O sistema decide a moldura: botões nativos no macOS e no Windows, desenhados no Linux.
+  document.documentElement.classList.add('electron', `platform-${process.platform}`);
 });
 
 contextBridge.exposeInMainWorld('talentumWindow', {
   minimize: () => ipcRenderer.send('window:minimize'),
   toggleMaximize: () => ipcRenderer.send('window:toggle-maximize'),
   close: () => ipcRenderer.send('window:close'),
+  // Sistema, disposição dos botões configurada no Linux e estado da janela.
+  chrome: () => ipcRenderer.invoke('window:chrome'),
+  // Só 'light' ou 'dark': o processo principal escolhe as cores dos botões nativos do Windows.
+  setTheme: (theme) => ipcRenderer.send('window:theme', theme === 'dark' ? 'dark' : 'light'),
+  onStateChange: (callback) => {
+    const listener = (_event, state) => callback({ maximized: Boolean(state?.maximized), fullscreen: Boolean(state?.fullscreen) });
+    ipcRenderer.on('window:state', listener);
+    return () => ipcRenderer.removeListener('window:state', listener);
+  },
   // O segredo vive no processo principal; só a janela do app o recebe, por IPC.
   bootstrapSecret: () => ipcRenderer.invoke('app:bootstrap-secret'),
   // Pede ao processo principal que baixe, verifique e execute o instalador da

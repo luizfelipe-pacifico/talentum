@@ -1,0 +1,136 @@
+name: Desktop
+
+# Gera os instaladores de teste em cada sistema e abre o pacote antes de
+# guardá-lo (docs/BEST_PRACTICES.md, "Desktop packages"). Sem assinatura: os
+# artefatos servem para teste, nunca para publicação.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - electron/**
+      - packaging/**
+      - prisma/**
+      - scripts/desktop-*.mjs
+      - next.config.ts
+      - package.json
+      - pnpm-lock.yaml
+      - .github/workflows/desktop.yml
+  push:
+    branches: [main]
+    paths:
+      - electron/**
+      - packaging/**
+      - prisma/**
+      - scripts/desktop-*.mjs
+      - next.config.ts
+      - package.json
+      - pnpm-lock.yaml
+      - .github/workflows/desktop.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-2025
+            build: --win nsis --x64
+            artifacts: |
+              release/*.exe
+          - name: macOS arm64 (Apple silicon)
+            os: macos-15
+            # Assinatura ad hoc: o Apple silicon não executa binário sem assinatura.
+            # Sem Developer ID, o runtime reforçado e a notarização ficam desligados.
+            build: --mac dmg zip --arm64 -c.mac.identity=- -c.mac.hardenedRuntime=false -c.mac.notarize=false
+            artifacts: |
+              release/*.dmg
+              release/*.zip
+          - name: macOS x64 (Intel)
+            os: macos-15-intel
+            build: --mac dmg zip --x64 -c.mac.identity=- -c.mac.hardenedRuntime=false -c.mac.notarize=false
+            artifacts: |
+              release/*.dmg
+              release/*.zip
+          - name: Linux x64
+            os: ubuntu-24.04
+            build: --linux AppImage deb --x64
+            artifacts: |
+              release/*.AppImage
+              release/*.deb
+    env:
+      # Nenhum certificado é procurado na máquina do CI.
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      # node_modules plano, sem links simbólicos: o pacote do Windows perdia os
+      # links do layout padrão do pnpm ("Cannot find package '@libsql/core'").
+      # Pelo ambiente, para valer em todo comando: o pnpm reinstala antes de cada
+      # script com a configuração ativa. Recomendação do electron-builder para
+      # pnpm; o desenvolvimento não muda.
+      pnpm_config_node_linker: hoisted
+      DATABASE_URL: file:./temp/desktop.db
+    steps:
+      # Actions fixadas por SHA: uma tag pode ser movida para outro código.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.1.2
+          run_install: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm desktop:prepare
+      - run: pnpm exec electron-builder ${{ matrix.build }} --publish never
+      # No Linux o teste roda no app instalado pelo .deb, como uma pessoa usaria:
+      # o pós-instalação ajusta o chrome-sandbox e o perfil do AppArmor do Ubuntu
+      # 24.04, sem o qual o Chromium recusa abrir com o sandbox.
+      - name: Install the deb and smoke test it (Linux, virtual display)
+        if: runner.os == 'Linux'
+        env:
+          SMOKE_SCREENSHOT: release/smoke-screenshot.png
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb ./release/*.deb
+          grep -q '^StartupWMClass=talentum$' /usr/share/applications/talentum.desktop
+          test -f /usr/share/icons/hicolor/512x512/apps/talentum.png
+          xvfb-run --auto-servernum pnpm desktop:smoke /opt/Talentum
+      - name: Smoke test
+        if: runner.os != 'Linux'
+        env:
+          SMOKE_SCREENSHOT: release/smoke-screenshot.png
+        run: pnpm desktop:smoke
+      - name: SHA-256 checksums
+        if: always()
+        shell: bash
+        run: |
+          cd release
+          for file in *.exe *.dmg *.zip *.AppImage *.deb; do
+            [ -f "$file" ] || continue
+            if command -v sha256sum >/dev/null; then sha256sum "$file"; else shasum -a 256 "$file"; fi
+          done > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      # Também quando o teste falha: o instalador e a captura ajudam a diagnosticar.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: talentum-${{ runner.os }}-${{ runner.arch }}
+          path: |
+            ${{ matrix.artifacts }}
+            release/SHA256SUMS.txt
+            release/smoke-screenshot.png
+          if-no-files-found: warn
+          retention-days: 14
