@@ -4,9 +4,8 @@ import { readSessionToken } from '@/server/vault/session';
 import { db } from '@/server/db';
 import { getLocalProfileId } from '@/server/profile';
 import { DUE_SOON_DAYS, localAlerts } from '@/server/alerts';
-import { loadAlertInputs, loadConsolidatedBalance, loadOpenCardStatements } from '@/server/dashboard-queries';
+import { loadAlertInputs, loadCommittedObligations, loadConsolidatedBalance } from '@/server/dashboard-queries';
 import {
-  cardStatementObligations,
   committedSummary,
   dailyAverageCents,
   endOfMonth,
@@ -88,10 +87,9 @@ export async function GET(request: Request) {
       where: { profileId, occurredOn: { gte: previous.start, lte: previous.end } },
       select: transactionSelect,
     }),
-    db.scheduledObligation.findMany({
-      where: { profileId, status: 'open', dueDate: { lte: periodEnd } },
-      select: { amountCents: true, dueDate: true, status: true, isEstimated: true },
-    }),
+    // Compromissos e faturas em aberto, sem contar duas vezes a fatura também
+    // cadastrada como compromisso (docs/PRODUCT.md, V).
+    loadCommittedObligations(profileId, periodEnd),
     db.reconciliationItem.count({ where: { profileId, status: 'pending' } }),
     db.importBatch.count({ where: { profileId, status: 'completed' } }),
     // Alertas de vencimento olham alguns dias além do mês: o dia 2 do mês
@@ -103,9 +101,7 @@ export async function GET(request: Request) {
 
   const currentExpenses = expensesCents(currentRows.map(toInput));
   const previousExpenses = expensesCents(previousRows.map(toInput));
-  // Faturas de cartão em aberto são o segundo termo do comprometido (docs/PRODUCT.md, V).
-  const cardStatements = await loadOpenCardStatements(profileId, periodEnd);
-  const committed = committedSummary([...obligations, ...cardStatementObligations(cardStatements)], periodEnd);
+  const committed = committedSummary(obligations, periodEnd);
 
   return NextResponse.json(
     {

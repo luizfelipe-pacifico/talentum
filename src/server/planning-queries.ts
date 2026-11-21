@@ -8,7 +8,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { db } from '@/server/db';
 import { committedCents, endOfMonth, riskFreeBalanceCents, type TransactionInput } from '@/server/dashboard-metrics';
-import { loadConsolidatedBalance, loadCoverage, loadOpenObligations, toTransactionInput, transactionSelect } from '@/server/dashboard-queries';
+import { loadCommittedObligations, loadConsolidatedBalance, loadCoverage, toTransactionInput, transactionSelect } from '@/server/dashboard-queries';
 import { survivalStatus } from '@/server/debt-metrics';
 
 /* ── Validação de entrada ──────────────────────────────────────── */
@@ -93,7 +93,8 @@ export { loadCoverage };
 export async function loadRiskFreeBalance(profileId: string, today: Date): Promise<bigint | null> {
   const balance = await loadConsolidatedBalance(profileId);
   if (balance.knownAccounts === 0) return null;
-  const obligations = await loadOpenObligations(profileId, endOfMonth(today));
+  // A mesma lista do painel: compromissos e faturas, sem duplicidade (docs/PRODUCT.md, V).
+  const obligations = await loadCommittedObligations(profileId, endOfMonth(today));
   return riskFreeBalanceCents(balance.cents, committedCents(obligations, endOfMonth(today)));
 }
 

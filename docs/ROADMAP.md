@@ -188,7 +188,7 @@ Status (**Current**): deterministic categorization by local rules with confidenc
 
 **Exit:** the first MVP release for Windows and Linux, with installation, usage, security and limitations documentation.
 
-Partial state (**Current**): all dashboard elements with pure tested formulas, open card statements counted as committed, one balance and one reference currency for the verdict and the projection (L-4 resolved), local due-date and stale-data alerts, empty and error states in both themes and end-to-end tests. **Open:** a bill entered both as an obligation and as a card statement is subtracted twice. **Planned:** release documentation for the first installer.
+Partial state (**Current**): all dashboard elements with pure tested formulas, open card statements counted as committed, one balance and one reference currency for the verdict and the projection (L-4 resolved), local due-date and stale-data alerts, empty and error states in both themes and end-to-end tests. A bill entered both as an obligation and as a card statement is subtracted once: an obligation linked to a card gives way to that card's statement of the same month (**Current**, see [PRODUCT.md](PRODUCT.md), V). **Planned:** release documentation for the first installer.
 
 ## Later stages: one macro-feature per stage
 

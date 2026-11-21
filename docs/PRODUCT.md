@@ -724,7 +724,7 @@ Status: **Current**. Not part of the MVP scope; delivered as Stage 8 of [ROADMAP
 
 **Done when:** a card and its statement change the committed total of the dashboard; linking the payment removes it; no write duplicates on a repeated click, a repeated file or concurrent requests; every route requires an action code and scopes by profile. **Met:** `tests/cards.test.mjs` (cycle, thermometer, candidates, item keys, dashboard term), `tests/cards-contracts.test.mjs` (migration, routes, screens) and `tests/import-pdf.test.mjs`.
 
-**Planned:** card statements in the onboarding (Block 4 still records answers only), instalment projection into future statements, available limit, statement events in the timeline, earning rules for benefits, and a warning when the same bill also exists as a `ScheduledObligation` (**Open**, it would be subtracted twice).
+**Planned:** card statements in the onboarding (Block 4 still records answers only), instalment projection into future statements, available limit, statement events in the timeline, and earning rules for benefits. **Current:** an obligation linked to a card does not weigh when that card has a statement due in the same month, so the bill is not subtracted twice (see V).
 
 ## Onboarding and initial financial snapshot
 
@@ -1274,7 +1274,19 @@ SaldoLivreDeRisco = ConsolidatedBalance
                         and profileId = profile
 ```
 
-A statement weighs by **what is still owed**: a partial payment already left the bank account and is in the consolidated balance, so subtracting the full total would count it twice. A paid or cancelled statement does not weigh. An overdue, unpaid statement keeps weighing (on the first day of the projection, like an overdue obligation). An estimated statement (`isEstimated`) is counted in `committedEstimatedCount`, so the verdict warns about it. Both dashboard routes use the same pure function (`cardStatementObligations` in `src/server/dashboard-metrics.ts`, unit-tested in `tests/cards.test.mjs`). **Open:** a bill registered both as an obligation and as a card statement is subtracted twice.
+A statement weighs by **what is still owed**: a partial payment already left the bank account and is in the consolidated balance, so subtracting the full total would count it twice. A paid or cancelled statement does not weigh. An overdue, unpaid statement keeps weighing (on the first day of the projection, like an overdue obligation). An estimated statement (`isEstimated`) is counted in `committedEstimatedCount`, so the verdict warns about it. Both dashboard routes use the same pure function (`cardStatementObligations` in `src/server/dashboard-metrics.ts`, unit-tested in `tests/cards.test.mjs`).
+
+**A bill entered as an obligation and as a card statement weighs once (Current).** Before Stage 8 a card bill was entered as a `ScheduledObligation`; a person who also tracks the statement of that card would see the same amount subtracted twice. An obligation can now be linked to the card whose bill it represents (`ScheduledObligation.creditCardId`, chosen in the `Fatura de cartão` field of `/extratos/recorrencias`, shown when at least one card exists). The rule:
+
+```text
+an open ScheduledObligation o is left out of the committed total when
+  o.creditCardId is set
+  and a CardStatement s exists with s.creditCardId = o.creditCardId,
+      s.status ≠ 'cancelled'
+      and the calendar month of s.dueDate = the calendar month of o.dueDate
+```
+
+The statement wins because it is the more precise source: it knows the closing total and the payments already reconciled, while the obligation is an amount typed in advance. A **paid** statement also covers the obligation: the bill already left the bank account and is in the consolidated balance. A **cancelled** statement covers nothing, so the obligation weighs again. The match is by card and due month, not by day, because the typed due date and the statement's due date often differ by a weekend or a holiday shift; `CardStatement` is unique per card and due date, so a card has one statement per month in practice. An obligation **without** a link is never removed: matching by description or amount would be a guess, and silently dropping a real commitment would make the verdict optimistic (R-29). The pure rule is `withoutBillsCoveredByStatements` in `src/server/dashboard-metrics.ts`; `loadCommittedObligations` in `src/server/dashboard-queries.ts` applies it and is the single source of the committed list for `GET /api/dashboard`, `GET /api/dashboard/risk-free-balance` and the survival status (`loadSurvival`, which until this change counted obligations only and left card statements out). Regression test: `tests/regression/bill-as-obligation-and-card-statement-subtracted-twice.test.mjs`. Due-date alerts still list the obligation itself: they warn about a date, not an amount.
 
 #### I-1 — Consolidated balance
 
@@ -1618,7 +1630,7 @@ Product-level items that need a decision. Onboarding decisions 1–10 and Dashbo
 8. **Cloud-track operational state:** Worker publication and remote D1 migration status were reported in the original plan but cannot be verified from the repository.
 9. ~~**Import formats in onboarding copy.**~~ **Resolved:** Feature 4, the implemented onboarding step and [ROADMAP.md](ROADMAP.md) MVP 4 all use CSV and OFX.
 10. **Packaged-app smoke test:** the per-run bootstrap secret (Current in code, delivered to the window over trusted IPC) and the migration startup of the packaged app have not been exercised end to end on a packaged build; the security side is owned by [SECURITY.md — Open items](SECURITY.md#open-items).
-11. **Card bill counted twice:** a bill registered as a `ScheduledObligation` (the MVP representation) and also as a `CardStatement` is subtracted twice from the Saldo Livre de Risco. Decide between a link from the obligation to the statement, a warning on the card screen, or migrating card obligations into statements.
+11. **Card bill counted twice (resolved):** a bill registered as a `ScheduledObligation` and also as a `CardStatement` was subtracted twice from the Saldo Livre de Risco. Resolved with an explicit link from the obligation to the card (`creditCardId`, migration `obligation_credit_card`): the statement of the same card and due month wins. Rule and reasoning in V.
 
 ## References
 
