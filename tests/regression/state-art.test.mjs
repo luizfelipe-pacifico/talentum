@@ -13,9 +13,10 @@ const map = await read('docs/DESIGN-SYSTEM.md');
 const KEYS = [...map.matchAll(/\| `([a-z-]+)` \|$/gm)].map((m) => m[1]);
 const LP_KEYS = ['nao-encontrada', 'erro-tela', 'sem-versoes'];
 
-test('o mapa lista as 20 chaves de ilustração', () => {
-  // nova-versao entrou no mapa quando o aviso de nova versão passou a usá-la.
-  assert.equal(KEYS.length, 20);
+test('o mapa lista as 21 chaves de ilustração', () => {
+  // nova-versao entrou no mapa quando o aviso de nova versão passou a usá-la;
+  // cofre-trancado, quando as telas de bloqueio passaram a usá-la.
+  assert.equal(KEYS.length, 21);
 });
 
 test('cada chave tem um SVG vetorial leve no app e, quando é da LP, também na LP', async () => {
@@ -66,6 +67,7 @@ test('cada estado mostra a sua ilustração', async () => {
     'src/components/import-wizard.tsx': ['importar-extrato'],
     'src/components/overlays.tsx': ['sem-notificacoes', 'sem-contas', 'importar-extrato'],
     'src/components/update-notice.tsx': ['nova-versao'],
+    'src/components/vault-screens.tsx': ['cofre-trancado'],
     'src/app/not-found.tsx': ['nao-encontrada'],
     'src/app/error.tsx': ['erro-tela'],
     'apps/web/src/app/not-found.tsx': ['nao-encontrada'],

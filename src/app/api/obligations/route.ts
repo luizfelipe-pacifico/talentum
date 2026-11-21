@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { db } from '@/server/db';
 import { fail, guardWithProfile, isDenied, ok, readJson } from '@/server/http';
@@ -11,6 +12,8 @@ const obligationSchema = z.object({
   /* Cartão cuja fatura este compromisso representa. Com fatura do mesmo cartão
      e mês, o painel não desconta o compromisso (docs/PRODUCT.md, V). */
   creditCardId: z.string().uuid().nullable().optional(),
+  /* Uma chave por envio do formulário: o reenvio devolve o mesmo compromisso. */
+  idempotencyKey: z.string().uuid(),
 }).strict();
 
 export async function GET(request: Request) {
@@ -31,6 +34,19 @@ export async function POST(request: Request) {
   if (accountId && !account) return fail('ACCOUNT_NOT_FOUND', 'A conta informada não foi encontrada.', 404);
   if (categoryId && !category) return fail('CATEGORY_NOT_FOUND', 'A categoria não foi encontrada.', 404);
   if (creditCardId && !card) return fail('CARD_NOT_FOUND', 'O cartão informado não foi encontrado.', 404);
-  const obligation = await db.scheduledObligation.create({ data: { profileId: guarded.profileId, ...parsed.data, dueDate: new Date(parsed.data.dueDate) }, select: { id: true } });
-  return ok({ obligationId: obligation.id }, 201);
+  const key = { profileId: guarded.profileId, idempotencyKey: parsed.data.idempotencyKey };
+  // Reenvio do mesmo formulário (duplo clique, nova tentativa após falha de rede): devolve o que já existe.
+  const previous = await db.scheduledObligation.findFirst({ where: { profileId: guarded.profileId, idempotencyKey: key.idempotencyKey }, select: { id: true } });
+  if (previous) return ok({ obligationId: previous.id }, 200);
+  try {
+    const created = await db.scheduledObligation.create({ data: { profileId: guarded.profileId, ...parsed.data, dueDate: new Date(parsed.data.dueDate) }, select: { id: true } });
+    return ok({ obligationId: created.id }, 201);
+  } catch (error) {
+    // Dois pedidos simultâneos passam pela consulta acima; a restrição única escolhe o vencedor.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      const winner = await db.scheduledObligation.findFirst({ where: key, select: { id: true } });
+      if (winner) return ok({ obligationId: winner.id }, 200);
+    }
+    throw error;
+  }
 }

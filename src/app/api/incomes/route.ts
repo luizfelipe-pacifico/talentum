@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { db } from '@/server/db';
 import { fail, guardWithProfile, isDenied, ok, readJson } from '@/server/http';
@@ -7,6 +8,8 @@ const schema = z.object({
   description: z.string().trim().min(1).max(100), amountCents: cents,
   frequency: z.enum(['once', 'weekly', 'biweekly', 'monthly', 'variable']),
   accountId: z.string().uuid().nullable().optional(), nextExpectedDate: z.string().datetime().nullable().optional(),
+  /* Uma chave por envio do formulário: o reenvio devolve a mesma fonte. */
+  idempotencyKey: z.string().uuid(),
 }).strict();
 
 export async function GET(request: Request) {
@@ -22,6 +25,19 @@ export async function POST(request: Request) {
     const account = await db.account.findFirst({ where: { id: parsed.data.accountId, profileId: guarded.profileId }, select: { id: true } });
     if (!account) return fail('ACCOUNT_NOT_FOUND', 'A conta informada não foi encontrada.', 404);
   }
-  const income = await db.incomeSource.create({ data: { profileId: guarded.profileId, ...parsed.data, nextExpectedDate: parsed.data.nextExpectedDate ? new Date(parsed.data.nextExpectedDate) : null }, select: { id: true } });
-  return ok({ incomeId: income.id }, 201);
+  const key = { profileId: guarded.profileId, idempotencyKey: parsed.data.idempotencyKey };
+  // Reenvio do mesmo formulário (duplo clique, nova tentativa após falha de rede): devolve o que já existe.
+  const previous = await db.incomeSource.findFirst({ where: { profileId: guarded.profileId, idempotencyKey: key.idempotencyKey }, select: { id: true } });
+  if (previous) return ok({ incomeId: previous.id }, 200);
+  try {
+    const created = await db.incomeSource.create({ data: { profileId: guarded.profileId, ...parsed.data, nextExpectedDate: parsed.data.nextExpectedDate ? new Date(parsed.data.nextExpectedDate) : null }, select: { id: true } });
+    return ok({ incomeId: created.id }, 201);
+  } catch (error) {
+    // Dois pedidos simultâneos passam pela consulta acima; a restrição única escolhe o vencedor.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      const winner = await db.incomeSource.findFirst({ where: key, select: { id: true } });
+      if (winner) return ok({ incomeId: winner.id }, 200);
+    }
+    throw error;
+  }
 }

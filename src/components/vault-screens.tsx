@@ -12,6 +12,7 @@
 import Image from 'next/image';
 import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { ApiError } from '@/lib/api-client';
+import { StateArt } from '@/components/state-art';
 import { assessPassword, PASSWORD_MIN_LENGTH, passwordProblemMessage } from '@/lib/password-policy';
 import { vault } from '@/lib/vault-client';
 import logoDark from '../../icon-talentum-dark.svg';
@@ -19,7 +20,7 @@ import logoLight from '../../icon-talentum-light.svg';
 
 /* ── Peças comuns ─────────────────────────────────────────────── */
 
-export function LockLayout({ eyebrow, title, children, wide = false }: { eyebrow?: string; title: string; children: ReactNode; wide?: boolean }) {
+export function LockLayout({ eyebrow, title, children, wide = false, art = false }: { eyebrow?: string; title: string; children: ReactNode; wide?: boolean; art?: boolean }) {
   const heading = useRef<HTMLHeadingElement>(null);
   // Cada passo novo leva o foco ao título: leitor de tela anuncia onde a pessoa está.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the title is the trigger for moving focus to the new step
@@ -39,6 +40,14 @@ export function LockLayout({ eyebrow, title, children, wide = false }: { eyebrow
           </span>
           <span className="vault-wordmark">Talentum</span>
         </div>
+        {/* O cofre trancado diz, antes de qualquer frase, que os dados estão guardados
+            e pedem a chave. Só no primeiro uso e no desbloqueio; os passos de código
+            e recuperação já são longos. Decorativa: o texto se sustenta sozinho. */}
+        {art && (
+          <div className="vault-art">
+            <StateArt name="cofre-trancado" size="sm" />
+          </div>
+        )}
         {eyebrow && <p className="eyebrow">{eyebrow}</p>}
         <h1 className="vault-title" ref={heading} tabIndex={-1}>
           {title}
@@ -224,7 +233,7 @@ export function SetupScreen({ hasExistingData, onCreated }: { hasExistingData: b
   }
 
   return (
-    <LockLayout eyebrow="Proteção dos dados · passo 1 de 2" title="Proteja seus dados">
+    <LockLayout eyebrow="Proteção dos dados · passo 1 de 2" title="Proteja seus dados" art>
       <p className="vault-lead">Crie a senha que abre o Talentum neste computador. Seus dados financeiros ficam cifrados e só podem ser lidos com essa senha ou com o código de recuperação que você recebe no próximo passo.</p>
       {hasExistingData && (
         <p className="vault-note">
@@ -386,7 +395,7 @@ export function UnlockScreen({
   }
 
   return (
-    <LockLayout title="Desbloquear o Talentum">
+    <LockLayout title="Desbloquear o Talentum" art>
       <p className="vault-lead">{totpEnabled ? 'Digite a senha deste computador e o código do aplicativo autenticador.' : 'Digite a senha deste computador para ver seus dados.'}</p>
       <form className="vault-form" onSubmit={submit} noValidate>
         <PasswordField label="Senha" value={password} onChange={setPassword} autoComplete="current-password" autoFocus />

@@ -18,6 +18,14 @@
   --sunken: #eee9dd;
   --amber-hover: #9f6533;
   --on-amber: #fffdf8;
+  /* O âmbar puro fica para borda, foco e marca (3:1). Texto claro sobre
+     preenchimento usa --amber-strong (4,7:1) e texto em âmbar usa
+     --amber-text (4,7:1 ou mais sobre fundo, superfície e área rebaixada),
+     os mesmos papéis de --lp-amber-strong e --lp-amber-text na LP. */
+  --amber-strong: #9f6533;
+  --amber-strong-hover: #8a5629;
+  --amber-text: #8f5a24;
+  --amber-text-hover: #75491c;
 
   --ok: #4a6741;
   --warn: #8a6d1b;
@@ -79,17 +87,36 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* Seletor de linha (estado, fatura de cartão): o mesmo campo de .field, mais baixo. */
+.entity-list select {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 36px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  padding: 6px 8px;
+  font-size: 14px;
+  color: var(--ink);
+}
+
 .entity-list li > span:first-child {
   display: grid;
   gap: var(--space-1);
 }
 
 html.dark {
+  /* Controles nativos (select, opções, calendário, rolagem) no esquema escuro.
+     tests/regression/dark-theme-native-controls-unreadable.test.mjs */
+  color-scheme: dark;
   --bg: #211e1a;
   --surface: #2a2622;
   --ink: #f1ece3;
   --ink2: #b7b2a9;
   --walnut: #8a6a57;
+  /* No escuro o âmbar puro dá 4,1:1 sobre a superfície: o texto clareia. */
+  --amber-text: #c98a4f;
+  --amber-text-hover: #d4a06a;
   --line: rgb(241 236 227 / 14%);
   --line-strong: rgb(241 236 227 / 28%);
   --sunken: #1d1a16;
@@ -131,12 +158,12 @@ body {
 }
 
 a {
-  color: var(--amber);
+  color: var(--amber-text);
   text-decoration: none;
 }
 
 a:hover {
-  color: var(--amber-hover);
+  color: var(--amber-text-hover);
   text-decoration: underline;
 }
 
@@ -772,7 +799,7 @@ p {
   font-size: 11px;
   line-height: 16px;
   font-weight: 700;
-  background: var(--amber);
+  background: var(--amber-strong);
   color: var(--on-amber);
   border-radius: 8px;
   padding: 0 6px;
@@ -881,6 +908,42 @@ p {
   margin-left: 4px;
 }
 
+/* Janela baixa (TV pequena, 960 × 540; notebook com zoom): densidade compacta
+   no menu, como o Finder, o Gmail e o Material fazem quando falta altura. As
+   sete áreas cabem sem rolar; alvo de clique continua com 34 px.
+   tests/regression/sidebar-cut-on-short-tv.test.mjs */
+@media (min-width: 601px) and (max-height: 640px) {
+  .sidebar {
+    gap: 4px;
+    padding: 12px 12px;
+  }
+
+  .sidebar-brand {
+    min-height: 36px;
+  }
+
+  .sidebar-account {
+    padding: 6px 10px;
+    margin-bottom: 0;
+  }
+
+  .nav-item {
+    padding: 7px 10px;
+  }
+
+  .sidebar-import {
+    padding: 7px 10px;
+  }
+
+  .sidebar-quiet {
+    padding: 7px 10px;
+  }
+
+  .sidebar-collapse {
+    padding: 8px 10px 0;
+  }
+}
+
 /* ── Topbar ───────────────────────────────────────────────────── */
 
 .topbar {
@@ -935,7 +998,7 @@ p {
 
 .icon-button:hover {
   border-color: var(--amber);
-  color: var(--amber);
+  color: var(--amber-text);
 }
 
 .notif-count {
@@ -944,7 +1007,7 @@ p {
   right: -6px;
   min-width: 18px;
   height: 18px;
-  background: var(--amber);
+  background: var(--amber-strong);
   color: var(--on-amber);
   border-radius: 9px;
   font-size: 10px;
@@ -979,7 +1042,7 @@ p {
 }
 
 .segmented button[aria-pressed='true'] {
-  background: var(--amber);
+  background: var(--amber-strong);
   color: var(--on-amber);
 }
 
@@ -1286,7 +1349,7 @@ p {
 
 .btn:hover {
   border-color: var(--amber);
-  color: var(--amber);
+  color: var(--amber-text);
   text-decoration: none;
 }
 
@@ -1296,15 +1359,15 @@ p {
 }
 
 .btn-primary {
-  background: var(--amber);
+  background: var(--amber-strong);
   color: var(--on-amber);
-  border-color: var(--amber);
+  border-color: var(--amber-strong);
   padding: 11px 18px;
 }
 
 .btn-primary:hover {
-  background: var(--amber-hover);
-  border-color: var(--amber-hover);
+  background: var(--amber-strong-hover);
+  border-color: var(--amber-strong-hover);
   color: var(--on-amber);
 }
 
@@ -1333,12 +1396,12 @@ p {
   padding: 8px 0 0;
   font-size: 13px;
   font-weight: 600;
-  color: var(--amber);
+  color: var(--amber-text);
   text-decoration: none;
 }
 
 .btn-link:hover {
-  color: var(--amber-hover);
+  color: var(--amber-text-hover);
   text-decoration: underline;
 }
 
@@ -1375,8 +1438,8 @@ p {
 }
 
 .chip-toggle[aria-pressed='true'] {
-  border-color: var(--amber);
-  background: var(--amber);
+  border-color: var(--amber-strong);
+  background: var(--amber-strong);
   color: var(--on-amber);
 }
 
@@ -1397,7 +1460,7 @@ p {
 
 .pick:hover {
   border-color: var(--amber);
-  color: var(--amber);
+  color: var(--amber-text);
 }
 
 /* ── Chips de status ──────────────────────────────────────────── */
@@ -1958,7 +2021,7 @@ p {
 
 .close-button:hover {
   border-color: var(--amber);
-  color: var(--amber);
+  color: var(--amber-text);
 }
 
 .account-popover {
@@ -2144,7 +2207,7 @@ kbd {
 
 .guide-toc a:hover {
   border-color: var(--amber);
-  color: var(--amber);
+  color: var(--amber-text);
   text-decoration: none;
 }
 
@@ -2246,7 +2309,7 @@ kbd {
 
 .spec-copy:hover {
   border-color: var(--amber);
-  color: var(--amber);
+  color: var(--amber-text);
 }
 
 .swatch-grid {
@@ -3169,7 +3232,7 @@ html.dark .state-art-escuro {
 }
 
 .entity-list li.is-selected > span:first-child strong {
-  color: var(--amber);
+  color: var(--amber-text);
 }
 
 .h-sub {
