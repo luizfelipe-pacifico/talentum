@@ -227,6 +227,17 @@ async function listeningPorts(rootPid) {
       }
     }
   }
+  /* No Linux o `ss` informa o dono de cada porta; o lsof do runner do Ubuntu
+     não listava nenhuma porta, nem fora do filtro. */
+  if (process.platform === 'linux') {
+    const { stdout: sockets } = await run('ss', ['-Hltnp']).catch((error) => ({ stdout: String(error.stdout ?? '') }));
+    return sockets
+      .split('\n')
+      .filter((line) => [...line.matchAll(/pid=(\d+)/g)].some((match) => tree.has(Number(match[1]))))
+      .map((line) => line.match(/127\.0\.0\.1:(\d+)/)?.[1])
+      .filter(Boolean)
+      .map(Number);
+  }
   const { stdout } = await lsof(['-nP', '-a', '-p', [...tree].join(','), '-iTCP@127.0.0.1', '-sTCP:LISTEN', '-Fn']);
   return [...stdout.matchAll(/^n127\.0\.0\.1:(\d+)$/gm)].map((match) => Number(match[1]));
 }
@@ -256,7 +267,7 @@ async function diagnose(rootPid) {
   } else {
     const { stdout } = await run('ps', ['-A', '-o', 'pid=,ppid=,command=']).catch(() => ({ stdout: '' }));
     console.log(stdout.split('\n').filter((line) => /talentum|Talentum|next-server/.test(line)).join('\n'));
-    const listening = await lsof(['-nP', '-iTCP', '-sTCP:LISTEN']);
+    const listening = process.platform === 'linux' ? await run('ss', ['-Hltnp']).catch(() => ({ stdout: '' })) : await lsof(['-nP', '-iTCP', '-sTCP:LISTEN']);
     console.log(listening.stdout);
   }
   console.log(`processo raiz: ${rootPid}; portas da árvore: ${JSON.stringify(await listeningPorts(rootPid))}`);

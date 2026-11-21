@@ -104,7 +104,7 @@ jobs:
           SMOKE_SCREENSHOT: release/smoke-screenshot.png
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb lsof ./release/*.deb
+          sudo apt-get install -y xvfb ./release/*.deb
           grep -q '^StartupWMClass=talentum$' /usr/share/applications/talentum.desktop
           test -f /usr/share/icons/hicolor/512x512/apps/talentum.png
           xvfb-run --auto-servernum pnpm desktop:smoke /opt/Talentum
