@@ -228,7 +228,7 @@ html:has(.lp-root) {
 
 .lp-h-display-xl {
   font-family: var(--lp-display);
-  font-size: clamp(34px, 5vw, 72px);
+  font-size: clamp(34px, 5.5vw, 96px);
   line-height: 1.05;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -284,14 +284,14 @@ html:has(.lp-root) {
 
 .lp-quote p {
   font-family: var(--lp-display);
-  font-size: clamp(22px, 2.6vw, 30px);
+  font-size: clamp(21px, 2.6vw, 28px);
   line-height: 1.35;
   text-wrap: balance;
 }
 
 .lp-quote-inline {
   font-family: var(--lp-display);
-  font-size: 19px;
+  font-size: 21px;
   line-height: 30px;
   color: var(--lp-ink);
   max-width: 58ch;
@@ -317,6 +317,9 @@ html:has(.lp-root) {
 .lp-section {
   position: relative;
   padding-block: clamp(72px, 9vw, 128px);
+  /* Antes de aparecer, a entrada pela direita fica 26px deslocada e passava da
+     borda da tela; clip recorta sem criar contêiner de rolagem. */
+  overflow-x: clip;
 }
 
 .lp-section-sunken {
@@ -406,7 +409,7 @@ html:has(.lp-root) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .lp-slab-cards.lp-grid-3 {
+  .lp-principles {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
@@ -562,7 +565,7 @@ html:has(.lp-root) {
   min-height: 44px;
   padding: 0 12px;
   border-radius: var(--lp-radius-sm);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
   color: #e6e1d8;
 }
@@ -704,7 +707,7 @@ html:has(.lp-root) {
   align-items: flex-start;
   border-radius: var(--lp-radius-md);
   padding: 16px 18px;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 24px;
   margin-top: 24px;
 }
@@ -800,7 +803,6 @@ html:has(.lp-root) {
 
 .lp-hero-title {
   grid-column: 1 / -1;
-  font-size: clamp(34px, 5.5vw, 96px);
 }
 
 /* Telas grandes usam a largura máxima de conteúdo do BRANDING (1440px):
@@ -825,7 +827,7 @@ html:has(.lp-root) {
 }
 
 .lp-hero-copy .lp-lede {
-  font-size: clamp(18px, 1.4vw, 20px);
+  font-size: 18px;
   line-height: 1.6;
 }
 
@@ -957,13 +959,15 @@ html:has(.lp-root) {
 }
 
 .lp-panel p {
-  font-size: 15px;
+  font-size: 16px;
   line-height: 24px;
   color: #cfc9c0;
 }
 
-.lp-slab-cards {
-  margin-top: 20px;
+/* Uma coluna por padrão; as três colunas vêm da regra de 720px acima. */
+.lp-principles {
+  display: grid;
+  margin: 20px 0 0;
 }
 
 .lp-ledgers {
@@ -980,7 +984,7 @@ html:has(.lp-root) {
   display: flex;
   gap: 11px;
   align-items: flex-start;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 24px;
   color: #e6e1d8;
 }
@@ -1078,7 +1082,7 @@ html:has(.lp-root) {
 }
 
 .lp-step p {
-  font-size: 15px;
+  font-size: 16px;
   line-height: 24px;
   color: var(--lp-ink2);
 }
@@ -1133,7 +1137,7 @@ html:has(.lp-root) {
 .lp-calc {
   width: 100%;
   border-collapse: collapse;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .lp-calc th {
@@ -1161,7 +1165,7 @@ html:has(.lp-root) {
   font-weight: 700;
   color: var(--lp-ink);
   font-family: var(--lp-display);
-  font-size: 19px;
+  font-size: 21px;
 }
 
 .lp-root .lp-checks {
@@ -1374,12 +1378,12 @@ html:has(.lp-root) {
 }
 
 .lp-pillar h3 {
-  font-size: 17px;
+  font-size: 21px;
   font-weight: 700;
 }
 
 .lp-pillar p {
-  font-size: 15px;
+  font-size: 16px;
   line-height: 24px;
   color: var(--lp-ink2);
 }
@@ -1470,26 +1474,25 @@ html:has(.lp-root) {
 }
 
 .lp-download {
-  margin-top: 44px;
+  display: grid;
+  gap: 20px;
+  margin: 44px 0 0;
+  padding: 0;
+  list-style: none;
 }
 
+/* Uma linha por sistema, como nas páginas de download: nome, o que sai e o
+   estado. Sem caixa: a lista fica sobre o fundo da seção. */
 .lp-platform {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px 12px;
   align-items: center;
-  gap: 16px;
-  background: var(--lp-surface);
-  border-radius: var(--lp-radius-md);
-  padding: 20px;
-}
-
-.lp-section-sunken .lp-platform {
-  background: var(--lp-bg);
 }
 
 .lp-platform > i {
-  font-size: 28px;
+  font-size: 22px;
   color: var(--lp-ink2);
-  flex: none;
 }
 
 .lp-platform h3 {
@@ -1498,14 +1501,26 @@ html:has(.lp-root) {
 }
 
 .lp-platform p {
-  font-size: 15px;
+  grid-column: 1 / -1;
+  font-size: 16px;
   line-height: 24px;
   color: var(--lp-ink2);
 }
 
-.lp-platform .lp-chip {
-  margin-left: auto;
-  flex: none;
+@media (min-width: 720px) {
+  .lp-platform {
+    grid-template-columns: auto 136px minmax(0, 1fr) auto;
+    column-gap: 16px;
+  }
+
+  .lp-platform p {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .lp-platform .lp-chip {
+    grid-column: 4;
+  }
 }
 
 /* ── Rodapé ───────────────────────────────────────────────────── */
@@ -1527,7 +1542,7 @@ html:has(.lp-root) {
 }
 
 .lp-footer-col h3 {
-  font-size: 15px;
+  font-size: 14px;
   line-height: 22px;
   font-weight: 700;
   color: var(--lp-ink);
@@ -1538,7 +1553,7 @@ html:has(.lp-root) {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 /* Links do rodapé com altura de toque, sem aumentar o texto. */
@@ -1629,6 +1644,13 @@ html:has(.lp-root) {
     padding-inline: 20px;
   }
 
+  /* Cada frase do lema numa linha: a mais longa mede cerca de 10,9em em
+     Playfair 700, então o corpo acompanha a largura útil (100vw - 2 x 20px). */
+  .lp-hero-title {
+    font-size: max(24px, calc((100vw - 40px) / 11.2));
+    white-space: nowrap;
+  }
+
   .lp-root .lp-cta-row .lp-btn {
     flex: 1 1 auto;
     justify-content: center;
@@ -1648,7 +1670,13 @@ html:has(.lp-root) {
     animation: none !important;
   }
 
-  .lp-reveal {
+  .lp-reveal,
+  .lp-reveal.lp-armed,
+  .lp-armed.lp-reveal-up,
+  .lp-armed.lp-reveal-left,
+  .lp-armed.lp-reveal-right,
+  .lp-armed.lp-reveal-scale,
+  .lp-armed.lp-reveal-blur {
     opacity: 1;
     transform: none;
     filter: none;
@@ -1744,7 +1772,7 @@ html:has(.lp-root) {
 
 .lp-band-art-inner p {
   font-family: var(--lp-display);
-  font-size: clamp(19px, 2.6vw, 26px);
+  font-size: clamp(21px, 2.6vw, 28px);
   line-height: 1.4;
   max-width: 46ch;
 }
@@ -2021,7 +2049,7 @@ html:has(.lp-root) {
   border-radius: var(--lp-radius-sm);
   background: transparent;
   padding: 6px 11px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--lp-ink2);
   cursor: pointer;
@@ -2049,7 +2077,7 @@ html:has(.lp-root) {
 
 .lp-legal-doc h4 {
   font-family: var(--lp-display);
-  font-size: 17px;
+  font-size: 18px;
   line-height: 25px;
   font-weight: 600;
   margin: 26px 0 8px;
@@ -2113,7 +2141,7 @@ html:has(.lp-root) {
   margin-top: 26px;
   padding-top: 14px;
   border-top: 1px solid var(--lp-line);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--lp-ink2);
 }
 
@@ -2328,17 +2356,51 @@ html:has(.lp-root) {
   color: #6f5713;
 }
 
-/* ── Princípios do bloco escuro, sem caixa ────────────────────── */
+/* ── Princípios do bloco escuro: termo e definição, sem caixa ──── */
 
-.lp-slab-cards {
+.lp-principles {
   row-gap: 32px;
   column-gap: clamp(32px, 4vw, 56px);
 }
 
-.lp-slab-cards .lp-panel {
-  background: none;
-  padding: 0;
-  border-radius: 0;
+.lp-principle dt {
+  font-family: var(--lp-display);
+  font-size: 21px;
+  line-height: 28px;
+  font-weight: 600;
+  color: #fffdf8;
+}
+
+.lp-principle dd {
+  margin: 8px 0 0;
+  font-size: 16px;
+  line-height: 24px;
+  color: #cfc9c0;
+}
+
+/* ── Filme do produto, logo abaixo da promessa ─────────────────── */
+
+/* A margem automática repete a do .lp-wrap: o reset de figure a zerava. */
+.lp-root .lp-film {
+  position: relative;
+  margin: clamp(40px, 6vw, 72px) auto 0;
+}
+
+.lp-film-video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--lp-radius-lg);
+  background: #120b06;
+}
+
+.lp-root .lp-film-caption {
+  max-width: var(--lp-prose);
+  margin-top: 14px;
+  font-size: 14px;
+  line-height: 22px;
+  color: #b7b2a9;
 }
 
 /* ── Telas baixas ─────────────────────────────────────────────── */

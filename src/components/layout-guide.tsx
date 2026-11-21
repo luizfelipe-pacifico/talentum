@@ -1011,7 +1011,7 @@ app.open('notif');     // drawer de notificações`}
             <div className="dropzone">
               <i className="bi bi-file-earmark-arrow-up" aria-hidden="true" />
               <p>
-                <strong>Arraste um arquivo CSV ou OFX</strong>
+                <strong>Arraste um arquivo CSV, OFX ou PDF</strong>
               </p>
               <p className="small muted">Formatos aceitos e limite de tamanho precisam estar visíveis neste estado.</p>
               <button type="button" className="btn btn-primary">

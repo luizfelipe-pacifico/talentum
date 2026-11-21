@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 545" role="img" aria-labelledby="titulo">
+  <title id="titulo">Talentum: balança atravessada por uma seta âmbar ascendente</title>
+  <defs>
+    <mask id="vao" maskUnits="userSpaceOnUse" x="0" y="0" width="620" height="545">
+      <rect width="620" height="545" fill="#fff"/>
+      <path d="M292 211 L464 38 L432 6 L528 6 L528 102 L496 70 L292 273 Z" fill="#000" stroke="#000" stroke-width="22" stroke-linejoin="miter"/>
+      <circle cx="97.5" cy="160" r="15" fill="#000"/>
+      <circle cx="521.5" cy="160" r="15" fill="#000"/>
+    </mask>
+  </defs>
+  <g mask="url(#vao)" fill="#F4F1EA">
+    <path d="M95 15 H500 V60 H178 C148 60 132 76 132 106 H95 Z M290 15 H336 V492 H290 Z M190 490 H432 V535 H190 Z M100 160 H522 V184 H100 Z M55 146 H140 A42.5 42.5 0 0 1 55 146 Z M479 146 H564 A42.5 42.5 0 0 1 479 146 Z M8 372 H188 A90 54 0 0 1 8 372 Z M432 372 H612 A90 54 0 0 1 432 372 Z"/>
+    <path d="M97 196 L22 372 M97 196 L174 372 M97 196 V372 M522 196 L446 372 M522 196 L598 372 M522 196 V372" fill="none" stroke="#F4F1EA" stroke-width="11" stroke-linecap="round"/>
+  </g>
+  <path d="M292 211 L464 38 L432 6 L528 6 L528 102 L496 70 L292 273 Z" fill="#B8773D"/>
+</svg>

@@ -1,0 +1,10 @@
+# Master de 60 fps e rodadas de revisão: regeráveis com fonte/render.mjs.
+# A versão servida pela LP fica em apps/web/public/video/.
+resultados/
+rodadas/
+fonte/audio/
+fonte/beats.json
+
+# Renderizador da skill motion-product (modelos/comum/render.mjs, v2.0.1): copiado
+# da skill antes de renderizar, não versionado aqui (ferramenta local de terceiros).
+fonte/render.mjs

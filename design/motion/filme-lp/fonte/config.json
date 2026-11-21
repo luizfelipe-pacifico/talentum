@@ -1,0 +1,48 @@
+{
+  "w": 1920,
+  "h": 1080,
+  "dur": 32,
+  "fps": 60,
+  "bpm": 120,
+  "saida": "talentum-filme.mp4",
+  "marca": {
+    "nome": "Talentum",
+    "fundo": "#241810",
+    "fundoProfundo": "#120b06",
+    "superficie": "#2a2622",
+    "elevado": "#3d3229",
+    "borda": "#3d3229",
+    "texto": "#f4f1ea",
+    "apoio": "#b7b2a9",
+    "acento": "#b8773d",
+    "tintaAcento": "#1a110a",
+    "acentoProfundo": "#3f2a1f",
+    "display": "Playfair Display",
+    "ui": "Montserrat",
+    "fontes": [
+      { "familia": "Montserrat", "peso": "400", "arquivo": "../assets/fontes/montserrat-latin-400-normal.woff2" },
+      { "familia": "Montserrat", "peso": "500", "arquivo": "../assets/fontes/montserrat-latin-500-normal.woff2" },
+      { "familia": "Montserrat", "peso": "600", "arquivo": "../assets/fontes/montserrat-latin-600-normal.woff2" },
+      { "familia": "Montserrat", "peso": "700", "arquivo": "../assets/fontes/montserrat-latin-700-normal.woff2" },
+      { "familia": "Montserrat", "peso": "800", "arquivo": "../assets/fontes/montserrat-latin-800-normal.woff2" },
+      { "familia": "Playfair Display", "peso": "600", "arquivo": "../assets/fontes/playfair-display-latin-600-normal.woff2" },
+      { "familia": "Playfair Display", "peso": "700", "arquivo": "../assets/fontes/playfair-display-latin-700-normal.woff2" }
+    ],
+    "logo": null,
+    "simbolo": {
+      "viewBox": 620,
+      "espessura": 30,
+      "tracos": [
+        "M313 513 V30",
+        "M200 512 H422",
+        "M114 106 V37 H490",
+        "M100 172 H522",
+        "M97 196 L22 372 M97 196 L174 372",
+        "M522 196 L446 372 M522 196 L598 372",
+        "M14 380 Q98 450 182 380",
+        "M438 380 Q522 450 606 380",
+        "M300 260 L500 58 M450 40 H510 V100"
+      ]
+    }
+  }
+}

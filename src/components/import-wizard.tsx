@@ -74,7 +74,7 @@ function FilePicker({ onPick, busy }: { onPick: (file: File) => void; busy: bool
       <p className="eyebrow">Importar extrato</p>
       <h2 className="h-display-lg">Escolha o arquivo do seu banco</h2>
       <p className="muted">
-        Aceita CSV, OFX e PDF. O arquivo é lido no seu dispositivo pelo backend local e não é
+        Aceita CSV, OFX e PDF. O arquivo é lido no seu computador e não é
         enviado à nuvem. Nada é gravado antes de você conferir a leitura.
       </p>
 
