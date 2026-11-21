@@ -109,10 +109,10 @@ function ImportDialog() {
   return <div className="overlay">
     <button type="button" className="overlay-scrim" aria-label="Fechar" onClick={app.close}/>
     <div ref={trapRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Importar extrato" className="dialog dialog-md">
-      <div className="row-between"><div><h2 className="dialog-title">Importar extrato</h2><p className="small muted">CSV ou OFX, processado no seu dispositivo.</p></div><button type="button" className="close-button" onClick={app.close} aria-label="Fechar"><i className="bi bi-x-lg"/></button></div>
+      <div className="row-between"><div><h2 className="dialog-title">Importar extrato</h2><p className="small muted">CSV, OFX ou PDF, processado no seu dispositivo.</p></div><button type="button" className="close-button" onClick={app.close} aria-label="Fechar"><i className="bi bi-x-lg"/></button></div>
       <StateArt name="importar-extrato" size="sm"/>
       <p className="muted">O assistente mostra a leitura do arquivo antes de gravar qualquer coisa: período coberto, lançamentos reconhecidos e linhas com problema.</p>
-      <div className="callout callout-info"><i className="bi bi-shield-lock"/><p className="small">O extrato é lido pelo backend local e não é enviado à nuvem. O conteúdo do arquivo não é armazenado.</p></div>
+      <div className="callout callout-info"><i className="bi bi-shield-lock"/><p className="small">O extrato é lido no seu computador e não é enviado à nuvem. O conteúdo do arquivo não é armazenado.</p></div>
       <div className="row-tight">
         <Link className="btn btn-primary" href="/extratos/importar" onClick={app.close}>Abrir o assistente</Link>
         <button type="button" className="btn btn-neutral" onClick={app.close}>Fechar</button>

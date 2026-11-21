@@ -56,8 +56,8 @@ export function StatementsPage() {
         <StateArt name="sem-lancamentos" />
         <h2 className="h-display">Nenhum lançamento ainda</h2>
         <p className="muted">
-          Importe um extrato em CSV ou OFX. Os lançamentos são gravados no banco local e aparecem
-          aqui exatamente como o backend os devolveu.
+          Importe um extrato em CSV, OFX ou PDF. Os lançamentos são gravados no banco do seu
+          computador e aparecem aqui assim que a importação termina.
         </p>
         <Link className="btn btn-primary" href="/extratos/importar">
           Importar extrato

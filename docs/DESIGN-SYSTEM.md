@@ -481,6 +481,8 @@ Use Montserrat for body text, navigation, buttons and form controls, tables, fil
 
 Use no more than three visibly different type sizes in a single component. Maintain generous line height and avoid long lines; body copy should generally stay between 55 and 75 characters per line. No product text goes below 12 px, and no landing page reading text goes below 13 px.
 
+The landing page uses its own shorter scale (**Current**, 21 November 2026), eight text sizes in `apps/web/src/styles/lp.css`: 13 px (chips, states, legal notes), 14 px (navigation, buttons, captions, footer), 16 px (running text, including card and step text), 18 px (lede), 21 px (card, step and pillar titles), `clamp(21px, 2.6vw, 28px)` (quotes), `clamp(26px, 3.4vw, 44px)` (section titles) and `clamp(34px, 5.5vw, 96px)` (the hero motto). Below 560 px the motto follows the usable width, `max(24px, calc((100vw - 40px) / 11.2))`, so each of its two sentences stays on one line (`tests/regression/lp-hero-motto-four-lines.test.mjs`). Other values in the sheet size icons, not text.
+
 ### Font tokens and loading
 
 The local app self-hosts the fonts through `@fontsource` packages imported in `src/app/layout.tsx` (Montserrat 400/500/600/700, Playfair Display 600/700), with no external font request.
@@ -789,13 +791,22 @@ Each use is recorded here in the same change set:
 
 The landing page keeps its stricter rule: `tests/web-seo.test.mjs` requires every LP icon to be a Bootstrap Icon delivered as inline SVG through `pnpm lp:icones`. A Lucide icon on the LP therefore needs that test and the icon script updated deliberately, with the reason recorded in the table above.
 
+### Product film on the landing page
+
+Status: **Current** (21 November 2026). The hero carries a 32-second advertising film (`apps/web/public/video/talentum-filme.mp4`, poster `talentum-filme-capa.webp`), the page's only moving picture. Its source is in `design/motion/filme-lp/` and is rebuilt with the maintainer's `motion-product` skill (`node render.mjs` inside `fonte/`; the README there lists the steps).
+
+- The application screens in the film are redrawn in canvas from the code, with sizes, colors, fonts and icons measured from the running app on the isolated test server (`pnpm test:manual`) and the same fictitious data seeded there. They must stay identical to the product: this is the one place where the AI-slop review does not restyle anything (CLAUDE.md). Everything else in the film (titles, composition, transitions, copy) follows the copy and AI-slop rules.
+- No screenshot, photograph, real person or real financial value appears in the film. The caption under it says the data is fictitious.
+- The story is the product's focus: the statement comes in, the person confirms only what was in doubt, and the dashboard shows the Saldo Livre de Risco after the commitments. Display type is Playfair Display, labels Montserrat, one accent (amber).
+- When an application screen shown in the film changes, rebuild the film or record the difference in the QA log.
+
 ### Icon delivery on the landing page
 
 The landing page in `apps/web` renders Bootstrap Icons as inline SVG instead of the icon font. `scripts/gerar-icones-lp.mjs` (`pnpm lp:icones`) scans the LP components for every `bi-<name>` in use and copies only those icons from the official `bootstrap-icons` package (MIT license) into `apps/web/src/components/lp/icons.tsx`; it rejects any icon whose `viewBox` is not `0 0 16 16`. `apps/web/src/components/lp/icon.tsx` wraps each one in `<i class="bi">`, so size and color still follow `font-size` and `color`. The family is unchanged; only the delivery is lighter (42 icons at the time of writing, instead of a 131 KB font and a stylesheet with over two thousand classes). Run `pnpm lp:icones` after using a new icon; `tests/web-seo.test.mjs` fails when one is missing.
 
 ### Imagery
 
-- Use illustrations or textures only when they add meaning; avoid decorative stock imagery. The landing page has no photography or video: its engravings were drawn for the project.
+- Use illustrations or textures only when they add meaning; avoid decorative stock imagery. The landing page has no photography or stock footage: its engravings were drawn for the project, and its one video is the product film made from the app's own screens (see [Product film on the landing page](#product-film-on-the-landing-page)).
 - Convert every photographic or illustrative raster image intended for the landing page to WebP before adding it to the production bundle.
 - Export responsive sizes and use the smallest dimensions and quality setting that preserve the intended appearance (for example, the 640 px screenshot variants from `pnpm lp:telas`).
 - Keep source files outside the runtime asset directory; production code references the optimized WebP derivative.
@@ -831,6 +842,7 @@ Under `prefers-reduced-motion: reduce`, all transitions and animations are disab
 - Reveal on scroll: blocks reveal once and stay revealed; the server HTML is visible and only blocks outside the viewport are hidden after hydration, so content is never invisible without JavaScript. A blur variant (`.lp-reveal-blur`) exists for image blocks.
 - The hero renders statically (no reveal) so it does not delay LCP.
 - The screenshots carousel advances on its own every 6 s only while at least 40% of it is on screen and the tab is visible; focus, the pause button and reduced motion stop it. Slides move in 420 ms with `cubic-bezier(0.77, 0, 0.175, 1)` (560 ms before 20 November 2026).
+- The product film below the hero copy starts muted when half of it is on screen and pauses when it leaves or the tab is hidden; it never starts on its own under reduced motion or Save-Data, and after the person pauses it scrolling does not restart it (`apps/web/src/components/lp/film.tsx`). It shows native controls and loads nothing before it plays (`preload="none"`, poster only).
 - No continuous ambient animation (the `Role para ler` cue does not loop), no pointer-following radial glow and no grain texture.
 - Under `prefers-reduced-motion: reduce`, transitions and animations inside `.lp-root` are disabled, reveals are shown immediately, and parallax and tilt are reset to `transform: none`.
 
@@ -1371,3 +1383,29 @@ Layout and craft:
 Validation: the twelve viewport classes, each with the operating system in light and in dark mode (24 renders, Playwright on the production build): no horizontal scroll, no text below 13 px, hero always ebony, no console error. Interaction through the Claude in Chrome extension at desktop size on `127.0.0.1`: section navigation and its active state, the screenshot tabs, arrow keys, pause on focus, the carousel staying still while off screen, no console error; on the system, `/lp` now answers "Página não encontrada". The extension's window could not be narrowed below the desktop width, so phone and tablet sizes were checked with Playwright only.
 
 taste-skill inspector, before → after: FAIL 3 → 2, WARN 6 → 4. Fixed: outlined boxes, rows of identical cards, low contrast, the off-centre margin at 390 px and the long measure. Remaining and accepted: the hero motto wraps to four lines at 390 px (brand motto, kept as in October); fewer than four raster pictures and no video (the LP uses engravings drawn for the project and rejects stock imagery, see Imagery); the parchment palette is the brand's; 13 font sizes; the plate carousel's off-screen slides read as an "empty middle" to the inspector. The `impeccable detect` run flags Montserrat as an overused face; it is the brand's functional typeface and stays.
+
+### Landing page: points that kept it from a 10, 21 November 2026
+
+Method: `impeccable`, `taste-skill` (inspector at 1440, 768 and 390 px), `emil-design-eng` and the animation skills, plus the maintainer's `motion-product` skill for the film. The maintainer asked to fix what kept the 20 November review at 8/10, to make an advertising film if video was needed, and set a standing rule: fix AI slop in everything that surfaces, except the product interface inside the film.
+
+Content made true again after the roadmap merge (PR #10), test-first (`tests/regression/lp-copy-stale-after-roadmap.test.mjs`):
+
+- The import screenshot caption said "Aceita CSV e OFX"; PDF import is **Current** (Stage 7).
+- The ARCA and survival-mode sections had a "Pronto" chip and future-tense copy ("vai usar", "vai mudar"); survival mode now says what the code does: pauses the contribution simulation, orders debts by highest rate or smallest balance and protects essential categories.
+- The "Planejar" step called budget, goals and net worth "próximas etapas"; the area list lacked Planejamento and now mirrors the seven items of the app menu; Invest says its automatic summaries wait on a provider setting.
+- The timeline marked "Cadastro, sessão e downloads autorizados" as done while signed installers are **Planned**; it is "em andamento".
+- The planned line under the Risk-Free Balance table now says what the screen shows today (obligations due in the next three days).
+- In the app, three places still listed "CSV ou OFX" (`tests/regression/app-import-formats-without-pdf.test.mjs`), and two texts said "backend" to the reader; both fixed. The four screenshots were recaptured from a fresh database (the menu now has Planejamento).
+
+Layout and craft:
+
+- Hero motto: four lines at 390 px became two at every width (`tests/regression/lp-hero-motto-four-lines.test.mjs`).
+- Type scale: 20 declared text sizes became the eight in [Type scale](#type-scale); 13 sizes rendered became 8 or 9 depending on the width.
+- A 1 px horizontal scroll at 960, 1024 and 1180 px, caused by the right-entering reveal, is clipped by the sections (`tests/regression/lp-reveal-right-horizontal-scroll.test.mjs`).
+- Defect found while checking the platform list under reduced motion: on phones, whole blocks stayed at opacity 0. `useReducedMotion` starts false, so the first effect armed the off-screen reveals; when the preference arrived the effect returned early and the blocks never revealed, and the reduced-motion rule lost to `.lp-reveal.lp-armed` on specificity. The effect now returns to the static phase and the CSS neutralises every armed variant (`tests/regression/lp-reveal-stuck-hidden-reduced-motion.test.mjs`).
+- The three manifesto cards lost their icons and became a term-and-definition list; the three platform cards became an unboxed row list (name, what ships, state), the pattern of download pages.
+- The product film sits under the hero copy, full column width, with a one-line caption.
+
+Validation: the twelve viewport classes with the operating system in light and dark mode (24 renders, Playwright): no horizontal scroll, motto in two lines, film centred in the column, no text below 13 px, no console error. Through the Claude in Chrome extension on `127.0.0.1:3100`: the film starts muted in view, pauses when it leaves, resumes when it returns, stays paused after the person pauses it; section navigation, the screenshot tabs with the new caption, the seven areas and the three-column principles. Reduced motion (Playwright): the film stays on its poster. The extension window cannot be narrowed to phone width.
+
+taste-skill inspector, before → after: FAIL 2 → 1, WARN 4 → 4. Fixed: the row of icon cards; the four-line motto and the type-size count are gone from the list. Remaining and accepted: `few-pictures` counts 3 because the carousel's lazy screenshots are not loaded at inspection time (the page carries six raster pictures: the film, four screenshots and the LUT preview); `statement-length` for the name quote (4 lines at 28 px); `mixed-font-headline` for the italic Latin word *Talentum*, the convention for foreign words; the parchment palette is the brand's; the plate carousel's off-screen slides still read as an "empty middle".

@@ -1,0 +1,6 @@
+# Master de 60 fps e rodadas de revisão: regeráveis com fonte/render.mjs.
+# A versão servida pela LP fica em apps/web/public/video/.
+resultados/
+rodadas/
+fonte/audio/
+fonte/beats.json

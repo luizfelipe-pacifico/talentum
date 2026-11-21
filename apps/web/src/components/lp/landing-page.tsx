@@ -19,6 +19,7 @@ import {
   Rosette,
 } from './art';
 import { PlateCarousel, ShotCarousel, type Plate, type Shot } from './carousel';
+import { ProductFilm } from './film';
 import { LegalNotices } from './legal';
 import { BackToTop, Parallax, PointerScene, ReadingProgress, Reveal, ScrollPosition, SectionNav } from './motion';
 import { Icon } from './icon';
@@ -81,7 +82,7 @@ const STEPS = [
   {
     icon: 'bi-signpost-split',
     title: 'Planejar',
-    text: 'Com o número certo na mão, meta deixa de ser desejo e aporte deixa de ser palpite. Orçamento, metas e patrimônio são as próximas etapas.',
+    text: 'Com o número certo na mão, meta deixa de ser desejo e aporte deixa de ser palpite. Orçamento por categoria, dívidas, metas e patrimônio ficam no mesmo aplicativo, sobre os mesmos lançamentos.',
   },
 ];
 
@@ -104,7 +105,7 @@ const TELAS: Shot[] = [
     src: '/telas/importar.webp',
     alt: 'Tela de importação do Talentum pedindo o arquivo do banco, com a área para arrastar o arquivo e o botão Escolher arquivo',
     caption:
-      'Aceita CSV e OFX. O arquivo é lido no seu computador, e nada é gravado antes de você conferir a prévia da leitura.',
+      'Aceita CSV, OFX e PDF. O arquivo é lido no seu computador, e nada é gravado antes de você conferir a prévia da leitura.',
   },
   {
     id: 'extratos',
@@ -155,13 +156,13 @@ const AREAS: { icon: string; title: string; text: string; estado: Estado }[] = [
     estado: 'pronto',
   },
   {
-    icon: 'bi-clock-history',
-    title: 'Histórico',
-    text: 'Linha do tempo das importações, edições e decisões, com filtro e reversão; pontos de restauração, backup cifrado com senha e exportação em JSON e CSV.',
+    icon: 'bi-calendar2-range',
+    title: 'Planejamento',
+    text: 'Limite por categoria e mês com previsto contra realizado, rendas previstas, dívidas em ordem de avalanche ou de bola de neve e o modo de sobrevivência.',
     estado: 'pronto',
   },
   {
-    icon: 'bi-pie-chart',
+    icon: 'bi-columns-gap',
     title: 'Patrimônio e metas',
     text: 'Metas com depósitos datados e viabilidade, e o patrimônio pelos quatro pilares, com simulação do próximo aporte só com dinheiro novo.',
     estado: 'pronto',
@@ -169,8 +170,14 @@ const AREAS: { icon: string; title: string; text: string; estado: Estado }[] = [
   {
     icon: 'bi-newspaper',
     title: 'Invest',
-    text: 'Notícias de economia de fonte pública, com resumo e crédito sempre visível para a fonte. Nenhum dado seu é enviado para buscá-las.',
+    text: 'Notícias de economia da Agência Brasil, com crédito visível e nenhum dado seu enviado para buscá-las. Os resumos automáticos estão no código e esperam um recurso do provedor que ainda não foi ligado.',
     estado: 'parcial',
+  },
+  {
+    icon: 'bi-clock-history',
+    title: 'Histórico',
+    text: 'Linha do tempo das importações, edições e decisões, com filtro e reversão; pontos de restauração, backup cifrado com senha e exportação em JSON e CSV.',
+    estado: 'pronto',
   },
 ];
 
@@ -350,6 +357,20 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
               </div>
             </div>
           </PointerScene>
+
+          {/* O filme mostra o produto em uso logo abaixo da promessa: as telas
+              são as do aplicativo, redesenhadas do código com dados fictícios. */}
+          <figure className="lp-wrap lp-film">
+            <ProductFilm
+              src="/video/talentum-filme.mp4"
+              poster="/video/talentum-filme-capa.webp"
+              label="Filme de 32 segundos sobre o Talentum, sem narração"
+            />
+            <figcaption className="lp-film-caption">
+              Um sábado de manhã: o extrato entra, você confirma o que ficou em dúvida e o dashboard mostra quanto
+              sobra. Telas do aplicativo com dados fictícios.
+            </figcaption>
+          </figure>
         </section>
 
         {/* ── A dor ────────────────────────────────────────────── */}
@@ -400,7 +421,7 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
           <div className="lp-wrap">
             <div className="lp-section-head">
               <Reveal delay={80}>
-                <h2 className="lp-h-display-lg">Cinco passos, e só um deles é seu</h2>
+                <h2 className="lp-h-display-lg">Cinco passos do extrato ao saldo livre</h2>
               </Reveal>
               <Reveal delay={140}>
                 <p className="lp-lede">
@@ -492,7 +513,7 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                     </li>
                     <li className="lp-checks-planned">
                       <Icon name="bi-circle" />
-                      Planejado: abrir o cálculo linha a linha na própria tela, como na tabela ao lado.
+                      Planejado: abrir todas as obrigações descontadas, linha a linha, como na tabela ao lado. Hoje a tela lista as que vencem nos próximos três dias.
                     </li>
                   </ul>
                 </Reveal>
@@ -531,8 +552,8 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
               </Reveal>
               <Reveal delay={140}>
                 <p className="lp-lede">
-                  Seis áreas cobrem o ciclo do mês. Ao lado de cada uma está o estado dela no código hoje. “Funciona
-                  no código” quer dizer que roda a partir do repositório; o instalador ainda não existe.
+                  Sete áreas, as mesmas do menu do aplicativo. Ao lado de cada uma está o estado dela no código hoje.
+                  “Funciona no código” quer dizer que roda a partir do repositório; o instalador ainda não existe.
                 </p>
               </Reveal>
             </div>
@@ -571,8 +592,8 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                 </Reveal>
                 <Reveal delay={140}>
                   <p className="lp-lede">
-                    Depois que o mês está sob controle, entra a parte de longo prazo. O módulo patrimonial vai usar como
-                    referência a metodologia ARCA, idealizada por <strong>Thiago Nigro (Primo Rico)</strong>, que
+                    Depois que o mês está sob controle, entra a parte de longo prazo. O módulo patrimonial usa como referência
+                    a metodologia ARCA, idealizada por <strong>Thiago Nigro (Primo Rico)</strong>, que
                     divide o patrimônio em quatro pilares com meta-base de 25% em cada um.
                   </p>
                 </Reveal>
@@ -639,8 +660,8 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
               <Reveal delay={140}>
                 <p className="lp-lede">
                   Não faz sentido falar em alocação de carteira para quem está pagando juro de cartão. Havendo dívida
-                  cara ou saldo negativo, o produto vai mudar de assunto: pausar as sugestões de aporte, priorizar
-                  o juro mais alto e concentrar a tela na reconstrução da liquidez.
+                  cara ou saldo negativo, o produto muda de assunto: pausa a simulação de aportes, ordena as dívidas
+                  pelo juro mais alto ou pelo menor saldo e protege as categorias que você marcar como essenciais.
                 </p>
               </Reveal>
               <Reveal delay={200}>
@@ -747,8 +768,8 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
             <Reveal delay={80}>
               <blockquote className="lp-quote">
                 <p>
-                  <em>Talentum</em>, do latim: uma unidade de grande valor e, por extensão, aquilo que nos foi
-                  confiado para administrar e multiplicar.
+                  <em>Talentum</em>, em latim: uma grande soma e, por extensão, o que nos foi confiado para
+                  multiplicar.
                 </p>
               </blockquote>
             </Reveal>
@@ -760,31 +781,27 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
               </p>
             </Reveal>
 
-            <div className="lp-grid lp-grid-3 lp-slab-cards">
+            <dl className="lp-principles">
               {[
                 {
-                  icon: 'bi-columns-gap',
                   title: 'Ordem antes de decoração',
                   text: 'Hierarquia clara, alinhamento previsível e nada de enfeite competindo com o valor na tela.',
                 },
                 {
-                  icon: 'bi-shield-lock',
                   title: 'Privacidade como princípio',
                   text: 'O que é seu fica no seu computador. Não é recurso premium, é a arquitetura do produto.',
                 },
                 {
-                  icon: 'bi-mortarboard',
                   title: 'Educação, não recomendação',
                   text: 'O aplicativo explica o cálculo e mostra o caminho. Ele não dá palpite sobre o seu dinheiro.',
                 },
               ].map((item, index) => (
-                <Reveal key={item.title} delay={index * 110} as="article" className="lp-panel">
-                  <Icon name={item.icon} />
-                  <h3>{item.title}</h3>
-                  <p>{item.text}</p>
+                <Reveal key={item.title} delay={index * 110} className="lp-principle">
+                  <dt>{item.title}</dt>
+                  <dd>{item.text}</dd>
                 </Reveal>
               ))}
-            </div>
+            </dl>
           </div>
         </section>
 
@@ -830,7 +847,7 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                   <ol className="lp-timeline">
                     {[
                       { title: 'Fundação técnica e segurança', state: 'pronto' },
-                      { title: 'Cadastro, sessão e downloads autorizados', state: 'pronto' },
+                      { title: 'Cadastro, sessão e downloads autorizados', state: 'em andamento' },
                       { title: 'Electron seguro e primeiro acesso', state: 'em andamento' },
                       { title: 'Contas, categorias e obrigações', state: 'pronto' },
                       { title: 'Importação de OFX e CSV', state: 'pronto' },
@@ -858,32 +875,26 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
               </Reveal>
             </div>
 
-            <div className="lp-grid lp-grid-3 lp-download">
-              <Reveal as="article" className="lp-platform">
+            <ul className="lp-download" aria-label="Instaladores por sistema">
+              <Reveal as="li" className="lp-platform">
                 <Icon name="bi-windows" />
-                <div>
-                  <h3>Windows</h3>
-                  <p>Instalador assinado, publicado em GitHub Releases e liberado depois do login.</p>
-                </div>
+                <h3>Windows</h3>
                 <span className="lp-chip">Planejado</span>
+                <p>Instalador assinado, publicado em GitHub Releases e liberado depois do login.</p>
               </Reveal>
-              <Reveal as="article" delay={110} className="lp-platform">
+              <Reveal as="li" delay={90} className="lp-platform">
                 <Icon name="bi-ubuntu" />
-                <div>
-                  <h3>Linux</h3>
-                  <p>Mesmo pipeline, mesmo checksum verificável e a mesma exigência de conta.</p>
-                </div>
+                <h3>Linux</h3>
                 <span className="lp-chip">Planejado</span>
+                <p>Mesmo pipeline, mesmo checksum verificável e a mesma exigência de conta.</p>
               </Reveal>
-              <Reveal as="article" delay={220} className="lp-platform">
+              <Reveal as="li" delay={180} className="lp-platform">
                 <Icon name="bi-apple" />
-                <div>
-                  <h3>macOS</h3>
-                  <p>Para MacBook. Publicado só depois de assinado e notarizado pela Apple.</p>
-                </div>
+                <h3>macOS</h3>
                 <span className="lp-chip">Em breve</span>
+                <p>Para MacBook. Publicado só depois de assinado e notarizado pela Apple.</p>
               </Reveal>
-            </div>
+            </ul>
           </div>
         </section>
 

@@ -95,7 +95,13 @@ export function Reveal({
 
   useEffect(() => {
     const node = ref.current;
-    if (reduced || !node) return;
+    // A preferência chega depois do primeiro efeito: um bloco armado antes
+    // dela precisa voltar a ficar visível, ou some para sempre.
+    if (reduced) {
+      setPhase('static');
+      return;
+    }
+    if (!node) return;
 
     const rect = node.getBoundingClientRect();
     if (rect.top < window.innerHeight && rect.bottom > 0) return;

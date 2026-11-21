@@ -18,6 +18,7 @@ Whenever the user says to always do something ("sempre execute isso", "sempre fa
 - On the landing page (`apps/web`), always use the `impeccable` skill, the Emil Kowalski skills (`emil-design-eng` and the animation skills) and the `taste-skill` together.
 - Write every interface text following the UX writing rules in `docs/DESIGN-SYSTEM.md`: words specific enough that the reader has no doubt about what they mean or what will happen.
 - After finishing any piece of work (code, interface, copy or documentation), review it for AI slop (generic or templated layouts, filler words, vague or inflated copy, invented facts, decorative noise) and fix what you find before reporting.
+- Always check and fix AI slop in everything that comes up during a task, including work you did not create, not only your own output. The one exception is the product interface shown inside a product film (motion): it must reproduce the system exactly as it is, so do not restyle it there. Everything else in a film (titles, composition, transitions, copy) follows the AI slop rules, and flat-design illustrations may be created to support a film's composition, following the illustration rules in `docs/DESIGN-SYSTEM.md`.
 
 ## Self-review loop before reporting completion
 
