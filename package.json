@@ -64,7 +64,7 @@
     "@tailwindcss/postcss": "^4.1.12",
     "bootstrap-icons": "^1.13.1",
     "google-auth-library": "^11.0.2",
-    "next": "^15.5.29",
+    "next": "^16.4.6",
     "pdfjs-dist": "^6.3.289",
     "prisma": "^6.15.0",
     "qrcode": "1.5.4",
