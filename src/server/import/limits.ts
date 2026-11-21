@@ -44,6 +44,31 @@ export const MAX_PDF_CHARS = 400_000;
 export const PDF_PARSE_TIMEOUT_MS = 8_000;
 
 /**
+ * Prazo duro do worker que lê o PDF, em milissegundos.
+ *
+ * O prazo cooperativo acima vale dentro do worker; este é medido pelo servidor
+ * e encerra a thread com `terminate()` mesmo no meio de um passo síncrono. A
+ * folga sobre o prazo cooperativo cobre a partida da thread e o carregamento
+ * do pdf.js.
+ */
+export const PDF_WORKER_TIMEOUT_MS = 12_000;
+
+/** Teto do heap do worker do PDF, em MiB. Estourar encerra só a thread. */
+export const PDF_WORKER_MAX_OLD_GENERATION_MB = 256;
+
+/** Teto da geração jovem do heap do worker do PDF, em MiB. */
+export const PDF_WORKER_MAX_YOUNG_GENERATION_MB = 32;
+
+/** Teto da pilha do worker do PDF, em MiB. */
+export const PDF_WORKER_STACK_MB = 4;
+
+/**
+ * Workers de PDF ao mesmo tempo. Os demais esperam a vez, para que envios
+ * simultâneos não somem vários tetos de memória.
+ */
+export const MAX_PDF_WORKERS = 2;
+
+/**
  * Confiança mínima para um lançamento lido de PDF entrar no lote.
  *
  * Abaixo dela a linha vira problema declarado (`LOW_CONFIDENCE`) em vez de

@@ -42,7 +42,7 @@ What exists today:
 - 79 Node test files (including `tests/regression/`) and a Playwright suite over the twelve viewport classes in both themes, enforced by versioned Git hooks and CI; CI also runs gitleaks, dependency review, CodeQL and a Vercel-isolation check, and Dependabot is configured.
 - ADRs 0001 to 0009.
 
-What does not exist yet: signed or published installers and a validated packaged build on any platform; provider-side settings (Turnstile widget, Worker secrets, remote D1 migrations, WAF rules, Workers AI, the production domain); process isolation of the import parsers; legal review of the terms, privacy and debt copy; Stages 21 (beyond the notice) to 25.
+What does not exist yet: signed or published installers and a validated packaged build on any platform; provider-side settings (Turnstile widget, Worker secrets, remote D1 migrations, WAF rules, Workers AI, the production domain); process isolation of the CSV and OFX parsers (PDF parsing already runs in an isolated worker thread); legal review of the terms, privacy and debt copy; Stages 21 (beyond the notice) to 25.
 
 ## Cross-cutting rules for every stage
 
@@ -196,7 +196,7 @@ Every stage below is a **Next stage** and **Planned** unless marked **Open**.
 
 ### Stage 7 — PDF import
 
-**Current** ([ADR 0006](decisions/0006-pdf-import.md)): local PDF.js extraction under page, character and time limits, a versioned layout-reader registry with two generic readers, per-field confidence and hostile synthetic fixtures. **Open:** process isolation; no institution-specific reader yet.
+**Current** ([ADR 0006](decisions/0006-pdf-import.md)): local PDF.js extraction in an isolated worker thread (no environment or secrets, 256 MiB heap limit, 12-second hard deadline with `terminate()`, validated output) under page, character and time limits, a versioned layout-reader registry with two generic readers, per-field confidence and hostile synthetic fixtures. **Open:** no institution-specific reader yet.
 
 Local parsers per institution/layout, defensive extraction, per-field confidence, tests with hostile synthetic files and versioned parser maintenance. Open Finance is not part of this stage.
 
