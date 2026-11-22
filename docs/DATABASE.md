@@ -542,7 +542,7 @@ Status: **Current** for every table listed here: all of them are created by the 
 | Table | Keys and relations | Purpose and constraints | Worker use |
 | --- | --- | --- | --- |
 | `releases` | `id` | `version`, `channel` in `STABLE`/`BETA`, `status` in `DRAFT`/`PUBLISHED`/`REVOKED`, `published_at`; unique `(version, channel)` | **Current** (read by `/api/releases`; no route creates releases) |
-| `release_artifacts` | `id`, `release_id` FK cascade | `platform` in `WINDOWS`/`LINUX`/`MACOS` (`MACOS` added by `0004`, which rebuilds the table), `architecture`, `download_url`, `sha256`, optional `signature`; unique `(release_id, platform, architecture)`; index on `release_id` | **Current** (read) |
+| `release_artifacts` | `id`, `release_id` FK cascade | `platform` in `WINDOWS`/`LINUX`/`MACOS` (`MACOS` added by `0004`, which rebuilds the table), `architecture`, `download_url`, `sha256`, optional `signature`, `package_format` generated (stored) from the file extension of `download_url` (`NSIS`, `DMG`, `ZIP`, `APPIMAGE`, `DEB`, otherwise `UNKNOWN`, which is never listed; added by `0005`); unique `(release_id, platform, architecture, package_format)`, so Linux x64 can publish both the `deb` and the AppImage; index on `release_id` | **Current** (read) |
 | `download_grants` | `id`, `user_id` FK cascade, `artifact_id` FK cascade | short-lived grant: `grant_hash` (unique), `expires_at`, `consumed_at`; index `(user_id, expires_at)` | **Current** (2-minute expiry; `consumed_at` set atomically by the redeem route) |
 
 ### Community (`0001_cloud_core`)
@@ -624,6 +624,7 @@ Status: **Current**. D1 DDL lives in sequential, versioned SQL files in `cloudfl
 | `0002_cloud_auth_runtime.sql` | `action_codes`, `auth_transactions`, `rate_limit_windows` and their indexes |
 | `0003_cloud_mvp_completion.sql` | consent and client-kind columns, `user_roles`, `idempotency_keys`, report uniqueness, `news_items`, `news_summaries`, the five MFA and desktop tables, retention indexes |
 | `0004_release_macos.sql` | `release_artifacts` rebuilt to accept `MACOS` |
+| `0005_release_package_format.sql` | `release_artifacts` rebuilt with the generated `package_format` in the unique key (**Planned** remotely: apply with `pnpm cloudflare:migrations:apply:remote` after authorization) |
 
 They are applied with `wrangler d1 migrations apply` through the package scripts, all using `cloudflare/wrangler.jsonc`:
 

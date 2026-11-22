@@ -296,7 +296,7 @@ Landing page and BFF (`apps/web`, published to Vercel). Pages:
 | `/` | **Current** | Public landing page; platforms Windows, Linux and macOS (macOS "Em breve" until a signed, notarized build exists). |
 | `/entrar` | **Current** | Sign-in: what the account stores, Turnstile, `Continuar com Google`, clickwrap acceptance of the current Terms and Privacy; resumes a session with a refresh cookie. Not indexed. |
 | `/entrar/verificacao` | **Current** | Two-step verification code or recovery code after Google. |
-| `/downloads` | **Current** | Protected; one card per system (Windows, Linux, macOS) with version, architecture, SHA-256 and `Baixar para …`; macOS shows "Em breve" while no artifact is published. |
+| `/downloads` | **Current** | Protected; one card per system (Windows, Linux, macOS). Each package shows what it is and who it is for (Windows 10 and 11; Linux `deb` for Ubuntu, Debian, Linux Mint and Pop!_OS, required on Ubuntu 24.04 and later, listed before the AppImage for other distributions; each Mac architecture by name), version, channel, architecture, SHA-256 and `Baixar .exe`/`.deb`/`AppImage`/`.dmg`, whose accessible name carries version, system and architecture. The Mac `.zip` is not offered (it serves updates). macOS shows "Em breve" while no artifact is published. |
 | `/conta` | **Current** | Protected: public name, two-step verification, sessions, sign out, account deletion (typed `EXCLUIR`). |
 | `/conta/mfa`, `/conta/mfa/codigos` | **Current** | Authenticator enrollment (server-rendered QR) and one-time display of recovery codes. |
 | `/comunidade` | **Current** | Public list of suggestions, recent or most supported, with pagination. |

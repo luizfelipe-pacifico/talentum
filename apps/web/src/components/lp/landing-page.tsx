@@ -883,7 +883,7 @@ export function LandingPage({ notice = null }: { notice?: React.ReactNode } = {}
                 <p>Instalador assinado, publicado em GitHub Releases e liberado depois do login.</p>
               </Reveal>
               <Reveal as="li" delay={90} className="lp-platform">
-                <Icon name="bi-ubuntu" />
+                <Icon name="bi-tux" />
                 <h3>Linux</h3>
                 <span className="lp-chip">Planejado</span>
                 <p>Mesmo pipeline, mesmo checksum verificável e a mesma exigência de conta.</p>

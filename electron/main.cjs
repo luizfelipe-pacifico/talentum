@@ -202,12 +202,13 @@ ipcMain.on('window:toggle-maximize', (event) => {
   else window.maximize();
 });
 ipcMain.on('window:close', (event) => trustedSender(event)?.close());
-/* A janela informa só o tema ('light' ou 'dark'); as cores da sobreposição do
-   Windows ficam aqui. Outros valores são ignorados. */
-ipcMain.on('window:theme', (event, theme) => {
+/* A janela informa só o tema ('light' ou 'dark') e a superfície sob os botões
+   ('bar' ou 'page'); as cores da sobreposição do Windows ficam aqui. Outros
+   valores são ignorados. */
+ipcMain.on('window:theme', (event, theme, surface) => {
   const window = trustedSender(event);
-  if (!window || process.platform !== 'win32' || (theme !== 'light' && theme !== 'dark')) return;
-  window.setTitleBarOverlay(chrome.overlayFor(theme));
+  if (!window || process.platform !== 'win32' || (theme !== 'light' && theme !== 'dark') || (surface !== 'bar' && surface !== 'page')) return;
+  window.setTitleBarOverlay(chrome.overlayFor(theme, surface));
 });
 ipcMain.handle('window:chrome', async (event) => {
   const window = trustedSender(event);

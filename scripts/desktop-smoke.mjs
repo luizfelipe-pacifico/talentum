@@ -1,7 +1,8 @@
 /* Teste de fumaça do pacote desktop, no sistema em que ele foi gerado.
 
-   Uso: `pnpm desktop:smoke` depois de `pnpm desktop:build:<sistema>`, ou
-   `pnpm desktop:smoke /opt/Talentum` com o .deb instalado.
+   Uso: `pnpm desktop:smoke` depois de `pnpm desktop:build:<sistema>`, ou com a
+   pasta do app instalado: `/opt/Talentum` (.deb), `/Applications` (macOS),
+   `%LOCALAPPDATA%\Programs\Talentum` (Windows) ou o AppImage extraído.
 
    Os testes unitários e ponta a ponta rodam contra o código-fonte e já deixaram
    passar um pacote que nem abria (docs/MEMORY-AI.md, 20/11/2026). Este script
@@ -36,15 +37,17 @@ const lsof = (args) => run('lsof', args).catch((error) => ({ stdout: String(erro
 const release = path.resolve(process.argv[2] ?? 'release');
 const PASSWORD = 'cofre sintetico do teste de fumaca';
 
-/** Executável e pasta `resources` do pacote desempacotado deste sistema. */
+/** Executável e pasta `resources` do pacote deste sistema: o desempacotado em
+    `release/` ou o instalado (pasta do app no Windows, /Applications no macOS,
+    /opt/Talentum ou o AppImage extraído no Linux). */
 function locatePackage() {
   if (process.platform === 'win32') {
-    const dir = path.join(release, 'win-unpacked');
+    const dir = existsSync(path.join(release, 'Talentum.exe')) ? release : path.join(release, 'win-unpacked');
     return { exe: path.join(dir, 'Talentum.exe'), resources: path.join(dir, 'resources') };
   }
   if (process.platform === 'darwin') {
     // O electron-builder usa `mac` para x64 e `mac-arm64` para Apple silicon.
-    for (const name of ['mac-arm64', 'mac', 'mac-universal']) {
+    for (const name of ['.', 'mac-arm64', 'mac', 'mac-universal']) {
       const app = path.join(release, name, 'Talentum.app');
       if (existsSync(app)) {
         return { exe: path.join(app, 'Contents', 'MacOS', 'Talentum'), resources: path.join(app, 'Contents', 'Resources') };
@@ -52,7 +55,7 @@ function locatePackage() {
     }
     throw new Error(`nenhum Talentum.app em ${release}`);
   }
-  // `release/linux-unpacked` do build, ou a pasta do app instalado pelo .deb (/opt/Talentum).
+  // `release/linux-unpacked` do build, /opt/Talentum do .deb ou o squashfs-root do AppImage.
   const dir = existsSync(path.join(release, 'talentum')) ? release : path.join(release, 'linux-unpacked');
   return { exe: path.join(dir, 'talentum'), resources: path.join(dir, 'resources') };
 }

@@ -55,7 +55,7 @@ const CLOUD_ENDPOINTS = Object.freeze({
 });
 
 /** Versões de Termos e Privacidade aceitas no login. Iguais a LEGAL_VERSIONS em cloudflare/src/env.ts. */
-const LEGAL_VERSIONS = Object.freeze({ terms: '2026-11-20', privacy: '2026-11-20' });
+const LEGAL_VERSIONS = Object.freeze({ terms: '2026-11-20', privacy: '2026-11-21' });
 
 /** Caminho fixo do loopback exigido pelo Worker (isLoopbackRedirect). */
 const CALLBACK_PATH = '/callback';

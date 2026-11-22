@@ -27,7 +27,7 @@ export interface Env {
 }
 
 /** Versões de Termos e Privacidade aceitas no cadastro. Iguais a apps/web/src/server/legal.ts. */
-export const LEGAL_VERSIONS = { terms: '2026-11-20', privacy: '2026-11-20' } as const;
+export const LEGAL_VERSIONS = { terms: '2026-11-20', privacy: '2026-11-21' } as const;
 
 export const ACCESS_TTL_SECONDS = 900;
 export const REFRESH_TTL_SECONDS = 2_592_000;

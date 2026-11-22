@@ -29,7 +29,7 @@ export async function list(ctx: Ctx) {
   const session = await requireSession(ctx);
   await limit(ctx.e, BUCKETS.privateUser, session.user_id);
   const q = await ctx.e.DB.prepare(
-    "SELECT r.id,r.version,r.channel,a.id artifactId,a.platform,a.architecture,a.sha256,a.signature FROM releases r JOIN release_artifacts a ON a.release_id=r.id WHERE r.status='PUBLISHED' ORDER BY r.published_at DESC",
+    "SELECT r.id,r.version,r.channel,a.id artifactId,a.platform,a.architecture,a.package_format packageFormat,a.sha256,a.signature FROM releases r JOIN release_artifacts a ON a.release_id=r.id WHERE r.status='PUBLISHED' AND a.package_format<>'UNKNOWN' ORDER BY r.published_at DESC",
   ).all();
   return json({ releases: q.results });
 }

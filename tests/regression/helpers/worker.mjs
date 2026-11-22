@@ -175,5 +175,5 @@ export async function createWorker({ env: overrides = {} } = {}) {
   return { worker, env, call, callPublic, login, session, providers };
 }
 
-export const LEGAL = { terms: '2026-11-20', privacy: '2026-11-20' };
+export const LEGAL = { terms: '2026-11-20', privacy: '2026-11-21' };
 export const tokenHash = (value) => createHash('sha256').update(`${SECRETS.TOKEN_HASH_PEPPER}:${value}`).digest('base64url');

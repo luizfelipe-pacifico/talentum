@@ -17,6 +17,7 @@ import {
   type WindowButton,
   type WindowPreferences,
 } from '@/lib/window-layout';
+import { setWindowSurface } from '@/lib/window-surface';
 
 type Chrome = NonNullable<Awaited<ReturnType<NonNullable<NonNullable<Window['talentumWindow']>['chrome']>>>>;
 
@@ -85,9 +86,14 @@ export function useWindowChrome() {
   return chrome;
 }
 
-/** Marca o estado da janela no <html>: o recuo dos botões do macOS some em tela cheia. */
+/** Marca o estado da janela no <html>: o recuo dos botões do macOS some em tela cheia.
+    Montado só com o app aberto, também diz ao Windows que há barra superior sob os botões. */
 export function WindowStateClasses() {
   const chrome = useWindowChrome();
+  useEffect(() => {
+    setWindowSurface('bar');
+    return () => setWindowSurface('page');
+  }, []);
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle('window-fullscreen', Boolean(chrome?.fullscreen));
