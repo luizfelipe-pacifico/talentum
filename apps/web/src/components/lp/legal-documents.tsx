@@ -191,6 +191,11 @@ export function PrivacyDocument() {
         serviços de inteligência artificial. A lista de notícias do aplicativo é pública e igual para todos; qualquer
         ajuste dela ao seu perfil acontece no próprio dispositivo.
       </p>
+      <p>
+        Desinstalar o Talentum não apaga esses dados: o banco cifrado continua na pasta do seu usuário no sistema,
+        protegido pela sua senha, e volta a ser usado se você instalar o Talentum de novo. Para apagá-los, use{' '}
+        <strong>Apagar dados</strong>, em Perfil, Dados e backup, antes de desinstalar.
+      </p>
 
       <h2>3. O que o banco da nuvem guarda</h2>
       <p>

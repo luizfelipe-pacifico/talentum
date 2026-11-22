@@ -21,25 +21,30 @@ const { execFile } = require('node:child_process');
 const BUTTONS = ['close', 'minimize', 'maximize'];
 const DEFAULT_LAYOUT = Object.freeze({ side: 'right', buttons: ['minimize', 'maximize', 'close'], source: 'default' });
 
-/* Cores da sobreposição do Windows: as mesmas da barra superior (--surface) e
-   do texto secundário (--ink2) de src/app/globals.css, em cada tema. A janela
-   escolhe só o tema; a cor nunca vem do renderer. */
+/* Cores da sobreposição do Windows, iguais à superfície sob os botões em
+   src/app/globals.css: a barra superior (--surface) com o app aberto, o fundo
+   da página (--bg) nas telas de bloqueio e de primeiro acesso, que não têm
+   barra. A janela escolhe só o tema e a superfície; a cor nunca vem dela. */
 const OVERLAY = Object.freeze({
-  light: { color: '#fffdf8', symbolColor: '#1a110a' },
-  dark: { color: '#2a2622', symbolColor: '#f1ece3' },
+  bar: { light: '#fffdf8', dark: '#2a2622' },
+  page: { light: '#f4f1ea', dark: '#211e1a' },
 });
+const SYMBOL = Object.freeze({ light: '#1a110a', dark: '#f1ece3' });
 const OVERLAY_HEIGHT = 40;
 // Centro dos botões nativos do macOS na faixa superior da barra lateral.
 const TRAFFIC_LIGHTS = Object.freeze({ x: 18, y: 22 });
 
-function overlayFor(theme) {
-  return { ...(theme === 'dark' ? OVERLAY.dark : OVERLAY.light), height: OVERLAY_HEIGHT };
+function overlayFor(theme, surface = 'bar') {
+  const mode = theme === 'dark' ? 'dark' : 'light';
+  const colors = surface === 'page' ? OVERLAY.page : OVERLAY.bar;
+  return { color: colors[mode], symbolColor: SYMBOL[mode], height: OVERLAY_HEIGHT };
 }
 
 /** Opções do BrowserWindow que dependem do sistema. */
 function chromeOptions(platform, theme = 'light') {
   if (platform === 'darwin') return { titleBarStyle: 'hidden', trafficLightPosition: { ...TRAFFIC_LIGHTS } };
-  if (platform === 'win32') return { titleBarStyle: 'hidden', titleBarOverlay: overlayFor(theme) };
+  // A janela abre na tela de bloqueio, sem barra superior: começa com o fundo da página.
+  if (platform === 'win32') return { titleBarStyle: 'hidden', titleBarOverlay: overlayFor(theme, 'page') };
   return { frame: false };
 }
 

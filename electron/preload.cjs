@@ -11,8 +11,8 @@ contextBridge.exposeInMainWorld('talentumWindow', {
   close: () => ipcRenderer.send('window:close'),
   // Sistema, disposição dos botões configurada no Linux e estado da janela.
   chrome: () => ipcRenderer.invoke('window:chrome'),
-  // Só 'light' ou 'dark': o processo principal escolhe as cores dos botões nativos do Windows.
-  setTheme: (theme) => ipcRenderer.send('window:theme', theme === 'dark' ? 'dark' : 'light'),
+  // Só tema e superfície: o processo principal escolhe as cores dos botões nativos do Windows.
+  setTheme: (theme, surface) => ipcRenderer.send('window:theme', theme === 'dark' ? 'dark' : 'light', surface === 'page' ? 'page' : 'bar'),
   onStateChange: (callback) => {
     const listener = (_event, state) => callback({ maximized: Boolean(state?.maximized), fullscreen: Boolean(state?.fullscreen) });
     ipcRenderer.on('window:state', listener);

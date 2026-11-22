@@ -38,6 +38,10 @@ const target = fromLibsql('@neon-rs/load').currentTarget();
 const nativeDir = path.dirname(fromLibsql.resolve(`@libsql/${target}`));
 await cp(realpathSync(nativeDir), `.next/standalone/node_modules/@libsql/${target}`, { recursive: true, force: true, dereference: true });
 
+/* Avisos de licença dos pacotes de produção e o LICENSE do Talentum, que vão
+   para resources/licencas (tests/regression/installers-missing-third-party-licenses.test.mjs). */
+await run('node', ['scripts/third-party-notices.mjs', '.next/licencas']);
+
 /* O Next copia o .env da raiz para .next/standalone. Segredo de
    desenvolvimento nunca entra no instalador: remove e confere. */
 for (const name of await readdir('.next/standalone')) {

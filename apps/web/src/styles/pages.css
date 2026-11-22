@@ -73,13 +73,17 @@
   gap: 8px;
   min-height: 44px;
   padding: 0 14px;
-  border: 1px solid var(--lp-line-strong);
+  /* Botão secundário no cabeçalho escuro: separado do fundo por um degrau de
+     tom, não por contorno (docs/DESIGN-SYSTEM.md, Landing page surfaces). */
+  border: 0;
   border-radius: var(--lp-radius-md);
+  background: rgb(241 236 227 / 10%);
+  color: #fffdf8;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   list-style: none;
-  transition: border-color 160ms ease, transform 160ms var(--lp-ease-out);
+  transition: background-color 160ms ease, transform 160ms var(--lp-ease-out);
 }
 
 .lp-shell-menu summary::-webkit-details-marker {
@@ -91,7 +95,7 @@
 }
 
 .lp-shell-menu[open] summary {
-  border-color: var(--lp-amber-strong);
+  background: rgb(241 236 227 / 20%);
 }
 
 /* O cabeçalho sticky é o bloco de contenção: o painel ocupa a largura toda. */
@@ -787,15 +791,16 @@
   gap: 8px;
   min-height: 44px;
   padding: 0 14px;
-  border: 1px solid var(--lp-line-strong);
+  /* Degrau de tom em vez de contorno, como os demais botões secundários da LP. */
+  border: 0;
   border-radius: 999px;
-  background: transparent;
+  background: var(--lp-sunken);
   color: var(--lp-ink);
   font: inherit;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 140ms var(--lp-ease-out);
+  transition: background-color 160ms ease, color 160ms ease, transform 140ms var(--lp-ease-out);
 }
 
 
@@ -805,7 +810,6 @@
 }
 
 .lp-vote-on {
-  border-color: var(--lp-amber-strong);
   background: color-mix(in srgb, var(--lp-amber) 14%, var(--lp-surface));
   color: var(--lp-amber-text);
 }
@@ -892,7 +896,7 @@
   }
 
   .lp-vote:hover {
-    border-color: var(--lp-amber-strong);
+    background: color-mix(in srgb, var(--lp-ink) 8%, var(--lp-sunken));
   }
 
   .lp-disclosure summary:hover {
@@ -969,10 +973,10 @@
   gap: 0.5rem;
 }
 
+/* Os pacotes de um sistema se separam por espaço, não por régua: o título de
+   cada um já marca o início (docs/DESIGN-SYSTEM.md, Landing page surfaces). */
 .lp-root .lp-download-item + .lp-download-item {
-  margin-top: 1.25rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--lp-line);
+  margin-top: 2rem;
 }
 
 .lp-root .lp-hash {

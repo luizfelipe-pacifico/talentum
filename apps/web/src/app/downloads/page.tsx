@@ -8,17 +8,42 @@ import { cloud } from '../../server/cloudflare';
 /* Downloads autorizados (MVP 1). Exige sessão: o middleware leva a /entrar e
    o Worker confirma a sessão em /api/me. Cada plataforma tem seu cartão, com
    ou sem versão publicada: Windows, Linux e macOS. O macOS só recebe botão
-   quando houver build assinado e notarizado; até lá, "Em breve". */
+   quando houver build assinado e notarizado; até lá, "Em breve".
+
+   Cada pacote diz para quem serve. No Linux o .deb vem primeiro: o Ubuntu 24.04
+   e mais novos só abrem o Talentum pelo .deb, que instala o perfil do AppArmor;
+   o AppImage serve às demais distribuições (docs/BEST_PRACTICES.md, "Desktop
+   packages"). O .zip do Mac existe para a atualização automática e não é
+   oferecido aqui. */
 
 type Platform = 'WINDOWS' | 'LINUX' | 'MACOS';
-type Release = { id: string; version: string; channel: string; artifactId: string; platform: Platform; architecture: string; sha256: string };
+type PackageFormat = 'NSIS' | 'DMG' | 'ZIP' | 'DEB' | 'APPIMAGE';
+type Release = {
+  id: string;
+  version: string;
+  channel: string;
+  artifactId: string;
+  platform: Platform;
+  architecture: string;
+  packageFormat: PackageFormat;
+  sha256: string;
+};
+
+const FORMATS: Partial<Record<PackageFormat, { order: number; title: string; file: string; audience: string }>> = {
+  NSIS: { order: 0, title: 'Instalador .exe', file: '.exe', audience: 'Windows 10 e 11.' },
+  DMG: { order: 0, title: 'Imagem de disco .dmg', file: '.dmg', audience: 'Abra e arraste o Talentum para a pasta Aplicativos.' },
+  DEB: { order: 0, title: 'Pacote .deb', file: '.deb', audience: 'Ubuntu, Debian, Linux Mint e Pop!_OS. No Ubuntu 24.04 e mais novos, use este.' },
+  APPIMAGE: { order: 1, title: 'AppImage', file: 'AppImage', audience: 'Fedora, Arch, openSUSE e outras distribuições. Não abre no Ubuntu 24.04 e mais novos.' },
+};
+
+const MAC_ARCH: Record<string, string> = { arm64: 'Mac com Apple silicon (M1 ou mais novo)', x64: 'Mac com processador Intel' };
 
 export const metadata: Metadata = { title: 'Downloads · Talentum', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
 const PLATFORMS: { key: Platform; name: string; icon: string; pending: string }[] = [
   { key: 'WINDOWS', name: 'Windows', icon: 'bi-windows', pending: 'Nenhum instalador para Windows foi publicado ainda.' },
-  { key: 'LINUX', name: 'Linux', icon: 'bi-ubuntu', pending: 'Nenhum AppImage para Linux foi publicado ainda.' },
+  { key: 'LINUX', name: 'Linux', icon: 'bi-tux', pending: 'Nenhum pacote para Linux foi publicado ainda.' },
   {
     key: 'MACOS',
     name: 'macOS',
@@ -60,7 +85,9 @@ export default async function Page() {
 
         <div className="lp-download-grid">
           {PLATFORMS.map((platform) => {
-            const artifacts = items.filter((item) => item.platform === platform.key);
+            const artifacts = items
+              .filter((item) => item.platform === platform.key && FORMATS[item.packageFormat])
+              .sort((a, b) => (FORMATS[a.packageFormat]?.order ?? 0) - (FORMATS[b.packageFormat]?.order ?? 0));
             return (
               <section key={platform.key} className="lp-panel-card lp-download-card" aria-labelledby={`plataforma-${platform.key}`}>
                 <h2 className="lp-h-display" id={`plataforma-${platform.key}`}>
@@ -73,15 +100,24 @@ export default async function Page() {
                   artifacts.map((artifact) => (
                     <div key={artifact.artifactId} className="lp-download-item">
                       <p>
-                        Versão {artifact.version} ({CHANNEL[artifact.channel] ?? artifact.channel}) · {artifact.architecture}
+                        <strong>{platform.key === 'MACOS' ? (MAC_ARCH[artifact.architecture] ?? artifact.architecture) : FORMATS[artifact.packageFormat]?.title}</strong>
+                        <br />
+                        <span className="lp-muted">{FORMATS[artifact.packageFormat]?.audience}</span>
+                      </p>
+                      <p className="lp-muted">
+                        Versão {artifact.version} · {CHANNEL[artifact.channel] ?? artifact.channel} · {artifact.architecture}
                       </p>
                       <p className="lp-muted">SHA-256</p>
                       <code className="lp-hash">{artifact.sha256}</code>
                       <form action={`/api/releases/${encodeURIComponent(artifact.id)}/download-grants`} method="post">
                         <input type="hidden" name="artifactId" value={artifact.artifactId} />
-                        <button type="submit" className="lp-btn lp-btn-primary">
+                        <button
+                          type="submit"
+                          className="lp-btn lp-btn-primary"
+                          aria-label={`Baixar ${FORMATS[artifact.packageFormat]?.title} do Talentum ${artifact.version} para ${platform.name} ${artifact.architecture}`}
+                        >
                           <Icon name="bi-download" />
-                          Baixar para {platform.name} ({artifact.architecture})
+                          Baixar {FORMATS[artifact.packageFormat]?.file}
                         </button>
                       </form>
                     </div>

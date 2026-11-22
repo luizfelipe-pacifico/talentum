@@ -1,8 +1,8 @@
 name: Desktop
 
-# Gera os instaladores de teste em cada sistema e abre o pacote antes de
-# guardá-lo (docs/BEST_PRACTICES.md, "Desktop packages"). Sem assinatura: os
-# artefatos servem para teste, nunca para publicação.
+# Gera os instaladores em cada sistema e abre o pacote antes de guardá-lo
+# (docs/BEST_PRACTICES.md, "Desktop packages"). Sem os certificados no
+# repositório, os artefatos saem sem assinatura e servem só para teste.
 
 on:
   workflow_dispatch:
@@ -51,15 +51,14 @@ jobs:
               release/*.exe
           - name: macOS arm64 (Apple silicon)
             os: macos-15
-            # Assinatura ad hoc: o Apple silicon não executa binário sem assinatura.
-            # Sem Developer ID, o runtime reforçado e a notarização ficam desligados.
-            build: --mac dmg zip --arm64 -c.mac.identity=- -c.mac.hardenedRuntime=false -c.mac.notarize=false
+            # Sem Developer ID, scripts/desktop-build.mjs assina ad hoc.
+            build: --mac dmg zip --arm64
             artifacts: |
               release/*.dmg
               release/*.zip
           - name: macOS x64 (Intel)
             os: macos-15-intel
-            build: --mac dmg zip --x64 -c.mac.identity=- -c.mac.hardenedRuntime=false -c.mac.notarize=false
+            build: --mac dmg zip --x64
             artifacts: |
               release/*.dmg
               release/*.zip
@@ -94,25 +93,58 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm desktop:prepare
-      - run: pnpm exec electron-builder ${{ matrix.build }} --publish never
+      # Assina só builds da main ou disparados à mão, nunca pull requests: o
+      # certificado não chega a código que ainda não foi revisado. Sem os
+      # segredos, o build sai sem assinatura, como antes.
+      - name: Build the installers
+        env:
+          WIN_CSC_LINK: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && secrets.WIN_CSC_LINK || '' }}
+          WIN_CSC_KEY_PASSWORD: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
+          MAC_CSC_LINK: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && secrets.MAC_CSC_LINK || '' }}
+          MAC_CSC_KEY_PASSWORD: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
+          APPLE_API_KEY_P8: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && secrets.APPLE_API_KEY_P8 || '' }}
+          APPLE_API_KEY_ID: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && secrets.APPLE_API_KEY_ID || '' }}
+          APPLE_API_ISSUER: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && secrets.APPLE_API_ISSUER || '' }}
+        run: node scripts/desktop-build.mjs ${{ matrix.build }}
       # No Linux o teste roda no app instalado pelo .deb, como uma pessoa usaria:
       # o pós-instalação ajusta o chrome-sandbox e o perfil do AppArmor do Ubuntu
       # 24.04, sem o qual o Chromium recusa abrir com o sandbox.
       - name: Install the deb and smoke test it (Linux, virtual display)
         if: runner.os == 'Linux'
         env:
-          SMOKE_SCREENSHOT: release/smoke-screenshot.png
+          SMOKE_SCREENSHOT: release/telas/app-aberto.png
         run: |
+          mkdir -p release/telas
           sudo apt-get update
-          sudo apt-get install -y xvfb ./release/*.deb
+          sudo apt-get install -y xvfb imagemagick ./release/*.deb
           grep -q '^StartupWMClass=talentum$' /usr/share/applications/talentum.desktop
           test -f /usr/share/icons/hicolor/512x512/apps/talentum.png
           xvfb-run --auto-servernum pnpm desktop:smoke /opt/Talentum
-      - name: Smoke test
+      # O AppImage roda onde o sistema permite user namespaces sem privilégio
+      # (Fedora, Arch, Debian e outros). O Ubuntu 24.04 bloqueia isso para apps
+      # sem perfil do AppArmor, e lá o pacote indicado é o .deb; aqui o teste
+      # libera a restrição para simular essas distribuições.
+      - name: Smoke test the AppImage as on distributions without the Ubuntu restriction
+        if: runner.os == 'Linux'
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          cd release && ./Talentum-*.AppImage --appimage-extract > /dev/null && cd ..
+          xvfb-run --auto-servernum pnpm desktop:smoke release/squashfs-root
+      # Windows: telas reais do instalador, instalação silenciosa e teste do app
+      # instalado. macOS: janela do DMG e teste do app copiado para /Applications.
+      - name: Installer screens and install
         if: runner.os != 'Linux'
+        run: node scripts/desktop-installer-screens.mjs
+      - name: Smoke test the installed app (Windows)
+        if: runner.os == 'Windows'
         env:
-          SMOKE_SCREENSHOT: release/smoke-screenshot.png
-        run: pnpm desktop:smoke
+          SMOKE_SCREENSHOT: release/telas/app-aberto.png
+        run: pnpm desktop:smoke "$env:LOCALAPPDATA\Programs\Talentum"
+      - name: Smoke test the installed app (macOS)
+        if: runner.os == 'macOS'
+        env:
+          SMOKE_SCREENSHOT: release/telas/app-aberto.png
+        run: pnpm desktop:smoke /Applications
       - name: SHA-256 checksums
         if: always()
         shell: bash
@@ -131,6 +163,15 @@ jobs:
           path: |
             ${{ matrix.artifacts }}
             release/SHA256SUMS.txt
-            release/smoke-screenshot.png
           if-no-files-found: warn
+          retention-days: 14
+      # Capturas num artefato pequeno, separado dos instaladores.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: telas-${{ runner.os }}-${{ runner.arch }}
+          path: |
+            release/telas/
+            release/smoke-screenshot.png
+          if-no-files-found: ignore
           retention-days: 14

@@ -20,7 +20,8 @@ declare global {
       toggleMaximize: () => void;
       close: () => void;
       chrome?: () => Promise<WindowChrome | null>;
-      setTheme?: (theme: 'light' | 'dark') => void;
+      /** Tema e superfície sob os botões nativos do Windows: a barra superior ou o fundo da página. */
+      setTheme?: (theme: 'light' | 'dark', surface: 'bar' | 'page') => void;
       onStateChange?: (callback: (state: { maximized: boolean; fullscreen: boolean }) => void) => () => void;
       bootstrapSecret: () => Promise<string | null>;
       installUpdate?: (version: string) => Promise<{ status: 'installing' | 'refused' | 'failed' | 'busy' | 'unsupported-platform'; reason?: string }>;

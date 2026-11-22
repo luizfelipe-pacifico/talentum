@@ -84,7 +84,8 @@ test('avisos de erro do login e da verificação', () => {
 
 test('downloads e LP mostram Windows, Linux e macOS; macOS honesto como "em breve"', async () => {
   const page = await read('apps/web/src/app/downloads/page.tsx');
-  for (const key of ['WINDOWS', 'LINUX', 'MACOS', 'bi-windows', 'bi-ubuntu', 'bi-apple']) assert.ok(page.includes(key), key);
+  // Linux usa o Tux: o logotipo do Ubuntu é marca da Canonical e não representa as demais distribuições.
+  for (const key of ['WINDOWS', 'LINUX', 'MACOS', 'bi-windows', 'bi-tux', 'bi-apple']) assert.ok(page.includes(key), key);
   assert.match(page, /assinado e notarizado/);
   const lp = await read('apps/web/src/components/lp/landing-page.tsx');
   assert.match(lp, /<h3>macOS<\/h3>[\s\S]{0,200}Em breve/);

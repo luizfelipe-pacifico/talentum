@@ -20,6 +20,10 @@ Whenever the user says to always do something ("sempre execute isso", "sempre fa
 - After finishing any piece of work (code, interface, copy or documentation), review it for AI slop (generic or templated layouts, filler words, vague or inflated copy, invented facts, decorative noise) and fix what you find before reporting.
 - Always check and fix AI slop in everything that comes up during a task, including work you did not create, not only your own output. The one exception is the product interface shown inside a product film (motion): it must reproduce the system exactly as it is, so do not restyle it there. Everything else in a film (titles, composition, transitions, copy) follows the AI slop rules, and flat-design illustrations may be created to support a film's composition, following the illustration rules in `docs/DESIGN-SYSTEM.md`.
 
+## Legal and policy review is part of every change
+
+- For every change, check the legal and policy questions it raises and how they apply to the software: LGPD (Lei 13.709/2018) and the privacy policy and terms in `apps/web`, consumer law where it applies, open-source and font licenses of everything shipped, and the rules of each platform the change touches (Apple notarization and App Review guidelines, Microsoft SmartScreen and code signing, GitHub, Cloudflare, Vercel and Google terms). Record findings in the document that owns the fact and report them; legal text itself still needs review by a lawyer before publication.
+
 ## Self-review loop before reporting completion
 
 - After doing anything, critically review everything you produced: correctness, the rules in this file, the design principles, UX writing, both themes, every viewport class, AI slop, tests and documentation.

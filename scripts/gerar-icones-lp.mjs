@@ -17,10 +17,19 @@ const componentes = join(raiz, 'apps', 'web', 'src', 'components', 'lp');
 const pacote = join(raiz, 'node_modules', 'bootstrap-icons');
 const destino = join(componentes, 'icons.tsx');
 
+/* Varre todo apps/web/src, não só os componentes: as páginas em app/ também
+   usam ícones (tests/regression/lp-icons-missing-outside-components.test.mjs). */
+const fontes = join(raiz, 'apps', 'web', 'src');
+function arquivos(pasta) {
+  return readdirSync(pasta, { withFileTypes: true }).flatMap((item) => {
+    const caminho = join(pasta, item.name);
+    if (item.isDirectory()) return arquivos(caminho);
+    return /\.tsx?$/.test(item.name) && item.name !== 'icons.tsx' ? [caminho] : [];
+  });
+}
 const nomes = new Set();
-for (const arquivo of readdirSync(componentes)) {
-  if (!arquivo.endsWith('.tsx') || arquivo === 'icons.tsx') continue;
-  const fonte = readFileSync(join(componentes, arquivo), 'utf8');
+for (const arquivo of arquivos(fontes)) {
+  const fonte = readFileSync(arquivo, 'utf8');
   for (const [, nome] of fonte.matchAll(/['"`\s]bi-([a-z0-9-]+)/g)) nomes.add(nome);
 }
 

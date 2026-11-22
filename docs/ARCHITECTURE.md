@@ -455,7 +455,7 @@ The Web layer delivers the public landing page, authenticates and signs up the u
 | `POST` | `/api/me/mfa/recovery-codes/reveal` | session | once, within 10 min of generation | `{recoveryCodes}` |
 | `POST` | `/api/me/mfa/recovery-codes` | session | `{code}` (current TOTP) | `{ok}` |
 | `POST` | `/api/me/mfa/totp/disable` | session | `{code \| recoveryCode}` | `{ok}` |
-| `GET` | `/api/releases` | session | published only | `{releases: [{id, version, channel, artifactId, platform: WINDOWS\|LINUX\|MACOS, architecture, sha256, signature}]}` |
+| `GET` | `/api/releases` | session | published only | `{releases: [{id, version, channel, artifactId, platform: WINDOWS\|LINUX\|MACOS, architecture, packageFormat: NSIS\|DMG\|ZIP\|APPIMAGE\|DEB, sha256, signature}]}`; artifacts of unknown type are not listed |
 | `POST` | `/api/releases/:releaseId/download-grants` | session | `{artifactId}`; 10/10 min/user; audited | `{grant, expiresInSeconds: 120}` |
 | `POST` | `/api/download-grants/redeem` | session | `{grant}`; same user, single use, unexpired (`410 GRANT_INVALID`); GitHub `https` hosts only (`409`) | `{downloadUrl}` |
 | `GET` | `/api/feedback/posts?sort=recent\|votes&cursor=` | BFF, optional session | 20 per page | `{posts: PostSummary[], nextCursor}` |
@@ -750,14 +750,14 @@ flowchart LR
 | --- | --- | --- |
 | `minimize()`, `toggleMaximize()`, `close()` | `window:minimize`, `window:toggle-maximize`, `window:close` (send, no arguments) | |
 | `chrome()` | `window:chrome` (invoke, no arguments) | `{platform, systemLayout, maximized, fullscreen}`; `systemLayout` is the Linux desktop button layout, read by the main process |
-| `setTheme(theme)` | `window:theme` (send, `'light'` or `'dark'`) | Windows only: the main process picks the overlay colours; any other value is ignored |
+| `setTheme(theme, surface)` | `window:theme` (send, `'light'` or `'dark'`, then `'bar'` or `'page'`) | Windows only: the main process picks the overlay colours of the surface under the buttons (the top bar, or the page background on the vault screens); any other value is ignored |
 | `onStateChange(callback)` | `window:state` (main to renderer) | `{maximized, fullscreen}`; returns an unsubscribe function |
 | `bootstrapSecret()` | `app:bootstrap-secret` (invoke) | per-run local bootstrap secret, or `null` |
 | `installUpdate(version)` | `app:update-install` (invoke, one string) | the main process downloads, verifies and runs the installer; see below |
 | `cloudAccount.status()`, `.signIn()`, `.signOut()` | `cloud:status`, `cloud:sign-in`, `cloud:sign-out` (invoke, no arguments) | returns only `{available, connected, persistent, displayName}`; never a token (§4.7) |
 | `onVaultLockRequest(callback)` | `vault:lock-requested` (main to renderer) | returns an unsubscribe function; the callback receives no event object |
 
-`main.cjs` answers every channel only for a trusted sender (frame on the app origin). Only `app:update-install` (a version string) and `window:theme` (`'light'` or `'dark'`) take an argument, both validated in the main process; the others take none.
+`main.cjs` answers every channel only for a trusted sender (frame on the app origin). Only `app:update-install` (a version string) and `window:theme` (a theme and a surface, each from a fixed pair) take arguments, both validated in the main process; the others take none.
 
 **`app:update-install` (Current in code).** The renderer only names the version. The main process (`electron/main.cjs` with the pure `electron/update-verify.cjs`) refuses anything that is not strict SemVer greater than `app.getVersion()`, picks the installer of the running platform (`Talentum-<v>-Windows-x64.exe` or `Talentum-<v>-macOS-<arch>.dmg`; Linux answers `unsupported-platform` and the window links to the release page), reads the release from the fixed official repository through the GitHub API, downloads only from GitHub hosts over HTTPS with the exact published size, hashes while writing (`0600` file in a fresh temporary directory) and calls `verifyInstaller`: the SHA-256 must equal the `digest` GitHub publishes for the asset, and an Ed25519 signature of `talentum-update:v1:<file name>:<sha256>` (the `<file>.sig` asset) must verify against `UPDATE_SIGNING_PUBLIC_KEY`. That key does not exist yet (**Planned** with release signing), so the handler refuses with `SIGNING_KEY_MISSING` before downloading anything and nothing unsigned is ever executed. On success Windows runs the NSIS installer and macOS opens the DMG in Finder; the app then quits.
 

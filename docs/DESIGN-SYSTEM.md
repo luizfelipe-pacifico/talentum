@@ -884,7 +884,7 @@ The profile and, on Linux, the window controls share the header. The theme selec
 | System | Controls | Reference |
 | --- | --- | --- |
 | macOS | Native close, minimize and zoom buttons on the left, in colour (`titleBarStyle: 'hidden'`, `trafficLightPosition` 18 × 22). They sit over the sidebar, which gains 52 px of top padding and drags the window; in full screen the buttons disappear and the padding returns to 20 px. | Apple HIG, Windows (macOS); Finder, Music and Notes sidebars |
-| Windows | Native caption buttons on the right through the title bar overlay (40 px high, colours of the top bar in each theme: `#fffdf8`/`#1a110a` light, `#2a2622`/`#f1ece3` dark). Native buttons keep the Windows 11 snap layouts menu on maximize. The top bar reserves the overlay width with `env(titlebar-area-*)`. | Windows 11 title bar guidance; Spotify, Teams and VS Code |
+| Windows | Native caption buttons on the right through the title bar overlay (40 px high). Its colour follows the surface under the buttons: the top bar (`#fffdf8` light, `#2a2622` dark) while the app is open, the page background (`#f4f1ea` light, `#211e1a` dark) on the lock and first-run screens, which have no top bar; symbols `#1a110a`/`#f1ece3`. The window opens with the page colour, since it starts on the lock screen. Native buttons keep the Windows 11 snap layouts menu on maximize. The top bar reserves the overlay width with `env(titlebar-area-*)`. | Windows 11 title bar guidance; Spotify, Teams and VS Code |
 | Linux | Buttons drawn by the app, on the side and in the order set by the desktop: GNOME, Cinnamon and MATE `button-layout`, Xfce `xfwm4` `button_layout`, KDE `kwinrc` `ButtonsOnLeft`/`ButtonsOnRight`. GNOME shows only close by default, and Talentum follows it. **Configurações > Botões da janela** (Linux only) lets the person keep the system layout or fix the left (close, minimize, maximize) or right (minimize, maximize, close) side, and choose discreet icons or coloured macOS-style circles (`#ff5f57`, `#febc2e`, `#28c840`, 14 px in a 24 px target, symbols on hover or focus). The choice applies at once and is stored only in `localStorage`. | GNOME HIG header bars; KDE window decorations; elementary OS |
 
 Maximize shows `Restaurar` and the `bi-window-stack` icon while the window is maximized. Outside Electron the header shows no window controls. Deliberate deviation: on Linux the buttons are drawn instead of native decorations, because the frameless window keeps one header for brand, title and actions; the layout reading keeps them where the desktop puts its own.
@@ -948,7 +948,7 @@ An in-component error strip (`.error-strip` in `globals.css`) shows a failure in
 
 ## Installer screens
 
-Status: **Current** in configuration (2026-11-21); **Planned**: seeing them on a real Windows and macOS install, through the `Desktop` workflow.
+Status: **Current** (2026-11-21). The `Desktop` workflow photographs the first three screens of the real NSIS wizard and the DMG's Finder window on every run (`scripts/desktop-installer-screens.mjs`, artifact `telas-<system>-<arch>`).
 
 The installers carry the brand instead of the generic NSIS and DMG art. `pnpm instalador:gerar` (`scripts/gerar-instalador.mjs`) renders HTML scenes with Playfair Display and Montserrat in Playwright's Chromium and writes, into `packaging/instalador/`:
 

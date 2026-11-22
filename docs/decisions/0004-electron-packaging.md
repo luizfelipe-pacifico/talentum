@@ -59,3 +59,13 @@ Recorded when the maintainer asked for the Windows and macOS installers.
 - **Installer screens** with the brand (`packaging/instalador/`, DESIGN-SYSTEM, Installer screens); the NSIS installer runs in Brazilian Portuguese.
 - **Found by the first run (2026-11-21):** the Windows package lost the pnpm symbolic links of the standalone `node_modules` (`Cannot find package '@libsql/core'`), and the macOS packages lacked the libSQL native package, whose name libsql builds at run time; Linux only had it because the libsql source names `linux-x64-gnu` literally. The workflow now sets `pnpm_config_node_linker=hoisted` for the whole job (a flat `node_modules`, as electron-builder recommends for pnpm; replacing the links with copies was tried and broke pnpm's resolution), and `scripts/desktop-prepare.mjs` copies `@libsql/<target>`. On the Ubuntu 24.04 runner the bare package aborted with the setuid sandbox message, so the Linux job installs the `deb`, whose post-install script sets up `chrome-sandbox` and the AppArmor profile, and tests the installed app; the bare AppImage stays subject to that restriction (Open, BEST_PRACTICES, Desktop packages).
 - **Open:** Windows and macOS are validated by the first green run of the workflow.
+
+## Amendment (2026-11-21): what people install is tested, Linux package per distribution, signing gate and licences
+
+Recorded when the maintainer asked to fix what kept the installers from a 10, and to check the legal and platform questions of every change.
+
+- **Installed apps are tested:** silent NSIS install, the app copied from the DMG to `/Applications`, the `deb` installed with `apt`, and the extracted AppImage, each smoke-tested; the NSIS wizard and the DMG window are photographed on every run.
+- **Decision: Linux publishes the `deb` and the AppImage**, distinguished by `package_format` (D1 `0005`, generated from the file extension so it cannot diverge from the file). Alternatives rejected: shipping only the AppImage (does not start on Ubuntu 24.04+ without disabling the sandbox) and only the `deb` (excludes non-Debian distributions).
+- **Signing gate:** `scripts/desktop-build.mjs` signs only when the repository secrets exist and the workflow passes them only to `main` and manual runs, never to pull requests; a signed build whose signature does not verify fails.
+- **Licences:** every package carries `resources/licencas/THIRD_PARTY_NOTICES.txt` and `LICENSE.txt`.
+- **Windows caption overlay** follows the surface under it (top bar or page background).
